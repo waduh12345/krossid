@@ -1,3 +1,4 @@
+// components/form-modal/tryout-admin-form.tsx
 "use client";
 
 import * as React from "react";
@@ -7,25 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combo-box";
 
 import type { School } from "@/types/master/school";
-
+import type { Users } from "@/types/user";
 import { useGetSchoolListQuery } from "@/services/master/school.service";
+import { useGetUsersListQuery } from "@/services/users-management.service";
 
 /** === Shared enums (sinkron dgn service) === */
-export type TimerType = string; //"per_test" | "per_category"
+export type TimerType = string;
 export type ScoreType = string;
 export type AssessmentType = string;
 
-/** === Form shape (entity-like, bukan payload API) === */
+/** === Form shape === */
 export type FormState = {
   school_id: number;
   title: string;
@@ -39,12 +34,14 @@ export type FormState = {
   assessment_type: AssessmentType;
   timer_type: TimerType;
   score_type: ScoreType;
-  start_date: string;
-  end_date: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
   code: string;
   max_attempts: string;
   is_graded: boolean;
   is_explanation_released: boolean;
+  user_id: number; // ⬅️ NEW: pengawas
+  status: number;
 };
 
 type Props = {
@@ -54,12 +51,9 @@ type Props = {
   onSubmit: (values: FormState) => void | Promise<void>;
 };
 
-/** Load SunEditor (client only) */
 const SunEditor = dynamic(() => import("suneditor-react"), { ssr: false });
 
-/** Button list SunEditor */
 type ButtonList = (string | string[])[];
-
 const defaultButtons: ButtonList = [
   ["undo", "redo"],
   ["bold", "italic", "underline", "strike", "removeFormat"],
@@ -70,17 +64,29 @@ const defaultButtons: ButtonList = [
   ["codeView", "fullScreen"],
 ];
 
+/** Normalisasi ke YYYY-MM-DD */
+function dateOnly(input?: string | null): string {
+  if (!input) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+  const s = String(input);
+  if (s.includes("T") || s.includes(" ")) return s.slice(0, 10);
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function TryoutForm({
   initial,
   submitting,
   onCancel,
   onSubmit,
 }: Props) {
-  // Kelola state LOKAL agar tak gampang reset saat parent re-render
   const [form, setForm] = React.useState<FormState>(initial);
 
-  const [schoolId, setSchoolId] = React.useState<number | null>(null);
-
+  // Prodi
   const [schoolSearch, setSchoolSearch] = React.useState<string>("");
   const { data: schoolListResp, isFetching: loadingSchools } =
     useGetSchoolListQuery(
@@ -88,14 +94,32 @@ export default function TryoutForm({
       { refetchOnMountOrArgChange: true }
     );
   const schools: School[] = schoolListResp?.data ?? [];
-  // Jika "initial" berubah karena ganti mode (edit -> create, dsb)
+
+  // Pengawas (role_id = 3)
+  const [pengawasSearch, setPengawasSearch] = React.useState<string>("");
+  const {
+    data: pengawasResp,
+    isFetching: loadingPengawas,
+    refetch: refetchPengawas,
+  } = useGetUsersListQuery(
+    { page: 1, paginate: 30, search: pengawasSearch, role_id: 3 },
+    { refetchOnMountOrArgChange: true }
+  );
+  const pengawasList: Users[] = pengawasResp?.data ?? [];
+
   React.useEffect(() => {
-    setForm(initial);
+    // pastikan date-only saat form diisi dari editing
+    setForm(() => ({
+      ...initial,
+      start_date: dateOnly(initial.start_date),
+      end_date: dateOnly(initial.end_date),
+    }));
   }, [initial]);
 
-  // VALIDASI kecil
   const validate = (): string | null => {
     if (!form.title.trim()) return "Judul wajib diisi.";
+    if (!form.school_id) return "Prodi wajib diisi.";
+    if (!form.user_id) return "Pengawas wajib dipilih.";
     if (
       form.timer_type === "per_test" &&
       (!form.total_time || form.total_time <= 0)
@@ -107,23 +131,13 @@ export default function TryoutForm({
 
   const handleSubmit = async () => {
     const err = validate();
-    if (!form.school_id) {
-      void Swal.fire({
-        icon: "warning",
-        title: "Pilih Prodi",
-        text: "Field prodi wajib diisi.",
-      });
-      return;
-    }
     if (err) {
-      // biar minimal, pakai alert—silakan ganti Swal kalau mau di sini juga
-      alert(err);
+      void Swal.fire({ icon: "warning", title: err });
       return;
     }
     await onSubmit(form);
   };
 
-  // ==== RICH TEXT: gunakan HANYA setContents + onChange (tanpa defaultValue) ====
   const handleRTChange = React.useCallback((html: string) => {
     setForm((prev) => ({ ...prev, description: html }));
   }, []);
@@ -145,6 +159,22 @@ export default function TryoutForm({
             getOptionLabel={(s) => s.name}
           />
         </div>
+
+        <div>
+          <Label>Pengawas *</Label>
+          <div className="h-2" />
+          <Combobox<Users>
+            value={form.user_id}
+            onChange={(value) => setForm({ ...form, user_id: value })}
+            onSearchChange={setPengawasSearch}
+            onOpenRefetch={() => refetchPengawas()}
+            data={pengawasList}
+            isLoading={loadingPengawas}
+            placeholder="Pilih Pengawas"
+            getOptionLabel={(u) => `${u.name} (${u.email})`}
+          />
+        </div>
+
         <div>
           <Label>Judul *</Label>
           <div className="h-2" />
@@ -153,6 +183,7 @@ export default function TryoutForm({
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
         </div>
+
         <div>
           <Label>Sub Judul</Label>
           <div className="h-2" />
@@ -182,7 +213,7 @@ export default function TryoutForm({
           </div>
           <div className="flex items-center gap-2 mt-6">
             <Switch
-              checked={form.is_graded}
+              checked={!!form.is_graded}
               onCheckedChange={(v) => setForm({ ...form, is_graded: v })}
               id="graded"
             />
@@ -206,11 +237,10 @@ export default function TryoutForm({
             <Switch
               id="shuffle"
               checked={Boolean(form.shuffle_questions)}
-              onCheckedChange={
-                (v) => setForm({ ...form, shuffle_questions: v })
+              onCheckedChange={(v) =>
+                setForm({ ...form, shuffle_questions: v })
               }
             />
-
             <Label htmlFor="shuffle">Shuffle Questions</Label>
           </div>
         </div>
@@ -236,23 +266,28 @@ export default function TryoutForm({
           </div>
         </div>
 
+        {/* ⬇️ type="date", kirim selalu sebagai YYYY-MM-DD */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Tanggal Mulai</Label>
             <div className="h-2" />
             <Input
-              type="datetime-local"
-              value={form.start_date ?? ""}
-              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              type="date"
+              value={form.start_date || ""}
+              onChange={(e) =>
+                setForm({ ...form, start_date: dateOnly(e.target.value) })
+              }
             />
           </div>
           <div>
             <Label>Tanggal Selesai</Label>
             <div className="h-2" />
             <Input
-              type="datetime-local"
-              value={form.end_date ?? ""}
-              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              type="date"
+              value={form.end_date || ""}
+              onChange={(e) =>
+                setForm({ ...form, end_date: dateOnly(e.target.value) })
+              }
             />
           </div>
         </div>
@@ -264,17 +299,11 @@ export default function TryoutForm({
         <div className="h-1" />
         <div className="rounded-lg border bg-background">
           <SunEditor
-            setContents={form.description} // <-- controlled, TANPA defaultValue
+            setContents={form.description}
             onChange={handleRTChange}
             placeholder="Tulis konten di sini…"
             setDefaultStyle={`
-              body {
-                font-family: inherit;
-                font-size: 14px;
-                line-height: 1.7;
-                color: hsl(var(--foreground));
-                background: transparent;
-              }
+              body { font-family: inherit; font-size: 14px; line-height: 1.7; color: hsl(var(--foreground)); background: transparent; }
               a { color: hsl(var(--primary)); text-decoration: underline; }
               table { border-collapse: collapse; width: 100%; }
               table, th, td { border: 1px solid hsl(var(--border)); }
@@ -289,6 +318,14 @@ export default function TryoutForm({
               buttonList: defaultButtons,
             }}
           />
+        </div>
+        <div className="flex items-center gap-3 mt-4">
+          <Switch
+            checked={!!form.status}
+            onCheckedChange={(v) => setForm({ ...form, status: v ? 1 : 0 })}
+            // disabled={isFetching} // Remove or replace 'isFetching' if not defined
+          />
+          <Label>Status aktif</Label>
         </div>
       </div>
 

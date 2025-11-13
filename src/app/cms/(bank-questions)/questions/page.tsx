@@ -1,8 +1,9 @@
 "use client";
 
 import type React from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
@@ -37,9 +38,9 @@ import {
   useImportQuestionsMutation,
   useExportQuestionsMutation,
 } from "@/services/bank-questions/questions.service";
-import { stripHtml } from "@/lib/format-utils";
+import RichTextView from "@/components/ui/rich-text-view";
 
-/* ---------- SweetAlert helpers (tanpa any) ---------- */
+/* ---------- SweetAlert helpers ---------- */
 type AlertIcon = "success" | "error" | "info" | "warning" | "question";
 
 const toast = (icon: AlertIcon, title: string, text?: string) => {
@@ -86,12 +87,29 @@ const getErrMsg = (e: unknown): string => {
 };
 
 export default function QuestionsPage() {
+  const router = useRouter();
+  const sp = useSearchParams();
+
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
 
-  // ==== Categories ====
+  // hydrate dari url
+  useEffect(() => {
+    const cid = sp.get("category_id");
+    setCategoryId(cid ? Number(cid) : null);
+  }, [sp]);
+
+  // tulis balik ke url
+  useEffect(() => {
+    const curr = new URLSearchParams(sp.toString());
+    if (categoryId) curr.set("category_id", String(categoryId));
+    else curr.delete("category_id");
+    router.replace(`/cms/questions?${curr.toString()}`);
+  }, [categoryId, router, sp]);
+
+  // category
   const {
     data: catResp,
     isFetching: loadingCat,
@@ -102,30 +120,35 @@ export default function QuestionsPage() {
     search: "",
   });
   const categories: CategoryQuestion[] = catResp?.data ?? [];
-  const selectedCategory = categories.find((c) => c.id === categoryId) || null;
+  const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
 
-  // ==== Questions list ====
+  // questions
   const {
     data: qResp,
     isFetching,
     refetch,
-  } = useGetQuestionListQuery({
-    page,
-    paginate: 10,
-    search: query,
-    // question_category_id: categoryId ?? undefined, // opsional: filter di server
-  });
+  } = useGetQuestionListQuery(
+    {
+      page,
+      paginate: 10,
+      search: query,
+      question_category_id: categoryId || undefined,
+    },
+    {
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+    }
+  );
 
   const [remove] = useDeleteQuestionMutation();
 
-  // ==== Import / Export / Template hooks ====
+  // import/export
   const { data: templateUrl } = useGetQuestionImportTemplateQuery();
   const [importQuestions, { isLoading: importing }] =
     useImportQuestionsMutation();
   const [exportQuestions, { isLoading: exporting }] =
     useExportQuestionsMutation();
 
-  // file input untuk Import
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // debounce search
@@ -135,7 +158,6 @@ export default function QuestionsPage() {
   }, [search]);
 
   const allRows: Questions[] = qResp?.data ?? [];
-
   const rows = useMemo(() => {
     if (!categoryId) return [];
     return allRows.filter((r) => {
@@ -156,7 +178,7 @@ export default function QuestionsPage() {
   const lastPage = qResp?.last_page ?? 1;
   const total = rows.length;
 
-  // ==== Actions ====
+  // aksi
   const handleDelete = async (id: number) => {
     const ok = await confirmDialog(
       "Hapus pertanyaan ini?",
@@ -194,8 +216,6 @@ export default function QuestionsPage() {
         file,
         question_category_id: categoryId,
       }).unwrap();
-
-      // Umumnya server mengembalikan job async
       const msg =
         (typeof resp?.data === "string" && resp.data) ||
         resp?.message ||
@@ -216,7 +236,6 @@ export default function QuestionsPage() {
       const resp = await exportQuestions({
         question_category_id: categoryId,
       }).unwrap();
-
       const msg =
         (typeof resp?.data === "string" && resp.data) ||
         resp?.message ||
@@ -243,7 +262,6 @@ export default function QuestionsPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Hidden file input for Import */}
               <input
                 ref={fileRef}
                 type="file"
@@ -252,7 +270,6 @@ export default function QuestionsPage() {
                 onChange={onImportFileChange}
               />
 
-              {/* Import */}
               <Button
                 variant="outline"
                 onClick={triggerImport}
@@ -267,7 +284,6 @@ export default function QuestionsPage() {
                 Import
               </Button>
 
-              {/* Template (tidak bergantung kategori) */}
               <a
                 href={templateUrl ?? "#"}
                 download
@@ -286,7 +302,6 @@ export default function QuestionsPage() {
                 </Button>
               </a>
 
-              {/* Export */}
               <Button
                 variant="outline"
                 onClick={handleExport}
@@ -301,7 +316,6 @@ export default function QuestionsPage() {
                 Export
               </Button>
 
-              {/* Refresh */}
               <Button
                 variant="outline"
                 size="icon"
@@ -319,7 +333,6 @@ export default function QuestionsPage() {
                 )}
               </Button>
 
-              {/* Tambah */}
               <Link
                 href={
                   categoryId
@@ -399,9 +412,9 @@ export default function QuestionsPage() {
                             {selectedCategory?.name}
                           </Badge>
                         </div>
-                        <div className="text-sm leading-relaxed">
-                          {stripHtml(q.question)}
-                        </div>
+
+                        {/* ⬇️ render HTML supaya img/video muncul */}
+                        <RichTextView html={q.question} />
                       </div>
 
                       <DropdownMenu>
@@ -413,7 +426,7 @@ export default function QuestionsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
                             <Link
-                              href={`/master/questions/add-edit?id=${q.id}&category_id=${categoryId}`}
+                              href={`/cms/questions/add-edit?id=${q.id}&category_id=${categoryId}`}
                             >
                               Edit
                             </Link>
@@ -428,7 +441,6 @@ export default function QuestionsPage() {
                       </DropdownMenu>
                     </CardHeader>
 
-                    {/* Options/Answer */}
                     <CardContent className="space-y-3">
                       {q.type === "essay" ? (
                         <>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +35,45 @@ import {
   buildServiceUploadFormData,
 } from "@/services/bank-questions/service-upload.service";
 
-// SunEditor (client only, no CSS import here — taruh CSS di app/layout.tsx)
+// SunEditor (client only)
 const SunEditor = dynamic(() => import("suneditor-react"), { ssr: false });
+
+const extractUrlFromResponse = (res: unknown): string => {
+  // 1. PERBAIKAN: Cek jika 'res' itu sendiri adalah string URL
+  if (typeof res === "string" && (res.startsWith("http") || res.startsWith("/"))) {
+    return res;
+  }
+
+  // 2. Lanjutkan logika lama jika 'res' adalah objek
+  if (typeof res !== "object" || res === null) return "";
+  const obj = res as Record<string, unknown>;
+
+  // { data: "https://..." }  <-- punyamu
+  if (typeof obj.data === "string") return obj.data;
+
+  // { url: "..." }
+  if (typeof obj.url === "string") return obj.url;
+
+  // { file_url: "..." }
+  if (typeof obj.file_url === "string") return obj.file_url;
+
+  // { location: "..." }
+  if (typeof obj.location === "string") return obj.location;
+
+  // { data: { url/file_url/location } }
+  if (typeof obj.data === "object" && obj.data !== null) {
+    const dataObj = obj.data as Record<string, unknown>;
+    if (typeof dataObj.url === "string") return dataObj.url;
+    if (typeof dataObj.file_url === "string") return dataObj.file_url;
+    if (typeof dataObj.location === "string") return dataObj.location;
+  }
+
+  return "";
+};
 
 type Props = {
   categories: CategoryQuestion[];
-  initial?: Questions | null; // jika ada => edit
+  initial?: Questions | null;
   defaultCategoryId: number | null;
   onSaved?: (saved: Questions) => void;
   submittingText?: string;
@@ -65,7 +98,7 @@ export default function QuestionsForm({
   const [answer, setAnswer] = useState<string>("");
   const [totalPoint, setTotalPoint] = useState<number>(5);
 
-  // Options per type
+  // options
   const [optionsMC, setOptionsMC] = useState<MCOption[]>([
     { option: "a", text: "", point: 0 },
     { option: "b", text: "", point: 0 },
@@ -92,7 +125,7 @@ export default function QuestionsForm({
   const [uploadFile] = useServiceUploadMutation();
   const submitting = creating || updating;
 
-  // ===== Hydrate for edit =====
+  // ===== Hydrate (edit) =====
   useEffect(() => {
     if (!initial) return;
     setCategoryId(initial.question_category_id ?? defaultCategoryId ?? null);
@@ -100,45 +133,71 @@ export default function QuestionsForm({
     setType(initial.type as QuestionType);
     setAnswer(initial.answer ?? "");
     setTotalPoint(initial.total_point ?? 5);
-    // NOTE: jika endpoint detail mengembalikan options & explanation,
-    // isi juga state options* + explanation di sini.
+    // kalau backend kirim options & explanation, isi di sini juga
   }, [initial, defaultCategoryId]);
 
-  // ===== Upload handler untuk SunEditor (pakai service upload mutation)
-  function makeUploadHandler() {
-    return (
+  // ===== Upload handler untuk SunEditor (3 argumen, return false) =====
+  const handleSunUpload = useCallback(
+    (
       files: File[],
-      _info: unknown,
+      _info: object,
       uploadHandler: (data: {
-        result?: { url: string; name: string; size: number }[];
+        result?: { url: string; name?: string; size?: number }[];
         errorMessage?: string;
       }) => void
-    ) => {
+    ): boolean => {
       const file = files?.[0];
-      if (!file) return;
+      if (!file) {
+        uploadHandler({ errorMessage: "File tidak ditemukan" });
+        return false;
+      }
+      
+      // upload ke API kamu
       uploadFile(buildServiceUploadFormData({ file }))
         .unwrap()
-        .then((res) =>
-          uploadHandler({
-            result: [{ url: res.url, name: file.name, size: file.size }],
-          })
-        )
-        .catch((e: unknown) =>
-          uploadHandler({
-            errorMessage: e instanceof Error ? e.message : "Upload gagal",
-          })
-        );
-      return undefined;
-    };
-  }
+        .then((res) => {
+          // Gunakan helper yang sudah di luar
+          const url = extractUrlFromResponse(res);
 
-//   // ===== Helpers =====
-//   const selectedCategory = useMemo(
-//     () => categories.find((c) => c.id === question_category_id) ?? null,
-//     [categories, question_category_id]
-//   );
+          if (!url) {
+            // TAMBAHAN: Log untuk debugging
+            console.error(
+              "Gagal extract URL dari respon API. Respon:",
+              res
+            );
+            uploadHandler({
+              errorMessage:
+                "Upload berhasil tapi URL tidak ditemukan di response API. Cek console.",
+            });
+            return;
+          }
 
-  // ===== Builder payload (NO any) =====
+          // kirim ke SunEditor
+          uploadHandler({
+            result: [
+              {
+                url,
+                name: file.name,
+                size: file.size,
+              },
+            ],
+          });
+        })
+        .catch((err: unknown) => {
+          console.error("Upload image gagal:", err); // TAMBAHAN: Log error
+          uploadHandler({
+            errorMessage:
+              err instanceof Error ? err.message : "Upload gagal, coba lagi",
+          });
+        });
+
+      // PENTING: stop upload bawaan editor
+      return false;
+    },
+    [uploadFile]
+  );
+
+  // ===== Builder payload =====
   function buildPayload(): CreateQuestionPayload {
     if (!question_category_id) throw new Error("Kategori belum dipilih");
 
@@ -150,7 +209,7 @@ export default function QuestionsForm({
           type,
           explanation: explanation || undefined,
           options: optionsMC,
-          answer, // "a"
+          answer,
         };
 
       case "true_false":
@@ -159,8 +218,8 @@ export default function QuestionsForm({
           question,
           type,
           explanation: explanation || undefined,
-          options: optionsTF, // a/b
-          answer, // "a" | "b"
+          options: optionsTF,
+          answer,
         };
 
       case "essay":
@@ -180,7 +239,7 @@ export default function QuestionsForm({
           type,
           explanation: explanation || undefined,
           options: optionsMCMulti,
-          answer, // "a,c,d"
+          answer,
           total_point: totalPoint,
         };
 
@@ -219,7 +278,7 @@ export default function QuestionsForm({
     }
   };
 
-  // ===== UI renderer untuk opsi per type =====
+  // ===== Render opsi =====
   const renderOptions = () => {
     if (type === "multiple_choice" || type === "true_false") {
       const state = type === "true_false" ? optionsTF : optionsMC;
@@ -283,7 +342,8 @@ export default function QuestionsForm({
                       ["codeView"],
                     ],
                   }}
-                  onImageUploadBefore={makeUploadHandler()}
+                  onImageUploadBefore={handleSunUpload}
+                  onVideoUploadBefore={handleSunUpload}
                 />
               </div>
             ))}
@@ -293,7 +353,7 @@ export default function QuestionsForm({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  const nextKey = String.fromCharCode(97 + state.length); // a,b,c...
+                  const nextKey = String.fromCharCode(97 + state.length);
                   setState([...state, { option: nextKey, text: "", point: 0 }]);
                 }}
               >
@@ -373,7 +433,8 @@ export default function QuestionsForm({
                       ["codeView"],
                     ],
                   }}
-                  onImageUploadBefore={makeUploadHandler()}
+                  onImageUploadBefore={handleSunUpload}
+                  onVideoUploadBefore={handleSunUpload}
                 />
               </div>
             ))}
@@ -382,7 +443,7 @@ export default function QuestionsForm({
               type="button"
               variant="outline"
               onClick={() => {
-                const nextKey = String.fromCharCode(97 + optionsMCMulti.length); // a,b,c...
+                const nextKey = String.fromCharCode(97 + optionsMCMulti.length);
                 setOptionsMCMulti([
                   ...optionsMCMulti,
                   { option: nextKey, text: "", point: 0 },
@@ -521,7 +582,8 @@ export default function QuestionsForm({
                       ["codeView"],
                     ],
                   }}
-                  onImageUploadBefore={makeUploadHandler()}
+                  onImageUploadBefore={handleSunUpload}
+                  onVideoUploadBefore={handleSunUpload}
                 />
               </div>
             ))}
@@ -580,11 +642,18 @@ export default function QuestionsForm({
           <SelectContent>
             <SelectItem value="multiple_choice">Pilihan Ganda</SelectItem>
             <SelectItem value="essay">Essay</SelectItem>
+            <SelectItem value="multiple_choice_multiple_answer">
+              Pilihan Ganda Banyak Jawaban
+            </SelectItem>
+            <SelectItem value="multiple_choice_multiple_category">
+              Kategori
+            </SelectItem>
+            <SelectItem value="true_false">True / False</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Question (rich text) */}
+      {/* Question */}
       <div className="grid gap-2">
         <Label>Pertanyaan</Label>
         <SunEditor
@@ -601,7 +670,8 @@ export default function QuestionsForm({
               ["codeView", "fullScreen"],
             ],
           }}
-          onImageUploadBefore={makeUploadHandler()}
+          onImageUploadBefore={handleSunUpload}
+          onVideoUploadBefore={handleSunUpload}
         />
       </div>
 
@@ -624,7 +694,8 @@ export default function QuestionsForm({
               ["codeView"],
             ],
           }}
-          onImageUploadBefore={makeUploadHandler()}
+          onImageUploadBefore={handleSunUpload}
+          onVideoUploadBefore={handleSunUpload}
         />
       </div>
 

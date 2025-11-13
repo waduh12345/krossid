@@ -86,6 +86,7 @@ export type ParticipantQuestionCategory = {
   question_category_id: number;
   test_question_category_details: TestQuestionCategoryDetails;
   question_category_details: QuestionCategory;
+  participant_questions?: [];
   grade: number;
   start_date: string | null;
   end_date: string | null;
@@ -151,9 +152,15 @@ export type QuestionGroup = {
   questions: ParticipantAnswer[];
 };
 
-// ─── LIST / HISTORY ──────────────────────────────────────────────────────────
 export type ParticipantHistoryItem = ParticipantTest & {
   participant_question_categories?: ParticipantQuestionCategory[];
+  participant_test_question_category_id?: number;
+  test_id?: number;
+  is_ongoing?: 0 | 1;
+  is_completed?: 0 | 1;
+  is_graded?: 0 | 1;
+  started_at?: string | null;
+  ended_at?: string | null;
 };
 
 export type PaginatedResponse<T> = {

@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, RefreshCw, ArrowLeft, Eye } from "lucide-react";
 import Pager from "@/components/ui/tryout-pagination";
-import { formatDate } from "@/lib/format-utils";
 
 import { useGetParticipantHistoryListQuery } from "@/services/student/tryout.service";
-// ⬇️ Ganti sumber tipe agar SAMA dengan service untuk menghindari bentrok tipe
 import type { ParticipantHistoryItem } from "@/types/student/tryout";
+import { ParticipantHistoryDetail } from "../../../../components/modal/detail/page";
+import { ParticipantHistoryDetailPG } from "../../../../components/modal/detail-pg/page";
 
 export default function RankPage() {
   const router = useRouter();
@@ -27,6 +27,13 @@ export default function RankPage() {
   const [paginate, setPaginate] = useState(10);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+
+  // detail
+  const [selectedParticipantId, setSelectedParticipantId] = useState<
+    number | null
+  >(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailPGOpen, setDetailPGOpen] = useState(false);
 
   // debounce input cari
   useEffect(() => {
@@ -49,7 +56,6 @@ export default function RankPage() {
     { skip: !testId || Number.isNaN(testId) }
   );
 
-  // rows terketik konsisten dengan tipe dari module service
   const rows: ParticipantHistoryItem[] = useMemo(
     () => data?.data ?? [],
     [data]
@@ -59,21 +65,18 @@ export default function RankPage() {
     <>
       <SiteHeader title="Ranking Tryout" />
 
-      <div className="p-4 md:p-6 space-y-4">
-        <div className="flex justify-between">
+      <div className="space-y-4 p-4 md:p-6">
+        <div className="flex items-center justify-between gap-4">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Test ID: <span className="font-medium">{testIdRaw}</span>
-          </div>
         </div>
 
         <Card>
           <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <CardTitle className="text-lg">Peringkat Peserta</CardTitle>
-            <div className="flex gap-2">
-              <div className="hidden md:flex items-center gap-2">
+            <div className="flex flex-wrap gap-2 md:flex-nowrap">
+              <div className="hidden items-center gap-2 md:flex">
                 <span className="text-sm text-muted-foreground">Records</span>
                 <select
                   className="h-9 rounded-md border bg-background px-2"
@@ -120,7 +123,7 @@ export default function RankPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="rounded-md border overflow-x-auto">
+            <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="text-left">
@@ -129,14 +132,13 @@ export default function RankPage() {
                     <th className="p-3">Email</th>
                     <th className="p-3">Nilai</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3">Mulai</th>
-                    <th className="p-3">Selesai</th>
+                    <th className="p-3 text-left">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isFetching && rows.length === 0 ? (
                     <tr>
-                      <td className="p-4" colSpan={7}>
+                      <td className="p-4" colSpan={8}>
                         Memuat…
                       </td>
                     </tr>
@@ -160,18 +162,36 @@ export default function RankPage() {
                               <Badge variant="outline">On going</Badge>
                             )}
                           </td>
-                          <td className="p-3">
-                            {r.start_date ? formatDate(r.start_date) : "-"}
-                          </td>
-                          <td className="p-3">
-                            {r.end_date ? formatDate(r.end_date) : "-"}
+                          <td className="p-3 text-right gap-1 inline-flex">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedParticipantId(r.id);
+                                setDetailPGOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-1 h-4 w-4" />
+                              Detail PG
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedParticipantId(r.id);
+                                setDetailOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-1 h-4 w-4" />
+                              Detail Essay
+                            </Button>
                           </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td className="p-4" colSpan={7}>
+                      <td className="p-4" colSpan={8}>
                         Tidak ada data.
                       </td>
                     </tr>
@@ -190,6 +210,22 @@ export default function RankPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* dialog detail */}
+      <ParticipantHistoryDetail
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        participantTestId={selectedParticipantId}
+        testId={testId}
+      />
+
+      {/* dialog detail pg */}
+      <ParticipantHistoryDetailPG
+        open={detailPGOpen}
+        onOpenChange={setDetailPGOpen}
+        participantTestId={selectedParticipantId}
+        testId={testId}
+      />
     </>
   );
 }
