@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "CBT Notokusumo",
-  description: "CBT Notokusumo for better experience",
+  title: "CBT Qubic",
+  description: "CBT Qubic for better experience",
 };
 
 export default function RootLayout({

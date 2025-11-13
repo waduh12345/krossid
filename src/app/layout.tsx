@@ -15,11 +15,10 @@ import ClientAuthGuard from "@/components/client-guards";
 // };
 
 export const metadata: Metadata = {
-  title: "CBT Notokusumo",
-  description:
-    "Solusi cerdas untuk mempermudah manajemen dan pemantauan penjualan secara efisien.",
+  title: "CBT Qubic",
+  description: "Platform CBT untuk meningkatkan kemampuan belajar.",
   icons: {
-    icon: "/logo-stikes.jpg",
+    icon: "/icon-qubic.jpg",
   },
 };
 

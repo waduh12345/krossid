@@ -170,7 +170,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const menus = NAV_BY_ROLE[roleName];
 
   const userForSidebar = {
-    name: session?.user?.name ?? "CBT Notokusumo",
+    name: session?.user?.name ?? "CBT Qubic",
     email: session?.user?.email ?? "user@example.com",
     avatar: "/logo-stikes.jpg",
   };
@@ -191,7 +191,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   width={32}
                   height={32}
                 />
-                <span className="text-base font-bold">CBT Notokusumo</span>
+                <span className="text-base font-bold">CBT Qubic</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
