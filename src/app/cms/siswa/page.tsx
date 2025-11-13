@@ -74,7 +74,9 @@ import { SiteHeader } from "@/components/site-header";
 import { Combobox } from "@/components/ui/combo-box";
 
 import StudentForm from "@/components/form-modal/master/student-form";
-import StudentCardModal, { StudentLite } from "@/components/modal/student-card-modal";
+import StudentCardModal, {
+  StudentLite,
+} from "@/components/modal/student-card-modal";
 
 const ROLE_STUDENT_ID = 3;
 
@@ -450,7 +452,7 @@ export default function StudentsPage() {
       const name = pendingDelete.name;
       await remove(pendingDelete.id).unwrap();
       setPendingDelete(null);
-      alertSuccess("Berhasil Dihapus", `Mahasiswa "${name}" telah dihapus.`);
+      alertSuccess("Berhasil Dihapus", `Siswa "${name}" telah dihapus.`);
       refetch();
     } catch (err: unknown) {
       const info = extractPayload(err);
@@ -461,7 +463,7 @@ export default function StudentsPage() {
 
   const getSchoolLabel = (id: number | null): string =>
     id == null
-      ? "Semua Prodi"
+      ? "Semua Sekolah"
       : schoolOptions.find((s) => s.id === id)?.label ?? `ID: ${id}`;
   const getClassLabel = (id: number | null): string =>
     id == null
@@ -472,16 +474,16 @@ export default function StudentsPage() {
 
   return (
     <>
-      <SiteHeader title="Mahasiswa" />
+      <SiteHeader title="Siswa" />
       <main className="space-y-6 px-4 py-6">
         <Card className="border-border/70 shadow-sm">
           <CardHeader className="gap-3 md:flex md:items-center md:justify-between">
             <div>
               <CardTitle className="text-xl font-semibold tracking-tight">
-                Mahasiswa
+                Siswa
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Daftar akun <span className="font-medium">Mahasiswa</span>.
+                Daftar akun <span className="font-medium">Siswa</span>.
               </p>
             </div>
 
@@ -497,7 +499,7 @@ export default function StudentsPage() {
               <Button
                 variant="outline"
                 onClick={triggerImport}
-                title="Import Mahasiswa"
+                title="Import Siswa"
                 disabled={importing}
               >
                 <Upload
@@ -526,7 +528,7 @@ export default function StudentsPage() {
               <Button
                 variant="outline"
                 onClick={handleExport}
-                title="Export Mahasiswa"
+                title="Export Siswa"
                 disabled={exporting}
               >
                 <FileDown
@@ -647,7 +649,7 @@ export default function StudentsPage() {
                     <TableRow>
                       <TableHead className="w-[320px]">Akun</TableHead>
                       <TableHead className="w-[320px]">NIM</TableHead>
-                      <TableHead className="w-[160px]">Prodi</TableHead>
+                      <TableHead className="w-[160px]">Sekolah</TableHead>
                       <TableHead className="w-[180px]">Kelas</TableHead>
                       <TableHead className="w-[160px]">Telepon</TableHead>
                       <TableHead className="w-[120px]">Status</TableHead>
@@ -917,7 +919,7 @@ export default function StudentsPage() {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Hapus Mahasiswa?</AlertDialogTitle>
+              <AlertDialogTitle>Hapus Siswa?</AlertDialogTitle>
               <AlertDialogDescription>
                 Aksi ini tidak bisa dibatalkan. Item:
                 <span className="font-semibold"> {pendingDelete?.name}</span>

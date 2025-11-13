@@ -40,7 +40,10 @@ const SunEditor = dynamic(() => import("suneditor-react"), { ssr: false });
 
 const extractUrlFromResponse = (res: unknown): string => {
   // 1. PERBAIKAN: Cek jika 'res' itu sendiri adalah string URL
-  if (typeof res === "string" && (res.startsWith("http") || res.startsWith("/"))) {
+  if (
+    typeof res === "string" &&
+    (res.startsWith("http") || res.startsWith("/"))
+  ) {
     return res;
   }
 
@@ -98,6 +101,8 @@ export default function QuestionsForm({
   const [answer, setAnswer] = useState<string>("");
   const [totalPoint, setTotalPoint] = useState<number>(5);
 
+  const editorKeyBase = isEdit && initial ? `q-${initial.id}` : "q-new";
+
   // options
   const [optionsMC, setOptionsMC] = useState<MCOption[]>([
     { option: "a", text: "", point: 0 },
@@ -126,15 +131,19 @@ export default function QuestionsForm({
   const submitting = creating || updating;
 
   // ===== Hydrate (edit) =====
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    if (!initial) return;
+    if (!initial || hydrated) return;
+
     setCategoryId(initial.question_category_id ?? defaultCategoryId ?? null);
     setQuestion(initial.question ?? "");
     setType(initial.type as QuestionType);
     setAnswer(initial.answer ?? "");
     setTotalPoint(initial.total_point ?? 5);
-    // kalau backend kirim options & explanation, isi di sini juga
-  }, [initial, defaultCategoryId]);
+
+    setHydrated(true);
+  }, [initial, defaultCategoryId, hydrated]);
 
   // ===== Upload handler untuk SunEditor (3 argumen, return false) =====
   const handleSunUpload = useCallback(
@@ -151,7 +160,7 @@ export default function QuestionsForm({
         uploadHandler({ errorMessage: "File tidak ditemukan" });
         return false;
       }
-      
+
       // upload ke API kamu
       uploadFile(buildServiceUploadFormData({ file }))
         .unwrap()
@@ -161,10 +170,7 @@ export default function QuestionsForm({
 
           if (!url) {
             // TAMBAHAN: Log untuk debugging
-            console.error(
-              "Gagal extract URL dari respon API. Respon:",
-              res
-            );
+            console.error("Gagal extract URL dari respon API. Respon:", res);
             uploadHandler({
               errorMessage:
                 "Upload berhasil tapi URL tidak ditemukan di response API. Cek console.",
@@ -325,6 +331,7 @@ export default function QuestionsForm({
 
                 <Label className="text-xs">Teks Opsi</Label>
                 <SunEditor
+                  key={`${editorKeyBase}-opt-${type}-${idx}`}
                   setContents={opt.text}
                   onChange={(html: string) => {
                     const v = [...state];
@@ -417,6 +424,7 @@ export default function QuestionsForm({
 
                 <Label className="text-xs">Teks Opsi</Label>
                 <SunEditor
+                  key={`${editorKeyBase}-opt-${type}-${idx}`}
                   setContents={opt.text}
                   onChange={(html: string) => {
                     const v = [...optionsMCMulti];
@@ -566,6 +574,7 @@ export default function QuestionsForm({
 
                 <Label className="text-xs">Teks</Label>
                 <SunEditor
+                  key={`${editorKeyBase}-opt-${type}-${idx}`}
                   setContents={opt.text}
                   onChange={(html: string) => {
                     const arr = [...optionsCategorized];
@@ -657,6 +666,7 @@ export default function QuestionsForm({
       <div className="grid gap-2">
         <Label>Pertanyaan</Label>
         <SunEditor
+          key={`${editorKeyBase}-question`}
           setContents={question}
           onChange={setQuestion}
           setOptions={{
@@ -682,6 +692,7 @@ export default function QuestionsForm({
       <div className="grid gap-2">
         <Label>Penjelasan (opsional)</Label>
         <SunEditor
+          key={`${editorKeyBase}-explanation`}
           setContents={explanation}
           onChange={setExplanation}
           setOptions={{

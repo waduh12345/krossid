@@ -32,8 +32,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -69,16 +67,33 @@ export default function SchoolPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<School | null>(null);
 
-  // debounce
+  // 🔹 Filter wilayah (nullable, cascade)
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [regencyId, setRegencyId] = useState<number | null>(null);
+  const [districtId, setDistrictId] = useState<number | null>(null);
+  const [villageId, setVillageId] = useState<number | null>(null);
+
+  // debounce search text
   useMemo(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 400);
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data, isFetching, refetch } = useGetSchoolListQuery(
-    { page, paginate, search },
-    { refetchOnMountOrArgChange: true }
-  );
+  // 🔹 Argumen query untuk list sekolah, termasuk filter wilayah (string)
+  const schoolQueryArgs: Parameters<typeof useGetSchoolListQuery>[0] = {
+    page,
+    paginate,
+    search,
+    ...(provinceId ? { province_id: String(provinceId) } : {}),
+    ...(regencyId ? { regency_id: String(regencyId) } : {}),
+    ...(districtId ? { district_id: String(districtId) } : {}),
+    ...(villageId ? { village_id: String(villageId) } : {}),
+  };
+
+  const { data, isFetching, refetch } = useGetSchoolListQuery(schoolQueryArgs, {
+    refetchOnMountOrArgChange: true,
+  });
+
   const [remove, { isLoading: deleting }] = useDeleteSchoolMutation();
 
   const rows: School[] = data?.data ?? [];
@@ -126,8 +141,8 @@ export default function SchoolPage() {
     alertSuccess(
       wasEdit ? "Berhasil Diperbarui" : "Berhasil Dibuat",
       wasEdit
-        ? "Data prodi berhasil diperbarui."
-        : "Data prodi berhasil ditambahkan."
+        ? "Data sekolah berhasil diperbarui."
+        : "Data sekolah berhasil ditambahkan."
     );
   };
 
@@ -139,7 +154,7 @@ export default function SchoolPage() {
       await remove(pendingDelete.id).unwrap();
       setPendingDelete(null);
       refetch();
-      alertSuccess("Berhasil Dihapus", `Prodi "${name}" telah dihapus.`);
+      alertSuccess("Berhasil Dihapus", `Sekolah "${name}" telah dihapus.`);
     } catch (err: unknown) {
       const message =
         (err as { data?: { message?: string } })?.data?.message ??
@@ -152,16 +167,24 @@ export default function SchoolPage() {
     }
   };
 
+  const resetWilayah = () => {
+    setProvinceId(null);
+    setRegencyId(null);
+    setDistrictId(null);
+    setVillageId(null);
+    setPage(1);
+  };
+
   return (
     <>
-      <SiteHeader title="Prodi" />
+      <SiteHeader title="Sekolah" />
       <main className="space-y-6 px-4 py-6">
         <Card className="border-border/70 shadow-sm">
           <CardHeader className="gap-3 md:flex md:items-center md:justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               <CardTitle className="text-xl font-semibold tracking-tight">
-                Prodi
+                Sekolah
               </CardTitle>
             </div>
             <div className="flex items-center gap-2">
@@ -193,7 +216,7 @@ export default function SchoolPage() {
                 />
               </div>
 
-              <div className="sm:ml-auto">
+              <div className="sm:ml-auto flex items-center gap-2">
                 <Select
                   value={String(paginate)}
                   onValueChange={(v) => {
@@ -212,6 +235,17 @@ export default function SchoolPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearch("");
+                    resetWilayah();
+                  }}
+                >
+                  Reset Filter
+                </Button>
               </div>
             </div>
 
@@ -221,6 +255,7 @@ export default function SchoolPage() {
                 <Table className="min-w-[920px]">
                   <TableHeader className="sticky top-0 bg-muted/40 backdrop-blur supports-[backdrop-filter]:bg-muted/60">
                     <TableRow>
+                      <TableHead className="w-[40px]">No</TableHead>
                       <TableHead className="w-[240px]">Nama</TableHead>
                       <TableHead>Deskripsi</TableHead>
                       <TableHead className="w-[140px]">Status</TableHead>
@@ -237,6 +272,9 @@ export default function SchoolPage() {
                       <>
                         {Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i} className="hover:bg-transparent">
+                            <TableCell>
+                              <Skeleton className="h-4 w-10" />
+                            </TableCell>
                             <TableCell>
                               <div className="space-y-2">
                                 <Skeleton className="h-4 w-40" />
@@ -280,6 +318,7 @@ export default function SchoolPage() {
                         key={s.id}
                         className={idx % 2 === 1 ? "bg-muted/20" : undefined}
                       >
+                        <TableCell>{idx + 1}</TableCell>
                         <TableCell>
                           <div className="font-medium leading-none">
                             {s.name}
@@ -333,17 +372,6 @@ export default function SchoolPage() {
                                 </Button>
                               </div>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-32">
-                              <DropdownMenuItem onClick={() => onEdit(s.id)}>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setPendingDelete(s)}
-                                className="text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
@@ -403,7 +431,7 @@ export default function SchoolPage() {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Hapus Prodi?</AlertDialogTitle>
+              <AlertDialogTitle>Hapus Sekolah?</AlertDialogTitle>
               <AlertDialogDescription>
                 Aksi ini tidak bisa dibatalkan. Item:
                 <span className="font-semibold"> {pendingDelete?.name}</span>

@@ -88,7 +88,7 @@ export default function StudentCardModal({
             <div class="kv"><div class="k">Password</div><div class="v">${pwd}</div></div>
             <div class="kv"><div class="k">Kelas</div><div class="v">${kelas}</div></div>
             <div class="kv"><div class="k">Sesi / Ruang</div><div class="v">${sesi} / ${ruang}</div></div>
-            <div class="kv"><div class="k">Prodi</div><div class="v">${prodi}</div></div>
+            <div class="kv"><div class="k">Sekolah</div><div class="v">${prodi}</div></div>
           </div>
           <div class="avatar">
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -158,7 +158,7 @@ export default function StudentCardModal({
                     ["Password", String(pwd)],
                     ["Kelas", String(kelas)],
                     ["Sesi / Ruang", `${sesi} / ${ruang}`],
-                    ["Prodi", String(prodi)],
+                    ["Sekolah", String(prodi)],
                   ].map(([k, v]) => (
                     <div
                       key={k}

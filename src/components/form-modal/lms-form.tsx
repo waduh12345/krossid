@@ -254,7 +254,7 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
         await Swal.fire({
           icon: "warning",
           title: "Lengkapi Data",
-          text: "Prodi, Subject, Sub Subject, dan Title wajib diisi.",
+          text: "Sekolah, Subject, Sub Subject, dan Title wajib diisi.",
         });
         return;
       }
@@ -289,7 +289,7 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
     <div className="space-y-4 max-h-[80vh] overflow-y-auto">
       {/* Prodi (School) 🆕 */}
       <div>
-        <Label className="pb-2">Prodi</Label>
+        <Label className="pb-2">Sekolah</Label>
         <Combobox<School>
           value={schoolId}
           onChange={(v) => setSchoolId(v)}
@@ -300,7 +300,7 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
           onOpenRefetch={refetchSchool}
           data={schoolOptions}
           isLoading={loadingSchool}
-          placeholder="Pilih Prodi"
+          placeholder="Pilih Sekolah"
           getOptionLabel={getOptionLabelSchool}
         />
       </div>
@@ -308,7 +308,7 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
       {/* Subject & Sub Subject */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label className="pb-2">Jurusan</Label>
+          <Label className="pb-2">Mata Pelajaran</Label>
           <Combobox<Subject>
             value={subjectId}
             onChange={(v) => setSubjectId(v)}
@@ -319,13 +319,13 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
             onOpenRefetch={refetchSubject}
             data={subjectOptions}
             isLoading={loadingSubject}
-            placeholder="Pilih Jurusan"
+            placeholder="Pilih Mata Pelajaran"
             getOptionLabel={getOptionLabelSubject}
           />
         </div>
 
         <div>
-          <Label className="pb-2">Mata Kuliah</Label>
+          <Label className="pb-2">Sub Mata Pelajaran</Label>
           <div
             aria-disabled={!subEnabled}
             className={!subEnabled ? "pointer-events-none opacity-60" : ""}
@@ -346,8 +346,8 @@ export default function LmsForm({ initialData, onSuccess, onCancel }: Props) {
               isLoading={loadingSub}
               placeholder={
                 subEnabled
-                  ? "Pilih Mata Kuliah"
-                  : "Pilih Jurusan terlebih dahulu"
+                  ? "Pilih Sub Mata Pelajaran"
+                  : "Pilih Mata Pelajaran terlebih dahulu"
               }
               getOptionLabel={getOptionLabelSub}
             />

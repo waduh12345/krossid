@@ -77,8 +77,8 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         icon: IconLayoutDashboard,
       },
       {
-        title: "Data Mahasiswa",
-        url: "/cms/mahasiswa",
+        title: "Data Siswa",
+        url: "/cms/siswa",
         icon: IconBrandDatabricks,
       },
       {
@@ -87,7 +87,7 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         icon: IconFolderQuestion,
       },
       {
-        title: "Ujian Online",
+        title: "Try Out",
         url: "/cms/tryout",
         icon: IconZoomQuestion,
       },
@@ -105,10 +105,10 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         url: "#",
         icon: IconZoomQuestion,
         children: [
-          { title: "Prodi", url: "/cms/prodi" },
-          { title: "Jurusan", url: "/cms/jurusan" },
+          { title: "Sekolah", url: "/cms/sekolah" },
+          { title: "Mata Pelajaran", url: "/cms/mapel" },
           { title: "Kelas", url: "/cms/class" },
-          { title: "Mata Kuliah", url: "/cms/mata-kuliah" },
+          { title: "Sub Mata Pelajaran", url: "/cms/mata-kuliah" },
         ],
       },
       {
@@ -139,7 +139,7 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         icon: IconDashboard,
       },
       {
-        title: "Ujian Online",
+        title: "Try Out",
         url: "/cms/tryout",
         icon: IconZoomQuestion,
       },
@@ -186,7 +186,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <Image
-                  src="/logo-stikes.jpg"
+                  src="/icon-qubic.jpg"
                   alt="CBT Kampus"
                   width={32}
                   height={32}

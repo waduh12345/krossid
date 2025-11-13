@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Trophy,
   Users as UsersIcon,
+  BarChart3, // 🔹 icon Penilaian IRT
 } from "lucide-react";
 import Pager from "@/components/ui/tryout-pagination";
 import ActionIcon from "@/components/ui/action-icon";
@@ -122,6 +123,7 @@ export default function TryoutPage() {
   const [searchBySpecific, setSearchBySpecific] = useState("");
   const [exportingId, setExportingId] = useState<number | null>(null);
 
+  // 🔹 state filter sekolah
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [schoolSearch, setSchoolSearch] = useState("");
 
@@ -131,11 +133,19 @@ export default function TryoutPage() {
   const isPengawas = roles.some((r) => r.name === "pengawas");
   const myId = me?.id ?? 0;
 
-  const { data: schoolResp, isLoading: loadingSchools } = useGetSchoolListQuery(
-    { page: 1, paginate: 100, search: schoolSearch || "" }
+  // 🔹 ambil data sekolah (untuk combobox)
+  const {
+    data: schoolResp,
+    isLoading: loadingSchools,
+    refetch: refetchSchools,
+  } = useGetSchoolListQuery(
+    { page: 1, paginate: 100, search: schoolSearch || "" },
+    { refetchOnMountOrArgChange: true }
   );
+
   const schools: School[] = useMemo(() => schoolResp?.data ?? [], [schoolResp]);
 
+  // 🔹 query utama list tryout (sekarang include school_id)
   const baseQuery = {
     page,
     paginate,
@@ -176,7 +186,6 @@ export default function TryoutPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TestRow | null>(null);
-
   const [monitoringTest, setMonitoringTest] = useState<TestRow | null>(null);
 
   const toForm = (t: TestRow): FormState => ({
@@ -261,12 +270,10 @@ export default function TryoutPage() {
         res = await createTest(toPayload(fixedValues)).unwrap();
       }
 
-      // ⬇️ TUTUP modal dulu
       setOpen(false);
       setEditing(null);
       refetch();
 
-      // ⬇️ baru munculin alert di tick berikutnya biar focus trapnya sudah lepas
       setTimeout(() => {
         void Swal.fire({
           icon: "success",
@@ -277,7 +284,6 @@ export default function TryoutPage() {
 
       return true;
     } catch (e) {
-      // ⬇️ kalau ERROR modal TETAP TERBUKA
       setTimeout(() => {
         void Swal.fire({
           icon: "error",
@@ -340,7 +346,7 @@ export default function TryoutPage() {
 
   return (
     <>
-      <SiteHeader title="Ujian Online" />
+      <SiteHeader title="Try Out" />
       {open && (
         <div className="fixed inset-0 z-40 pointer-events-auto">
           <div className="absolute inset-0 bg-slate-950/55" />
@@ -359,13 +365,13 @@ export default function TryoutPage() {
       <div className="p-4 md:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg">Daftar Ujian Online</CardTitle>
+            <CardTitle className="text-lg">Daftar Try Out</CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => refetch()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
               <Button onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" /> Buat Ujian Online
+                <Plus className="mr-2 h-4 w-4" /> Buat Try Out
               </Button>
             </div>
           </CardHeader>
@@ -387,7 +393,8 @@ export default function TryoutPage() {
                 </select>
               </div>
 
-              <div className="ml-auto w-full flex gap-2">
+              {/* Search + Filter Sekolah */}
+              <div className="ml-auto w-full flex flex-col md:flex-row gap-2">
                 <Input
                   placeholder="Search…"
                   value={search}
@@ -404,9 +411,12 @@ export default function TryoutPage() {
                         setPage(1);
                       }}
                       onSearchChange={setSchoolSearch}
+                      onOpenRefetch={() => {
+                        refetchSchools();
+                      }}
                       data={schools}
                       isLoading={loadingSchools}
-                      placeholder="Semua Prodi"
+                      placeholder="Semua Sekolah"
                       getOptionLabel={(s) => s.name}
                     />
                     {schoolId !== null && (
@@ -436,7 +446,7 @@ export default function TryoutPage() {
                     refetch();
                   }}
                 >
-                  Reset
+                  Reset Semua
                 </Button>
               </div>
             </div>
@@ -446,7 +456,7 @@ export default function TryoutPage() {
                 <thead className="bg-muted/50">
                   <tr className="text-left">
                     <th className="p-3">Judul</th>
-                    <th className="p-3">Prodi</th>
+                    <th className="p-3">Sekolah</th>
                     <th className="p-3">Pengawas</th>
                     <th className="p-3">Waktu (detik)</th>
                     <th className="p-3">Shuffle</th>
@@ -501,13 +511,13 @@ export default function TryoutPage() {
                           <td className="p-3">
                             {t.end_date ? displayDate(t.end_date) : "-"}
                           </td>
-                            <td className="p-3">
+                          <td className="p-3">
                             {t.status === true ? (
                               <Badge variant="success">Aktif</Badge>
                             ) : (
                               <Badge variant="destructive">Non-aktif</Badge>
                             )}
-                            </td>
+                          </td>
                           <td className="p-3">
                             <div className="flex gap-1 justify-end">
                               <Link
@@ -517,6 +527,16 @@ export default function TryoutPage() {
                                   <ListChecks className="h-4 w-4" />
                                 </ActionIcon>
                               </Link>
+
+                              {t.score_type === "irt" && (
+                                <Link
+                                  href={`/cms/tryout/paket-latihan/${t.id}/irt`}
+                                >
+                                  <ActionIcon label="Penilaian IRT">
+                                    <BarChart3 className="h-4 w-4" />
+                                  </ActionIcon>
+                                </Link>
+                              )}
 
                               <Link href={`/cms/tryout/rank?test_id=${t.id}`}>
                                 <ActionIcon label="Rank">
@@ -591,9 +611,7 @@ export default function TryoutPage() {
           >
             <DialogHeader>
               <DialogTitle>
-                {editing
-                  ? "Form Ubah Ujian Online"
-                  : "Form Tambah Ujian Online"}
+                {editing ? "Form Ubah Try Out" : "Form Tambah Try Out"}
               </DialogTitle>
             </DialogHeader>
 

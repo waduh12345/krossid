@@ -1,4 +1,3 @@
-// components/form-modal/tryout-admin-form.tsx
 "use client";
 
 import * as React from "react";
@@ -9,6 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combo-box";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import type { School } from "@/types/master/school";
 import type { Users } from "@/types/user";
@@ -16,8 +22,9 @@ import { useGetSchoolListQuery } from "@/services/master/school.service";
 import { useGetUsersListQuery } from "@/services/users-management.service";
 
 /** === Shared enums (sinkron dgn service) === */
-export type TimerType = string;
-export type ScoreType = string;
+// supaya lebih ketat & autocomplete enak
+export type TimerType = "per_test" | "per_category";
+export type ScoreType = "default" | "irt";
 export type AssessmentType = string;
 
 /** === Form shape === */
@@ -40,7 +47,7 @@ export type FormState = {
   max_attempts: string;
   is_graded: boolean;
   is_explanation_released: boolean;
-  user_id: number; // ⬅️ NEW: pengawas
+  user_id: number; // pengawas
   status: number;
 };
 
@@ -54,6 +61,7 @@ type Props = {
 const SunEditor = dynamic(() => import("suneditor-react"), { ssr: false });
 
 type ButtonList = (string | string[])[];
+
 const defaultButtons: ButtonList = [
   ["undo", "redo"],
   ["bold", "italic", "underline", "strike", "removeFormat"],
@@ -86,7 +94,7 @@ export default function TryoutForm({
 }: Props) {
   const [form, setForm] = React.useState<FormState>(initial);
 
-  // Prodi
+  // Sekolah
   const [schoolSearch, setSchoolSearch] = React.useState<string>("");
   const { data: schoolListResp, isFetching: loadingSchools } =
     useGetSchoolListQuery(
@@ -107,6 +115,11 @@ export default function TryoutForm({
   );
   const pengawasList: Users[] = pengawasResp?.data ?? [];
 
+  // callback STABIL untuk onOpenRefetch Combobox Pengawas
+  const handlePengawasOpenRefetch = React.useCallback(() => {
+    refetchPengawas();
+  }, [refetchPengawas]);
+
   React.useEffect(() => {
     // pastikan date-only saat form diisi dari editing
     setForm(() => ({
@@ -118,14 +131,23 @@ export default function TryoutForm({
 
   const validate = (): string | null => {
     if (!form.title.trim()) return "Judul wajib diisi.";
-    if (!form.school_id) return "Prodi wajib diisi.";
+    if (!form.school_id) return "Sekolah wajib diisi.";
     if (!form.user_id) return "Pengawas wajib dipilih.";
+
     if (
       form.timer_type === "per_test" &&
       (!form.total_time || form.total_time <= 0)
     ) {
       return "Total waktu wajib diisi dan > 0 saat Timer Type = Per Test.";
     }
+
+    // ⬇️ wajib isi tanggal jika pakai score_type IRT
+    if (form.score_type === "irt") {
+      if (!form.start_date || !form.end_date) {
+        return "Tanggal mulai & selesai wajib diisi saat Score Type = IRT.";
+      }
+    }
+
     return null;
   };
 
@@ -147,7 +169,7 @@ export default function TryoutForm({
       {/* Kiri */}
       <div className="space-y-3">
         <div>
-          <Label>Prodi</Label>
+          <Label>Sekolah</Label>
           <div className="h-2" />
           <Combobox<School>
             value={form.school_id}
@@ -155,7 +177,7 @@ export default function TryoutForm({
             onSearchChange={setSchoolSearch}
             data={schools}
             isLoading={loadingSchools}
-            placeholder="Pilih Prodi"
+            placeholder="Pilih Sekolah"
             getOptionLabel={(s) => s.name}
           />
         </div>
@@ -167,7 +189,7 @@ export default function TryoutForm({
             value={form.user_id}
             onChange={(value) => setForm({ ...form, user_id: value })}
             onSearchChange={setPengawasSearch}
-            onOpenRefetch={() => refetchPengawas()}
+            onOpenRefetch={handlePengawasOpenRefetch}
             data={pengawasList}
             isLoading={loadingPengawas}
             placeholder="Pilih Pengawas"
@@ -191,6 +213,53 @@ export default function TryoutForm({
             value={form.sub_title ?? ""}
             onChange={(e) => setForm({ ...form, sub_title: e.target.value })}
           />
+        </div>
+
+        {/* Timer Type & Score Type */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Timer Type</Label>
+            <div className="h-2" />
+            <Select
+              value={form.timer_type}
+              onValueChange={(v) =>
+                setForm((prev) => ({
+                  ...prev,
+                  timer_type: v as TimerType,
+                }))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih timer type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="per_test">Per Test</SelectItem>
+                <SelectItem value="per_category">Per Category</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Score Type</Label>
+            <div className="h-2" />
+            <Select
+              value={form.score_type}
+              onValueChange={(v) =>
+                setForm((prev) => ({
+                  ...prev,
+                  score_type: v as ScoreType,
+                }))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pilih score type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default</SelectItem>
+                <SelectItem value="irt">IRT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -266,7 +335,7 @@ export default function TryoutForm({
           </div>
         </div>
 
-        {/* ⬇️ type="date", kirim selalu sebagai YYYY-MM-DD */}
+        {/* type="date", kirim selalu sebagai YYYY-MM-DD */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Tanggal Mulai</Label>
@@ -323,7 +392,6 @@ export default function TryoutForm({
           <Switch
             checked={!!form.status}
             onCheckedChange={(v) => setForm({ ...form, status: v ? 1 : 0 })}
-            // disabled={isFetching} // Remove or replace 'isFetching' if not defined
           />
           <Label>Status aktif</Label>
         </div>

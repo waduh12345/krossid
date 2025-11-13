@@ -262,7 +262,7 @@ function StudentSidebar({
             <p className="truncate text-[11px] text-sky-700">{user.email}</p>
           </div>
           <span className="ml-auto rounded-full bg-sky-500/90 px-2 py-0.5 text-[10px] font-semibold text-white ring-1 ring-sky-200/60">
-            Mahasiswa
+            Siswa
           </span>
         </div>
       </div>
@@ -493,7 +493,6 @@ export function SiteHeader({ title, user, onMenuClick }: SiteHeaderProps) {
   );
 }
 
-
 /* =========================
  * AppShell (sidebar sticky di desktop)
  * =======================*/
@@ -513,7 +512,7 @@ export function AppShell({
   const { data: session, status } = useSession();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  
+
   if (status === "loading") {
     return (
       <div className="relative min-h-screen w-full bg-gradient-to-b from-sky-50 via-white to-sky-50">
