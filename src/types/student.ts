@@ -7,6 +7,7 @@ export interface Student {
   nim: number | string;
   school_id: number;
   status: boolean | number;
+  is_premium: boolean | number;
   created_at: string;
   updated_at: string;
   name: string;

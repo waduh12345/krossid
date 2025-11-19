@@ -40,7 +40,7 @@ import {
 import Pager from "@/components/ui/tryout-pagination";
 import ActionIcon from "@/components/ui/action-icon";
 import { SiteHeader } from "@/components/site-header";
-import { displayDate } from "@/lib/format-utils";
+// import { displayDate } from "@/lib/format-utils";
 import TryoutForm, {
   FormState,
   TimerType,
@@ -55,10 +55,11 @@ type School = { id: number; name: string; email?: string };
 type TestRow = Test & {
   user_id?: number | null;
   pengawas_name?: string | null;
+  school_id?: number | number[];
 };
 
 type TestPayload = {
-  school_id: number;
+  school_id: number[];
   title: string;
   sub_title: string | null;
   shuffle_questions: boolean | number;
@@ -81,7 +82,7 @@ type TestPayload = {
 };
 
 const emptyForm: FormState = {
-  school_id: 0,
+  school_id: [],
   title: "",
   sub_title: "",
   slug: "",
@@ -189,7 +190,11 @@ export default function TryoutPage() {
   const [monitoringTest, setMonitoringTest] = useState<TestRow | null>(null);
 
   const toForm = (t: TestRow): FormState => ({
-    school_id: t.school_id,
+    school_id: Array.isArray(t.school_id)
+      ? t.school_id
+      : t.school_id !== null && t.school_id !== undefined
+      ? [t.school_id]
+      : [],
     title: t.title,
     sub_title: t.sub_title ?? "",
     slug: t.slug ?? "",
@@ -460,8 +465,8 @@ export default function TryoutPage() {
                     <th className="p-3">Pengawas</th>
                     <th className="p-3">Waktu (detik)</th>
                     <th className="p-3">Shuffle</th>
-                    <th className="p-3">Mulai</th>
-                    <th className="p-3">Berakhir</th>
+                    {/* <th className="p-3">Mulai</th>
+                    <th className="p-3">Berakhir</th> */}
                     <th className="p-3">Status</th>
                     <th className="p-3 text-right">Aksi</th>
                   </tr>
@@ -481,13 +486,18 @@ export default function TryoutPage() {
                         "-";
                       return (
                         <tr key={t.id} className="border-t align-top">
-                          <td className="p-3">
+                            <td className="p-3 min-w-[200px]">
                             <div className="font-medium">{t.title}</div>
                             <div className="text-xs text-muted-foreground">
                               {t.sub_title || "-"}
                             </div>
                           </td>
-                          <td className="p-3">{t.school_name}</td>
+                          <td className="p-3 min-w-[200px]">
+                          {(Array.isArray(t.schools) ? t.schools : [t.schools])
+                            .filter(Boolean)
+                            .map((s) => s && typeof s === "object" && "name" in s ? (s.name as string) : "-")
+                            .join(" | ")}
+                          </td>
                           <td className="p-3">{name}</td>
                           <td className="p-3">
                             {t.timer_type === "per_category" ? (
@@ -505,12 +515,12 @@ export default function TryoutPage() {
                               {t.shuffle_questions ? "Yes" : "No"}
                             </Badge>
                           </td>
-                          <td className="p-3">
+                          {/* <td className="p-3">
                             {t.start_date ? displayDate(t.start_date) : "-"}
                           </td>
                           <td className="p-3">
                             {t.end_date ? displayDate(t.end_date) : "-"}
-                          </td>
+                          </td> */}
                           <td className="p-3">
                             {t.status === true ? (
                               <Badge variant="success">Aktif</Badge>

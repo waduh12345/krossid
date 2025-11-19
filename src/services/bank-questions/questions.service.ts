@@ -19,6 +19,8 @@ export interface MCOption {
 export interface CategorizedOption {
   text: string; // HTML allowed
   point: number;
+  accurate_label: string;
+  not_accurate_label: string;
   accurate: boolean;
   not_accurate: boolean;
 }

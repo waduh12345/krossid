@@ -39,11 +39,8 @@ function hasRole(token: TokenLike | null, roleName: string): boolean {
     return false;
   };
 
-  // kemungkinan token.role = "superadmin"
   if (typeof token.role === "string" && token.role === roleName) return true;
-  // kemungkinan token.roles = ["superadmin"] / [{ name: "superadmin" }]
   if (Array.isArray(token.roles) && token.roles.some(ok)) return true;
-  // kemungkinan token.user.roles = [...]
   if (Array.isArray(token.user?.roles) && token.user!.roles!.some(ok))
     return true;
 
@@ -67,11 +64,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // ⬇️ di sini kuncinya: pengawas diperlakukan sama kayak superadmin
   const isSuperOrPengawas =
     hasRole(token, "superadmin") || hasRole(token, "pengawas");
   const isUser = hasRole(token, "user");
   const isCmsPath = pathname.startsWith("/cms");
+  const isStudentPath = pathname.startsWith("/student");
 
   // Aturan akses
   if (isSuperOrPengawas) {
@@ -83,9 +80,9 @@ export async function middleware(req: NextRequest) {
   }
 
   if (isUser) {
-    // user biasa: tidak boleh ke /cms
-    if (isCmsPath) {
-      return NextResponse.redirect(new URL("/", req.url));
+    // user biasa: hanya boleh akses /student*
+    if (!isStudentPath) {
+      return NextResponse.redirect(new URL("/student", req.url));
     }
     return NextResponse.next();
   }

@@ -1,3 +1,5 @@
+import { Student } from "./student";
+
 export interface UserRolePivot {
   model_type: string;
   model_id: number;
@@ -13,6 +15,14 @@ export interface Role {
   pivot?: UserRolePivot;
 }
 
+export interface Register {
+  school_name: string;
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -25,6 +35,7 @@ export interface User {
   roles: Role[];
   // opsional – jika backend punya status
   status?: boolean | number;
+  student: Student;
 }
 
 export type Users = User;
