@@ -18,7 +18,7 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/home", "/about-us", "/service", "/contact", "/testimoni", "/e-learning"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
@@ -61,7 +61,7 @@ export async function middleware(req: NextRequest) {
   })) as TokenLike | null;
 
   if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL("/home", req.url));
   }
 
   const isSuperOrPengawas =
