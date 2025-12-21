@@ -13,6 +13,7 @@ export interface Student {
   name: string;
   email: string;
   phone: string | null;
+  sc_name?: string;
   school_name: string;
   password: string;
   password_confirmation: string;

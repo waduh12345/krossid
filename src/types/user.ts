@@ -16,6 +16,7 @@ export interface Role {
 }
 
 export interface Register {
+  school_id: number | undefined;
   school_name: string;
   name: string;
   email: string;

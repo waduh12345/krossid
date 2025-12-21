@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useMemo } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -9,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "./mode-toggle";
 import Image from "next/image";
-// import { Combobox } from "@/components/ui/combo-box";
+import { Combobox } from "@/components/ui/combo-box";
 // import { Loader2 } from "lucide-react";
+import type { School } from "@/types/master/school";
 
 import type { Register } from "@/types/user";
 import { useRegisterMutation } from "@/services/auth.service";
-// import { useGetSchoolListQuery } from "@/services/master/school.service";
+import { useGetSchoolListPublicQuery } from "@/services/master/school.service";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -39,6 +41,17 @@ export default function LoginForm() {
   const [registerMutation, { isLoading: isRegistering }] =
     useRegisterMutation();
 
+  const [schoolSearch, setSchoolSearch] = React.useState<string>("");
+    const { data: schoolListResp, isFetching: loadingSchools } =
+      useGetSchoolListPublicQuery(
+        { page: 1, paginate: 30, search: schoolSearch },
+        { refetchOnMountOrArgChange: true }
+      );
+    const schools: School[] = schoolListResp?.data ?? [];
+
+  const [schoolId, setSchoolId] = React.useState<number | null>(
+    null
+  );
   // resolved school = manual only (since fetching is disabled)
   const resolvedSchoolName = useMemo(
     () => manualSchoolName.trim(),
@@ -94,13 +107,14 @@ export default function LoginForm() {
 
     // school_name must exist (manual only)
     const schoolNameToSend = resolvedSchoolName;
-    if (!schoolNameToSend) {
+    if (!schoolNameToSend && !schoolId) {
       setError("Ketik nama sekolah Anda (manual).");
       return;
     }
 
     const payload: Register = {
       school_name: schoolNameToSend,
+      school_id: schoolId ?? undefined,
       name: name.trim(),
       email: email.trim(),
       password,
@@ -201,16 +215,26 @@ export default function LoginForm() {
                       className="bg-white dark:bg-neutral-900 border-gray-300 dark:border-neutral-700 text-black dark:text-white"
                     />
                   </div>
-
+                  <div className="space-y-2">
+                    <Label>Sekolah</Label>
+                    <Combobox<School>
+                      value={schoolId}
+                      onChange={(v) => setSchoolId(v)}
+                      onSearchChange={setSchoolSearch}
+                      data={schools}
+                      isLoading={loadingSchools}
+                      placeholder="Pilih Sekolah"
+                      getOptionLabel={(s) => s.name}
+                    />
+                  </div>
                   <div className="space-y-1">
-                    <Label htmlFor="school">Sekolah</Label>
+                    <Label htmlFor="school">Jika tidak terdaftar isi sekolah dibawah ini</Label>
                     <Input
                       id="school"
                       type="text"
                       placeholder="Contoh: SMA Negeri 1 Contoh"
                       value={manualSchoolName}
                       onChange={(e) => setManualSchoolName(e.target.value)}
-                      required
                       className="bg-white dark:bg-neutral-900 border-gray-300 dark:border-neutral-700 text-black dark:text-white"
                     />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

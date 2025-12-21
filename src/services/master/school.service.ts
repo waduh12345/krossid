@@ -3,6 +3,44 @@ import type { School } from "@/types/master/school";
 
 export const schoolApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    getSchoolListPublic: builder.query<
+      {
+        data: School[];
+        last_page: number;
+        current_page: number;
+        total: number;
+        per_page: number;
+      },
+      { page: number; paginate: number; search?: string }
+    >({
+      query: ({ page, paginate, search }) => {
+        const s =
+          search && search.trim()
+            ? `&search=${encodeURIComponent(search.trim())}`
+            : "";
+        return {
+          url: `/public/schools?page=${page}&paginate=${paginate}${s}`,
+          method: "GET",
+        };
+      },
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: {
+          current_page: number;
+          data: School[];
+          last_page: number;
+          total: number;
+          per_page: number;
+        };
+      }) => ({
+        data: response.data.data,
+        last_page: response.data.last_page,
+        current_page: response.data.current_page,
+        total: response.data.total,
+        per_page: response.data.per_page,
+      }),
+    }),
     // ✅ Get all (paginated + optional search)
     getSchoolList: builder.query<
       {
@@ -109,4 +147,5 @@ export const {
   useCreateSchoolMutation,
   useUpdateSchoolMutation,
   useDeleteSchoolMutation,
+  useGetSchoolListPublicQuery,
 } = schoolApi;
