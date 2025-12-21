@@ -26,6 +26,7 @@ export default function LoginForm() {
 
   // shared login fields
   const [email, setEmail] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
   // register-only fields
@@ -96,6 +97,10 @@ export default function LoginForm() {
       setError("Email wajib diisi.");
       return;
     }
+    if (!phone.trim()) {
+      setError("No. Whatsapp wajib diisi.");
+      return;
+    }
     if (!password) {
       setError("Password wajib diisi.");
       return;
@@ -117,6 +122,7 @@ export default function LoginForm() {
       school_id: schoolId ?? undefined,
       name: name.trim(),
       email: email.trim(),
+      phone: phone.trim(),
       password,
       password_confirmation: passwordConfirmation,
     };
@@ -245,7 +251,6 @@ export default function LoginForm() {
                 </div>
               </>
             )}
-
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -260,11 +265,24 @@ export default function LoginForm() {
             </div>
 
             <div className="space-y-1">
+              <Label htmlFor="phone">No. Whatsapp</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="081234567890"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="bg-white dark:bg-neutral-900 border-gray-300 dark:border-neutral-700 text-black dark:text-white"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <Label htmlFor="password">Password</Label>
                 {mode === "login" ? (
                   <a
-                    href="https://wa.me/6281235474578?text=Lupa%20password%20CBT%20Qubic%20saya"
+                    href="https://wa.me/6282261936478?text=Lupa%20password%20CBT%20Qubic%20saya"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-gray-500 dark:text-gray-400 hover:underline"

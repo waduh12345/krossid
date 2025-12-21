@@ -20,6 +20,7 @@ export interface Register {
   school_name: string;
   name: string;
   email: string;
+  phone?: string;
   password: string;
   password_confirmation: string;
 }
