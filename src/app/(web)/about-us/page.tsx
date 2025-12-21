@@ -41,7 +41,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* --- OUR STORY & LEGALITY --- */}
       <section className="py-24 container mx-auto px-6">
         <div className="flex flex-col lg:flex-row gap-16 items-center">
           <div className="lg:w-1/2 order-2 lg:order-1">
