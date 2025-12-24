@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "CBT-Qubic",
     short_name: "CBT-Qubic",
-    description: "A Progressive Web App for CBT Qubic",
+    description: "A Progressive Web App for Kross.id",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

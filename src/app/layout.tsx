@@ -15,7 +15,7 @@ import ClientAuthGuard from "@/components/client-guards";
 // };
 
 export const metadata: Metadata = {
-  title: "CBT Qubic",
+  title: "Kross.id",
   description: "Platform CBT untuk meningkatkan kemampuan belajar.",
   icons: {
     icon: "/icon-qubic.jpg",

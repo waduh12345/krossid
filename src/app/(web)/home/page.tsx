@@ -1,254 +1,158 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 
-// --- TIPE DATA ---
-type BadgeType = {
-  text: string;
-  color: string;
-};
+export default function AffiliateHome() {
+  // Simulasi Masked Identity untuk Live Activity
+  const livePayouts = [
+    { id: 1, email: "us***12@bsi.ac.id", amount: "IDR 250.000", time: "2 mins ago" },
+    { id: 2, email: "he***an@gmail.com", amount: "IDR 1.200.000", time: "5 mins ago" },
+    { id: 3, email: "ni***ta@corporate.com", amount: "IDR 450.000", time: "8 mins ago" },
+  ];
 
-type ProgramVariant = {
-  duration: string;
-  price: string;
-  feature: string;
-};
-
-type Program = {
-  id: number;
-  name: string;
-  category: string;
-  variants: ProgramVariant[];
-  badge?: BadgeType;
-  image: string;
-};
-
-export default function HomeQubic() {
-  // --- STATE MANAGEMENT ---
-  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
-  const [selectedVariants, setSelectedVariants] = useState<{ [key: number]: number }>({});
-
-  // --- DATA SLIDES HERO ---
-  const HERO_SLIDES = [
+  const PROGRAMS = [
     {
       id: 1,
-      image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2070",
-      title: "Raih Kampus Impianmu",
-      subtitle: "Persiapan matang tembus PTN & Perguruan Tinggi Luar Negeri."
+      code: "PROMO-001",
+      title: "Digital Asset Accelerator",
+      sub: "BSI Domain Exclusive",
+      desc: "Program khusus untuk pemilik aset digital dengan komisi flat per lead yang valid.",
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500",
+      status: "Active",
+      commission: "Flat Based"
     },
     {
       id: 2,
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071",
-      title: "Fun Learning Experience",
-      subtitle: "Belajar asik, nilai rapor naik, masa depan jadi cerah!"
+      code: "PROMO-002",
+      title: "Global Traffic Harvester",
+      sub: "All Networks",
+      desc: "Optimalkan traffic sosial media Anda menjadi penghasilan pasif dengan skema dinamis.",
+      image: "https://images.unsplash.com/photo-1551288049-bbbda536339a?w=500",
+      status: "Active",
+      commission: "Dynamic"
     }
   ];
-
-  // --- DATA MOCKUP PROGRAM UNGGULAN ---
-  const FEATURED_PROGRAMS: Program[] = [
-    { 
-      id: 1, name: "Reguler Boost", category: "SD - SMP - SMA", 
-      image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=500",
-      variants: [
-        { duration: "1 Semester", price: "IDR 2,500,000", feature: "Fokus Nilai Rapor" },
-        { duration: "1 Tahun", price: "IDR 4,200,000", feature: "Full Mentoring" }
-      ]
-    },
-    { 
-      id: 2, name: "TKA Master", category: "Persiapan UTBK/PTN", 
-      image: "https://images.unsplash.com/photo-1513258496099-48168024adb0?w=500",
-      variants: [
-        { duration: "Intensif", price: "IDR 3,750,000", feature: "Bank Soal Akurat" }
-      ],
-      badge: { text: "POPULER", color: "bg-[#D4420C]" }
-    },
-    { 
-      id: 3, name: "Global Pathway", category: "Persiapan PTLN", 
-      image: "https://images.unsplash.com/photo-1523050335392-93851179ae22?w=500",
-      variants: [
-        { duration: "IELTS/SAT", price: "IDR 5,500,000", feature: "Scholarship Guide" }
-      ],
-      badge: { text: "GLOBAL", color: "bg-[#024BA6]" }
-    }
-  ];
-
-  // --- EFFECTS ---
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentHeroIndex((prevIndex) => (prevIndex + 1) % HERO_SLIDES.length);
-    }, 5000); 
-    return () => clearInterval(interval);
-  }, [HERO_SLIDES.length]);
-
-  // --- HANDLERS ---
-  const handleRegister = (id: number, name: string) => {
-    alert(`Terima kasih! Tim Qubic akan menghubungi Anda untuk program ${name}.`);
-  };
 
   return (
-    <div className="min-h-screen font-sans bg-[#FDFCFB] text-[#1A1A1A] overflow-x-hidden scroll-smooth">
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&family=Playfair+Display:wght@700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-serif { font-family: 'Playfair Display', serif; }
-        .bg-qubic-blue { background-color: #024BA6; }
-        .text-qubic-blue { color: #024BA6; }
-        .bg-qubic-amber { background-color: #F59E0B; }
-        .bg-qubic-rust { background-color: #D4420C; }
-      `}</style>
-
-      {/* --- HERO SLIDER --- */}
-      <header className="relative h-[90vh] w-full overflow-hidden flex items-center">
-        {HERO_SLIDES.map((slide, index) => (
-            <div key={slide.id} className={`absolute inset-0 transition-opacity duration-1000 ${index === currentHeroIndex ? 'opacity-100' : 'opacity-0'}`}>
-                <div className="absolute inset-0 bg-gradient-to-r from-[#024BA6]/80 to-transparent z-10" />
-                <Image src={slide.image} alt={slide.title} fill className="object-cover" priority={index === 0} />
+    <div className="bg-white text-[#1A1A1A]">
+      {/* --- HERO: Traffic Harvester --- */}
+      <section className="relative bg-[#4A90E2] py-24 overflow-hidden">
+        {/* Abstract Background Element (Logo Shape) */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#F2A93B] opacity-10 rounded-l-full translate-x-1/4"></div>
+        
+        <div className="container mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+          <div className="text-white">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold mb-6">
+              <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
+              PUBLIC AFFILIATE PROGRAM READY
             </div>
-        ))}
-        <div className="container mx-auto px-6 relative z-20 text-white animate-fadeIn">
-          <span className="bg-[#F59E0B] px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 inline-block">Legal & Terakreditasi</span>
-          <h1 className="text-5xl lg:text-7xl font-extrabold mb-6 leading-tight drop-shadow-md">
-            {HERO_SLIDES[currentHeroIndex].title}
-          </h1>
-          <p className="text-xl lg:text-2xl mb-10 font-light max-w-2xl opacity-90 italic">
-            &quot;Fun learning bersama Qubic: Sukses tingkatkan rapor, siap TKA, & raih PTN/PTLN.&quot;
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button className="bg-[#F59E0B] text-white px-10 py-4 rounded-xl font-bold hover:bg-[#D4420C] transition-all shadow-lg hover:-translate-y-1">
-                Daftar Sekarang
-            </button>
-            <button className="border-2 border-white text-white px-10 py-4 rounded-xl font-bold hover:bg-white hover:text-[#024BA6] transition-all">
-                Lihat Program
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* --- VALUE PROPOSITION --- */}
-      <section className="py-24 container mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-          <div className="p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
-            <div className="w-16 h-16 bg-[#024BA6]/10 text-[#024BA6] rounded-full flex items-center justify-center mx-auto mb-6">
-                <i className="fas fa-smile-beam text-3xl"></i>
-            </div>
-            <h3 className="font-bold text-xl mb-3">Fun Learning</h3>
-            <p className="text-gray-500 font-light">Metode belajar interaktif yang tidak membosankan dan mudah dipahami.</p>
-          </div>
-          <div className="p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
-            <div className="w-16 h-16 bg-[#F59E0B]/10 text-[#F59E0B] rounded-full flex items-center justify-center mx-auto mb-6">
-                <i className="fas fa-university text-3xl"></i>
-            </div>
-            <h3 className="font-bold text-xl mb-3">Target PTN/PTLN</h3>
-            <p className="text-gray-500 font-light">Kurikulum khusus yang dirancang untuk menembus kampus impian dunia.</p>
-          </div>
-          <div className="p-8 rounded-2xl bg-white shadow-sm border border-gray-100">
-            <div className="w-16 h-16 bg-[#D4420C]/10 text-[#D4420C] rounded-full flex items-center justify-center mx-auto mb-6">
-                <i className="fas fa-file-signature text-3xl"></i>
-            </div>
-            <h3 className="font-bold text-xl mb-3">Lembaga Legal</h3>
-            <p className="text-gray-500 font-light">Keamanan dan kenyamanan belajar di lembaga yang memiliki izin resmi.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* --- E-LEARNING CTA (Ganti Banner) --- */}
-      <section className="bg-[#024BA6] py-20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
-            <i className="fas fa-laptop-code text-[20rem] -rotate-12"></i>
-        </div>
-        <div className="container mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-10">
-          <div className="text-white lg:w-2/3">
-            <h2 className="text-4xl font-bold mb-4">Akses CBT & E-Learning</h2>
-            <p className="text-lg opacity-80 mb-8 max-w-xl">
-                Latihan soal ujian mandiri dengan ribuan database soal terupdate. Pantau perkembangan nilaimu secara real-time melalui aplikasi CBT Qubic.
+            <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-tight">
+              Turn Your <span className="text-[#F2A93B]">Social Capital</span> Into Revenue.
+            </h1>
+            <p className="text-xl opacity-90 mb-10 font-light max-w-lg leading-relaxed">
+              Platform omni-channel untuk mengelola trafik, memantau performa, dan mencairkan komisi secara transparan.
             </p>
-            <Link href="/e-learning" className="bg-[#F59E0B] text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-[#024BA6] transition-all inline-flex items-center gap-3">
-               Mulai Belajar Sekarang <i className="fas fa-arrow-right"></i>
-            </Link>
-          </div>
-          <div className="lg:w-1/3">
-             <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md border border-white/20">
-                <div className="bg-[#EDEDED] aspect-video rounded-xl flex items-center justify-center text-[#024BA6]">
-                   <i className="fas fa-play-circle text-6xl"></i>
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* --- PROGRAM UNGGULAN (DENGAN VARIAN) --- */}
-      <section className="py-24 container mx-auto px-6">
-        <div className="flex justify-between items-end mb-12">
-            <div>
-                <h2 className="text-4xl font-extrabold text-[#024BA6] mb-2">Pilih Programmu</h2>
-                <p className="text-gray-500">Investasi terbaik untuk masa depan gemilang.</p>
+            <div className="flex gap-4">
+              <button className="bg-[#F2A93B] text-white px-8 py-4 rounded-full font-bold shadow-lg hover:scale-105 transition-all">
+                Become an Agent
+              </button>
+              <button className="border border-white/30 text-white px-8 py-4 rounded-full font-bold hover:bg-white/10">
+                Explore Programs
+              </button>
             </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {FEATURED_PROGRAMS.map((prog) => {
-              const selectedIdx = selectedVariants[prog.id] || 0;
-              const active = prog.variants[selectedIdx];
+          </div>
 
-              return (
-                <div key={prog.id} className="group relative bg-white border border-gray-100 hover:shadow-2xl transition-all duration-500 rounded-3xl p-6 flex flex-col h-full">
-                    {prog.badge && (
-                        <div className="absolute top-4 right-4 z-10">
-                           <div className={`${prog.badge.color} text-white px-4 py-1 rounded-full text-[10px] font-bold shadow-md`}>
-                             {prog.badge.text}
-                           </div>
-                        </div>
-                    )}
-
-                    <div className="relative w-full h-56 mb-6 overflow-hidden rounded-2xl">
-                       <Image src={prog.image} alt={prog.name} fill className="object-cover group-hover:scale-110 transition-all duration-500" />
-                    </div>
-
-                    <div className="flex flex-col flex-grow">
-                       <span className="text-[#D4420C] text-xs font-bold uppercase tracking-widest mb-1">{prog.category}</span>
-                       <h5 className="font-bold text-2xl text-[#024BA6] mb-4">{prog.name}</h5>
-                       
-                       {/* Durasi Selector */}
-                       <div className="flex flex-wrap gap-2 mb-6">
-                            {prog.variants.map((v, i) => (
-                                <button 
-                                    key={i}
-                                    onClick={() => setSelectedVariants(prev => ({ ...prev, [prog.id]: i }))}
-                                    className={`px-4 py-2 text-xs rounded-lg border transition-all ${ (selectedVariants[prog.id] || 0) === i ? 'bg-[#024BA6] text-white border-[#024BA6]' : 'border-gray-200 text-gray-500 hover:border-[#F59E0B]' }`}
-                                >
-                                    {v.duration}
-                                </button>
-                            ))}
-                       </div>
-
-                       <div className="mb-6">
-                          <p className="text-sm text-gray-400">Mulai dari</p>
-                          <p className="text-[#D4420C] font-extrabold text-2xl">{active.price}</p>
-                       </div>
-                       
-                       <div className="mt-auto">
-                          <button 
-                             onClick={() => handleRegister(prog.id, prog.name)}
-                             className="w-full py-4 bg-[#F59E0B]/10 text-[#F59E0B] rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-[#F59E0B] hover:text-white transition-all"
-                          >
-                             Daftar Kelas
-                          </button>
-                       </div>
-                    </div>
-                </div>
-              )
-            })}
+          {/* Simple Form (Traffic Harvester Tool) */}
+          <div className="bg-white p-8 rounded-3xl shadow-2xl border border-gray-100">
+            <h3 className="text-xl font-bold mb-2">Check Eligibility</h3>
+            <p className="text-sm text-[#8E8E8E] mb-6">Masukkan email institusi Anda untuk melihat program eksklusif.</p>
+            <div className="space-y-4">
+              <div className="relative">
+                <input 
+                  type="email" 
+                  placeholder="name@domain.ac.id" 
+                  className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4A90E2] transition-all"
+                />
+              </div>
+              <button className="w-full bg-[#7ED321] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#6cb91b] transition-all flex items-center justify-center gap-2">
+                Scan Available Programs <i className="fas fa-search text-sm"></i>
+              </button>
+              <p className="text-[10px] text-center text-[#8E8E8E] uppercase tracking-tighter">
+                <i className="fas fa-shield-alt mr-1"></i> Secured by Fraud Prevention System v2.0
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* --- FOOTER CTA --- */}
-      <section className="py-24 text-center bg-[#FDFCFB] border-t border-gray-100">
-         <h2 className="text-3xl lg:text-5xl font-bold text-[#024BA6] mb-6">Siap Menjadi Bagian dari Qubic?</h2>
-         <p className="text-gray-500 mb-10 max-w-2xl mx-auto">Konsultasikan kebutuhan pendidikan putra-putri Anda secara gratis dengan konsultan pendidikan kami.</p>
-         <button className="bg-[#D4420C] text-white px-12 py-5 rounded-2xl font-bold shadow-xl hover:scale-105 transition-transform">
-            Hubungi Kami via WhatsApp
-         </button>
+      {/* --- LIVE ACTIVITY: Masked Identity --- */}
+      <section className="bg-gray-50 py-6 border-b border-gray-100">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+          <span className="text-xs font-bold text-[#8E8E8E] uppercase tracking-widest">Live Activity:</span>
+          {livePayouts.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 animate-pulse">
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                <i className="fas fa-check-circle text-[#7ED321] text-xs"></i>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-[#8E8E8E]">{item.email}</p>
+                <p className="text-xs font-black text-[#4A90E2]">Earned {item.amount}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* --- PROGRAMS LIST (Simple Info) --- */}
+      <section className="py-24 container mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-black text-[#4A90E2] mb-4">Active Affiliate Programs</h2>
+          <div className="w-20 h-1.5 bg-[#F2A93B] mx-auto rounded-full"></div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {PROGRAMS.map((prog) => (
+            <div key={prog.id} className="group bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all flex flex-col md:flex-row">
+              <div className="relative w-full md:w-48 h-48 md:h-auto overflow-hidden">
+                <Image src={prog.image} alt={prog.title} fill className="object-cover group-hover:scale-110 transition-all duration-700" />
+                <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded text-[9px] font-bold text-[#4A90E2]">
+                  {prog.code}
+                </div>
+              </div>
+              <div className="p-8 flex flex-col justify-center flex-1">
+                <div className="flex justify-between items-start mb-2">
+                   <span className="text-[#7ED321] text-[10px] font-bold uppercase tracking-widest">{prog.commission}</span>
+                   <span className="text-[10px] bg-blue-50 text-[#4A90E2] px-2 py-0.5 rounded-full">{prog.status}</span>
+                </div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-[#4A90E2] transition-colors">{prog.title}</h3>
+                <p className="text-xs text-[#8E8E8E] font-medium mb-4 italic">{prog.sub}</p>
+                <p className="text-sm text-gray-500 mb-6 leading-relaxed line-clamp-2">
+                  {prog.desc}
+                </p>
+                <button className="text-sm font-bold text-[#F2A93B] flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wider">
+                  View Program Details <i className="fas fa-chevron-right text-xs"></i>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* --- CTA SECTION --- */}
+      <section className="py-20 bg-[#fbfbfb]">
+        <div className="container mx-auto px-6 text-center">
+           <h2 className="text-4xl font-black text-gray-900 mb-6">Ready to Scale Your Earnings?</h2>
+           <p className="text-[#8E8E8E] mb-10 max-w-xl mx-auto">Gabung dengan ribuan agen lainnya. Sistem dashboard kami sudah **API Ready** untuk integrasi ke platform apa pun.</p>
+           <div className="flex justify-center gap-4">
+              <button className="bg-[#4A90E2] text-white px-10 py-4 rounded-full font-bold shadow-xl hover:-translate-y-1 transition-all">
+                 Register as Agent
+              </button>
+              <button className="bg-white border border-gray-200 text-[#4A90E2] px-10 py-4 rounded-full font-bold hover:bg-gray-50 transition-all">
+                 Inquiry for Business
+              </button>
+           </div>
+        </div>
       </section>
     </div>
   );

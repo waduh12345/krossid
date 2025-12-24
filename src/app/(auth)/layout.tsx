@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "CBT Qubic",
-  description: "CBT Qubic for better experience",
+  title: "Kross.id",
+  description: "Kross.id for better experience",
 };
 
 export default function RootLayout({

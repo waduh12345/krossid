@@ -4,16 +4,17 @@ import * as React from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import {
-  IconBook,
-  IconBrandDatabricks,
-  IconDashboard,
-  IconDatabase,
-  IconFolderQuestion,
   IconLayoutDashboard,
+  IconAffiliate,
+  IconUsers,
+  IconWallet,
+  IconShieldLock,
   IconSettings,
-  IconUserCog,
-  IconUsersGroup,
-  IconZoomQuestion,
+  IconApi,
+  IconTargetArrow,
+  IconBinary,
+  IconWorld,
+  IconLockSquare,
   type Icon as TablerIcon,
 } from "@tabler/icons-react";
 
@@ -33,177 +34,176 @@ import {
 /* =========================
  * Types
  * =======================*/
-type RoleName = "superadmin" | "pengawas";
-
-type IconType =
-  | typeof IconDashboard
-  | typeof IconDatabase
-  | typeof IconSettings
-  | typeof IconUsersGroup
-  | TablerIcon; // fallback kalau lib mengekspor `Icon`
-
-type NavChild = {
-  title: string;
-  url: string;
-};
+type RoleName = "superadmin" | "agent";
 
 type NavItem = {
   title: string;
   url: string;
-  icon: IconType;
-  children?: NavChild[];
-};
-
-type SecondaryItem = {
-  title: string;
-  url: string;
-  icon: IconType;
+  icon: TablerIcon;
+  children?: { title: string; url: string }[];
 };
 
 type MenuBundle = {
   navMain: NavItem[];
-  navSecondary: SecondaryItem[];
+  navSecondary: { title: string; url: string; icon: TablerIcon }[];
 };
 
 /* =========================
- * Menu by Role
+ * Menu by Role (Superadmin Focus)
  * =======================*/
 const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
   superadmin: {
     navMain: [
       {
-        title: "Dashboard",
+        title: "Overview",
         url: "/cms/dashboard",
         icon: IconLayoutDashboard,
       },
       {
-        title: "Data Siswa",
-        url: "/cms/siswa",
-        icon: IconBrandDatabricks,
-      },
-      {
-        title: "LMS",
-        url: "/cms/lms",
-        icon: IconFolderQuestion,
-      },
-      {
-        title: "Try Out",
-        url: "/cms/tryout",
-        icon: IconZoomQuestion,
-      },
-      {
-        title: "Bank Soal",
-        url: "/category-questions",
-        icon: IconBook,
+        title: "Affiliate Programs",
+        url: "/cms/programs",
+        icon: IconAffiliate,
         children: [
-          { title: "Kategori Soal", url: "/cms/category-questions" },
-          { title: "Soal", url: "/cms/questions" },
+          { title: "All Programs", url: "/cms/programs" },
+          { title: "Campaign Codes", url: "/cms/programs/codes" },
+          { title: "Categories", url: "/cms/programs/categories" },
         ],
       },
       {
-        title: "Konfigurasi",
-        url: "#",
-        icon: IconZoomQuestion,
+        title: "Agent Network",
+        url: "/cms/agents",
+        icon: IconUsers,
         children: [
-          { title: "Sekolah", url: "/cms/sekolah" },
-          { title: "Mata Pelajaran", url: "/cms/mapel" },
-          { title: "Kelas", url: "/cms/class" },
-          { title: "Sub Mata Pelajaran", url: "/cms/mata-kuliah" },
+          { title: "Active Agents", url: "/cms/agents" },
+          { title: "Invitations & Filters", url: "/cms/agents/invites" },
+          { title: "Domain Restrictions", url: "/cms/agents/domains" },
         ],
       },
       {
-        title: "Manajemen User",
-        url: "#",
-        icon: IconUserCog,
+        title: "Earnings & Payouts",
+        url: "/cms/payouts",
+        icon: IconWallet,
         children: [
-          { title: "Users", url: "/cms/users" },
-          { title: "Roles", url: "/cms/roles" },
+          { title: "Commission Logic", url: "/cms/payouts/logic" },
+          { title: "Payout Requests", url: "/cms/payouts/requests" },
+          { title: "Financial Logs", url: "/cms/payouts/logs" },
+        ],
+      },
+      {
+        title: "Traffic Harvester",
+        url: "/cms/traffic",
+        icon: IconTargetArrow,
+      },
+      {
+        title: "Security & Fraud",
+        url: "/cms/security",
+        icon: IconShieldLock,
+        children: [
+          { title: "Fraud Attempts", url: "/cms/security/fraud" },
+          { title: "Blocked IPs", url: "/cms/security/blocked" },
+          { title: "Verification Rules", url: "/cms/security/rules" },
+        ],
+      },
+      {
+        title: "System Config",
+        url: "#",
+        icon: IconSettings,
+        children: [
+          { title: "App Parameters", url: "/cms/config/params" },
+          { title: "Multi-language (i18n)", url: "/cms/config/languages" },
+          { title: "Asset Management", url: "/cms/config/assets" },
         ],
       },
     ],
     navSecondary: [
       {
-        title: "Settings",
-        url: "/setting",
-        icon: IconSettings,
+        title: "API & Integrations",
+        url: "/cms/api",
+        icon: IconApi,
+      },
+      {
+        title: "Documentation",
+        url: "/cms/docs",
+        icon: IconBinary,
       },
     ],
   },
-
-  // ⛔ role "pengawas" hanya boleh akses 3 menu berikut:
-  pengawas: {
+  agent: {
     navMain: [
-      {
-        title: "Dashboard",
-        url: "/dashboard", // gunakan dashboard umum untuk user
-        icon: IconDashboard,
-      },
-      {
-        title: "Try Out",
-        url: "/cms/tryout",
-        icon: IconZoomQuestion,
-      },
+      { title: "Dashboard", url: "/dashboard", icon: IconLayoutDashboard },
+      { title: "My Earnings", url: "/earnings", icon: IconWallet },
     ],
     navSecondary: [
-      {
-        title: "Settings",
-        url: "/setting",
-        icon: IconSettings,
-      },
+      { title: "Support", url: "/support", icon: IconWorld },
     ],
   },
 };
 
-/* =========================
- * Komponen
- * =======================*/
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
 
-  // Ambil role pertama dari session (contoh struktur: session.user.roles[0].name)
   const roleName: RoleName =
-    (session?.user as unknown as { roles?: Array<{ name?: string }> })
-      ?.roles?.[0]?.name === "superadmin"
-      ? "superadmin"
-      : "pengawas"; // default aman: user
+    (session?.user as any)?.roles?.[0]?.name === "superadmin" ? "superadmin" : "agent";
 
   const menus = NAV_BY_ROLE[roleName];
 
   const userForSidebar = {
-    name: session?.user?.name ?? "CBT Qubic",
-    email: session?.user?.email ?? "user@example.com",
-    avatar: "/icon-qubic.jpg",
+    name: session?.user?.name ?? "Superadmin",
+    email: session?.user?.email ?? "admin@affiliatecore.io",
+    avatar: "/avatar-admin.jpg",
   };
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+    <Sidebar 
+      collapsible="offcanvas" 
+      {...props} 
+      className="border-r border-gray-100 dark:border-neutral-800"
+    >
+      <SidebarHeader className="bg-[#4A90E2] text-white py-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <Image
-                  src="/icon-qubic.jpg"
-                  alt="CBT Kampus"
-                  width={32}
-                  height={32}
-                />
-                <span className="text-base font-bold">CBT Qubic</span>
+            <SidebarMenuButton asChild className="hover:bg-white/10 transition-colors h-14">
+              <a href="#" className="flex items-center gap-3">
+                {/* Custom Logo Representative */}
+                {/* <div className="w-9 h-9 relative flex flex-wrap rotate-45 shrink-0 bg-white p-1 rounded-lg">
+                  <div className="w-1/2 h-1/2 bg-[#F2A93B] rounded-tl-sm"></div>
+                  <div className="w-1/2 h-1/2 bg-[#4A90E2] rounded-tr-sm"></div>
+                  <div className="w-1/2 h-1/2 bg-[#8E8E8E] rounded-bl-sm"></div>
+                  <div className="w-1/2 h-1/2 bg-[#7ED321] rounded-br-sm"></div>
+                </div> */}
+                <Image src="/kross-id.png" alt="Kross ID Logo" width={40} height={40} />
+                <div className="flex flex-col">
+                  <span className="text-lg font-black tracking-tighter leading-none uppercase">
+                    Kross<span className="text-[#F2A93B]">.id</span>
+                  </span>
+                  <span className="text-[6px] uppercase tracking-[0.2em] font-bold opacity-80 mt-1">
+                    Cross-Community Communication
+                  </span>
+                </div>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="bg-white dark:bg-neutral-950 px-2 pt-4">
+        {/* NavMain dengan custom styling untuk icon warna-warni sesuai logo */}
         <NavMain items={menus.navMain} />
-        <NavSecondary items={menus.navSecondary} className="mt-auto" />
+        
+        <div className="mt-8 px-4">
+           <div className="bg-gray-50 dark:bg-neutral-900 p-4 rounded-2xl border border-gray-100 dark:border-neutral-800">
+              <p className="text-[10px] font-bold text-[#8E8E8E] uppercase tracking-widest mb-2">System Health</p>
+              <div className="flex items-center gap-2">
+                 <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
+                 <span className="text-xs font-bold text-gray-700 dark:text-gray-300">API Status: Online</span>
+              </div>
+           </div>
+        </div>
+
+        <NavSecondary items={menus.navSecondary} className="mt-auto mb-4" />
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-gray-50 dark:border-neutral-900 bg-white dark:bg-neutral-950">
         <NavUser user={userForSidebar} />
       </SidebarFooter>
     </Sidebar>
