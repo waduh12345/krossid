@@ -64,15 +64,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/home", req.url));
   }
 
-  const isSuperOrPengawas =
-    hasRole(token, "superadmin") || hasRole(token, "pengawas");
+  const isSuperOrOwner =
+    hasRole(token, "superadmin") || hasRole(token, "owner");
   const isUser = hasRole(token, "user");
   const isCmsPath = pathname.startsWith("/cms");
   const isStudentPath = pathname.startsWith("/student");
 
   // Aturan akses
-  if (isSuperOrPengawas) {
-    // superadmin / pengawas: hanya /cms*
+  if (isSuperOrOwner) {
+    // superadmin / Owner: hanya /cms*
     if (!isCmsPath) {
       return NextResponse.redirect(new URL("/cms", req.url));
     }

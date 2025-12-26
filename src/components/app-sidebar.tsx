@@ -14,7 +14,6 @@ import {
   IconTargetArrow,
   IconBinary,
   IconWorld,
-  IconLockSquare,
   type Icon as TablerIcon,
 } from "@tabler/icons-react";
 
@@ -34,7 +33,8 @@ import {
 /* =========================
  * Types
  * =======================*/
-type RoleName = "superadmin" | "agent";
+// 1. Tambahkan "owner" ke dalam tipe RoleName
+type RoleName = "superadmin" | "agent" | "owner";
 
 type NavItem = {
   title: string;
@@ -49,7 +49,7 @@ type MenuBundle = {
 };
 
 /* =========================
- * Menu by Role (Superadmin Focus)
+ * Menu by Role
  * =======================*/
 const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
   superadmin: {
@@ -128,50 +128,78 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
       },
     ],
   },
+  // 2. Tambahkan konfigurasi menu khusus untuk Owner
+  owner: {
+    navMain: [
+      {
+        title: "Overview", // Dashboard
+        url: "/cms/dashboard",
+        icon: IconLayoutDashboard,
+      },
+      {
+        title: "Affiliate Programs",
+        url: "/cms/programs",
+        icon: IconAffiliate,
+        children: [
+          { title: "All Programs", url: "/cms/programs" },
+          { title: "Campaign Codes", url: "/cms/programs/codes" },
+          { title: "Categories", url: "/cms/programs/categories" },
+        ],
+      },
+    ],
+    navSecondary: [], // Kosongkan secondary jika tidak diperlukan
+  },
   agent: {
     navMain: [
       { title: "Dashboard", url: "/dashboard", icon: IconLayoutDashboard },
       { title: "My Earnings", url: "/earnings", icon: IconWallet },
     ],
-    navSecondary: [
-      { title: "Support", url: "/support", icon: IconWorld },
-    ],
+    navSecondary: [{ title: "Support", url: "/support", icon: IconWorld }],
   },
 };
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
 
-  const roleName: RoleName =
-    (session?.user as any)?.roles?.[0]?.name === "superadmin" ? "superadmin" : "agent";
+  // 3. Perbarui logika penentuan role
+  const userRole = session?.user?.roles?.[0]?.name;
+
+  let roleName: RoleName = "agent"; // Default role
+
+  if (userRole === "superadmin") {
+    roleName = "superadmin";
+  } else if (userRole === "owner") {
+    roleName = "owner";
+  }
 
   const menus = NAV_BY_ROLE[roleName];
 
   const userForSidebar = {
-    name: session?.user?.name ?? "Superadmin",
-    email: session?.user?.email ?? "admin@affiliatecore.io",
+    name: session?.user?.name ?? "User",
+    email: session?.user?.email ?? "user@affiliatecore.io",
     avatar: "/avatar-admin.jpg",
   };
 
   return (
-    <Sidebar 
-      collapsible="offcanvas" 
-      {...props} 
+    <Sidebar
+      collapsible="offcanvas"
+      {...props}
       className="border-r border-gray-100 dark:border-neutral-800"
     >
       <SidebarHeader className="bg-[#4A90E2] text-white py-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="hover:bg-white/10 transition-colors h-14">
+            <SidebarMenuButton
+              asChild
+              className="hover:bg-white/10 transition-colors h-14"
+            >
               <a href="#" className="flex items-center gap-3">
-                {/* Custom Logo Representative */}
-                {/* <div className="w-9 h-9 relative flex flex-wrap rotate-45 shrink-0 bg-white p-1 rounded-lg">
-                  <div className="w-1/2 h-1/2 bg-[#F2A93B] rounded-tl-sm"></div>
-                  <div className="w-1/2 h-1/2 bg-[#4A90E2] rounded-tr-sm"></div>
-                  <div className="w-1/2 h-1/2 bg-[#8E8E8E] rounded-bl-sm"></div>
-                  <div className="w-1/2 h-1/2 bg-[#7ED321] rounded-br-sm"></div>
-                </div> */}
-                <Image src="/kross-id.png" alt="Kross ID Logo" width={40} height={40} />
+                <Image
+                  src="/kross-id.png"
+                  alt="Kross ID Logo"
+                  width={40}
+                  height={40}
+                />
                 <div className="flex flex-col">
                   <span className="text-lg font-black tracking-tighter leading-none uppercase">
                     Kross<span className="text-[#F2A93B]">.id</span>
@@ -187,20 +215,26 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent className="bg-white dark:bg-neutral-950 px-2 pt-4">
-        {/* NavMain dengan custom styling untuk icon warna-warni sesuai logo */}
         <NavMain items={menus.navMain} />
-        
+
         <div className="mt-8 px-4">
-           <div className="bg-gray-50 dark:bg-neutral-900 p-4 rounded-2xl border border-gray-100 dark:border-neutral-800">
-              <p className="text-[10px] font-bold text-[#8E8E8E] uppercase tracking-widest mb-2">System Health</p>
-              <div className="flex items-center gap-2">
-                 <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
-                 <span className="text-xs font-bold text-gray-700 dark:text-gray-300">API Status: Online</span>
-              </div>
-           </div>
+          <div className="bg-gray-50 dark:bg-neutral-900 p-4 rounded-2xl border border-gray-100 dark:border-neutral-800">
+            <p className="text-[10px] font-bold text-[#8E8E8E] uppercase tracking-widest mb-2">
+              System Health
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
+              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                API Status: Online
+              </span>
+            </div>
+          </div>
         </div>
 
-        <NavSecondary items={menus.navSecondary} className="mt-auto mb-4" />
+        {/* Hanya render NavSecondary jika ada itemnya */}
+        {menus.navSecondary.length > 0 && (
+          <NavSecondary items={menus.navSecondary} className="mt-auto mb-4" />
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-gray-50 dark:border-neutral-900 bg-white dark:bg-neutral-950">
