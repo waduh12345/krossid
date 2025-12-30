@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import {
   Plus,
   Search,
-  MailCheck,
   Pencil,
   Trash2,
   KeyRound,
@@ -16,22 +15,16 @@ import Swal from "sweetalert2";
 import {
   useGetUsersListQuery,
   useDeleteUserMutation,
-  useValidateUserEmailMutation,
-  useValidateUserPhoneMutation,
+  // useValidateUserEmailMutation,
+  // useValidateUserPhoneMutation,
 } from "@/services/users-management.service";
 import type { Users } from "@/types/user";
 import UsersForm from "@/components/form-modal/users-form";
 import PasswordDialog from "@/components/modal/users-password-dialog";
-import { IconPhoneCheck } from "@tabler/icons-react";
 
 const PER_PAGE = 10;
 // kalau mau, kamu bisa hilangkan ini dan jangan kirim ke query
 const DEFAULT_LIST_ROLE_ID = 2;
-
-function formatDate(s?: string | null) {
-  if (!s) return "-";
-  return new Date(s).toLocaleString("id-ID");
-}
 
 export default function UsersPage() {
   const [page, setPage] = useState<number>(1);
@@ -57,10 +50,10 @@ export default function UsersPage() {
   const [openPassForId, setOpenPassForId] = useState<number | null>(null);
 
   const [deleteUser, { isLoading: deleting }] = useDeleteUserMutation();
-  const [validateEmail, { isLoading: validatingEmail }] =
-    useValidateUserEmailMutation();
-  const [validatePhone, { isLoading: validatingPhone }] =
-    useValidateUserPhoneMutation();
+  // const [validateEmail, { isLoading: validatingEmail }] =
+  //   useValidateUserEmailMutation();
+  // const [validatePhone, { isLoading: validatingPhone }] =
+  //   useValidateUserPhoneMutation();
 
   // debounce search → reset ke page 1
   useEffect(() => {

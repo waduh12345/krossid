@@ -20,6 +20,7 @@ import {
 } from "@/services/programs/categories.service"; 
 import type { Categories } from "@/types/programs/categories"; 
 import CategoriesForm from "@/components/form-modal/programs/categories-form";
+import { ApiError } from "@/lib/utils";
 
 const PER_PAGE = 10;
 
@@ -72,11 +73,13 @@ export default function ProgramCategoriesPage() {
         text: "The category has been removed.",
       });
       void refetch();
-    } catch (e: any) {
+    } catch (err: unknown) {
+      const error = err as ApiError;
+
       await Swal.fire({
         icon: "error",
-        title: "Delete Failed",
-        text: e?.data?.message || "Something went wrong.",
+        title: "Terjadi Kesalahan",
+        text: error?.data?.message || "Gagal memproses data.",
       });
     }
   }

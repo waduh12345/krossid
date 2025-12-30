@@ -14,6 +14,7 @@ import Swal from "sweetalert2";
 import { X } from "lucide-react";
 import { Combobox } from "@/components/ui/combo-box";
 import type { Role } from "@/types/user";
+import { ApiError } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -173,11 +174,14 @@ export default function UsersForm({
         await Swal.fire({ icon: "success", title: "User dibuat" });
       }
       onSuccess();
-    } catch (err: any) {
+    } catch (err: unknown) {
+
+      const error = err as ApiError;
+
       await Swal.fire({
         icon: "error",
         title: "Terjadi Kesalahan",
-        text: err?.data?.message || "Gagal memproses data.",
+        text: error?.data?.message || "Gagal memproses data.",
       });
     }
   }

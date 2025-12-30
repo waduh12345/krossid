@@ -7,12 +7,12 @@ type SalesTeam = {
   id: number;
   email: string;
   invitedAt: string;
-  status: "Active" | "Inactive"; // Lampu Indikator
+  status: "Active" | "Inactive";
   isDomainValid: boolean;
 };
 
 export default function ManagementDashboard() {
-  const [activeDomain, setActiveDomain] = useState("bsi.ac.id");
+  const [activeDomain] = useState("bsi.ac.id");
   const [filterActive, setFilterActive] = useState(true);
 
   // --- Mockup Tim Sales ---

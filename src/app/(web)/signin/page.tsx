@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { 
   Mail, 
   Lock, 
@@ -10,7 +9,6 @@ import {
   EyeOff, 
   ShieldCheck, 
   ArrowRight,
-  Github,
   Chrome
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +45,7 @@ export default function SignInPage() {
         </div>
         <h2 className="text-3xl font-black text-gray-900 tracking-tight">Welcome Back</h2>
         <p className="mt-2 text-sm text-gray-500 font-medium">
-          Don't miss your next opportunity. Sign in to your network.
+          {`Don't miss your next opportunity. Sign in to your network.`}
         </p>
       </div>
 

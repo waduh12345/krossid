@@ -24,11 +24,11 @@ import Swal from "sweetalert2";
 import {
   useGetSalesListQuery,
   useDeleteSalesMutation,
-  useExportSalesMutation,
   useImportSalesMutation,
 } from "@/services/programs/sales.service";
-import { useGetProgramsQuery, useCreateProgramsMutation } from "@/services/programs/programs.service";
+import { useGetProgramsQuery } from "@/services/programs/programs.service";
 import type { Sales } from "@/types/programs/sales";
+import { ApiError } from "@/lib/utils";
 
 const PER_PAGE = 10;
 
@@ -43,9 +43,15 @@ export default function ProgramSalesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [page, setPage] = useState<number>(1);
-  const [paginate, setPaginate] = useState<number>(PER_PAGE);
+  // FIX 1: Menghapus 'setPaginate' karena tidak digunakan
+  const [paginate] = useState<number>(PER_PAGE);
   const [q, setQ] = useState<string>("");
-  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(
+    null
+  );
+
+  // State baru untuk handle loading export client-side
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { data: session } = useSession();
 
@@ -64,7 +70,7 @@ export default function ProgramSalesPage() {
 
   // Mutations
   const [deleteSale, { isLoading: deleting }] = useDeleteSalesMutation();
-  const [exportSales, { isLoading: exporting }] = useExportSalesMutation();
+  // FIX 2: Menghapus useExportSalesMutation karena logika export menggunakan XLSX client-side
   const [importSales, { isLoading: importing }] = useImportSalesMutation();
 
   // 1. Fetch Programs
@@ -95,29 +101,44 @@ export default function ProgramSalesPage() {
 
   // --- Handlers ---
 
-  // ProgramSalesPage.tsx
-
-const handleExport = async () => {
+  const handleExport = async () => {
     if (items.length === 0) return;
 
-    // 1. Map data agar rapi di Excel
-    const excelData = items.map((item) => ({
-      "Program Name": item.program_name,
-      "Sub Title": item.program_sub_title,
-      "Email": item.email,
-      "Type": item.is_corporate ? "Corporate" : "Individual",
-      "Status": item.status === 1 ? "Active" : "Inactive",
-    }));
+    setIsExporting(true); // Mulai loading state
 
-    // 2. Buat Workbook
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
+    try {
+      // 1. Map data agar rapi di Excel
+      const excelData = items.map((item) => ({
+        "Program Name": item.program_name,
+        "Sub Title": item.program_sub_title,
+        Email: item.email,
+        Type: item.is_corporate ? "Corporate" : "Individual",
+        Status: item.status === 1 ? "Active" : "Inactive",
+      }));
 
-    // 3. Download
-    XLSX.writeFile(workbook, `Current_View_Sales.xlsx`);
-    
-    Swal.fire({ icon: "success", title: "Exported", text: "Current view saved to Excel." });
+      // 2. Buat Workbook
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
+
+      // 3. Download
+      XLSX.writeFile(workbook, `Current_View_Sales.xlsx`);
+
+      Swal.fire({
+        icon: "success",
+        title: "Exported",
+        text: "Current view saved to Excel.",
+      });
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to export data.",
+      });
+    } finally {
+      setIsExporting(false); // Selesai loading state
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,13 +150,19 @@ const handleExport = async () => {
 
     try {
       const res = await importSales(formData).unwrap();
-      await Swal.fire({ icon: "success", title: "Imported", text: res.message });
+      await Swal.fire({
+        icon: "success",
+        title: "Imported",
+        text: res.message,
+      });
       void refetch();
-    } catch (e: any) {
+    } catch (err: unknown) {
+      const error = err as ApiError;
+
       await Swal.fire({
         icon: "error",
-        title: "Import Failed",
-        text: e?.data?.message || "Check your file format.",
+        title: "Terjadi Kesalahan",
+        text: error?.data?.message || "Gagal memproses data.",
       });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
@@ -157,8 +184,14 @@ const handleExport = async () => {
       await deleteSale(id).unwrap();
       await Swal.fire({ icon: "success", title: "Deleted" });
       void refetch();
-    } catch (e: any) {
-      await Swal.fire({ icon: "error", title: "Error", text: e?.data?.message || "Delete failed" });
+    } catch (err: unknown) {
+      const error = err as ApiError;
+
+      await Swal.fire({
+        icon: "error",
+        title: "Terjadi Kesalahan",
+        text: error?.data?.message || "Gagal memproses data.",
+      });
     }
   }
 
@@ -176,7 +209,8 @@ const handleExport = async () => {
                 value={selectedProgramId}
                 onChange={(val) => setSelectedProgramId(val)}
                 isLoading={loadingProgs}
-                getOptionLabel={(opt: any) => opt.title}
+                // FIX 3: Mengganti 'any' dengan tipe objek yang spesifik
+                getOptionLabel={(opt: { title: string }) => opt.title}
               />
             </div>
 
@@ -200,7 +234,9 @@ const handleExport = async () => {
                 void refetch();
               }}
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
             </Button>
           </div>
 
@@ -219,16 +255,24 @@ const handleExport = async () => {
               disabled={importing}
               className="border-sky-600 text-sky-600 hover:bg-sky-50"
             >
-              {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {importing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
               Import
             </Button>
             <Button
               variant="default"
               onClick={handleExport}
-              disabled={exporting}
+              disabled={isExporting}
               className="bg-sky-600 hover:bg-sky-700"
             >
-              {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
               Export
             </Button>
           </div>
@@ -249,13 +293,19 @@ const handleExport = async () => {
               </thead>
               <tbody className="divide-y">
                 {isFetching && !items.length ? (
-                  <tr><td className="px-4 py-10 text-center" colSpan={5}>Loading...</td></tr>
+                  <tr>
+                    <td className="px-4 py-10 text-center" colSpan={5}>
+                      Loading...
+                    </td>
+                  </tr>
                 ) : items.length ? (
                   items.map((item) => (
                     <tr key={item.id} className="hover:bg-zinc-50/60">
                       <td className="px-4 py-3">
                         <div className="font-bold">{item.program_name}</div>
-                        <div className="text-[10px] text-zinc-400 italic">{item.program_sub_title}</div>
+                        <div className="text-[10px] text-zinc-400 italic">
+                          {item.program_sub_title}
+                        </div>
                       </td>
                       <td className="px-4 py-3">{item.email}</td>
                       <td className="px-4 py-3">
@@ -270,7 +320,13 @@ const handleExport = async () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        <span className={`px-2 py-0.5 rounded-full ring-1 ${item.status === true ? "bg-green-50 text-green-700 ring-green-600/20" : "bg-red-50 text-red-700 ring-red-600/20"}`}>
+                        <span
+                          className={`px-2 py-0.5 rounded-full ring-1 ${
+                            item.status === true
+                              ? "bg-green-50 text-green-700 ring-green-600/20"
+                              : "bg-red-50 text-red-700 ring-red-600/20"
+                          }`}
+                        >
                           {item.status === true ? "Active" : "Inactive"}
                         </span>
                       </td>
@@ -288,7 +344,14 @@ const handleExport = async () => {
                     </tr>
                   ))
                 ) : (
-                  <tr><td className="px-4 py-12 text-center text-zinc-500" colSpan={5}>No sales data found.</td></tr>
+                  <tr>
+                    <td
+                      className="px-4 py-12 text-center text-zinc-500"
+                      colSpan={5}
+                    >
+                      No sales data found.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -296,10 +359,26 @@ const handleExport = async () => {
 
           {/* Footer */}
           <div className="flex items-center justify-between border-t bg-zinc-50/30 px-4 py-3 text-xs text-zinc-500">
-            <div>Page {page} of {lastPage} • Total {total} entries</div>
+            <div>
+              Page {page} of {lastPage} • Total {total} entries
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(lastPage, p + 1))} disabled={page === lastPage}>Next</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                disabled={page === lastPage}
+              >
+                Next
+              </Button>
             </div>
           </div>
         </div>

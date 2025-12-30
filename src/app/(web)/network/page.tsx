@@ -1,20 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { 
   Users, 
-  UserPlus, 
-  CheckCircle2, 
   TrendingUp, 
   Building2, 
   Crown, 
   Search,
   ArrowUpRight,
-  ShieldCheck,
   Globe,
   Briefcase,
-  MoreHorizontal,
   Bell,
   Zap
 } from "lucide-react";

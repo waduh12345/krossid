@@ -1,19 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function AffiliateLayout({ children }: { children: React.ReactNode }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [lang, setLang] = useState("ID");
-
-  const menuItems = [
-    { name: "Programs", href: "/programs" },
-    { name: "Affiliator", href: "/agents" },
-    { name: "Earnings", href: "/earnings" },
-    { name: "API Docs", href: "/api-ready" },
-  ];
 
   return (
     <section className="min-h-screen flex flex-col font-sans selection:bg-[#F2A93B] selection:text-white bg-white">

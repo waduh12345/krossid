@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { 
   Briefcase, 
@@ -10,15 +9,11 @@ import {
   ArrowRight, 
   Search,
   Zap,
-  LayoutGrid,
-  Globe,
 } from "lucide-react";
 
 import Link from "next/link";
 
 export default function AffiliateHome() {
-  const [activeTab, setActiveTab] = useState("all");
-
   const liveActivity = [
     { id: 1, user: "Budi S.", role: "Affiliator", action: "Earned", amount: "IDR 250k", time: "2m" },
     { id: 2, user: "TechStore", role: "Owner", action: "Paid out", amount: "IDR 1.2M", time: "5m" },

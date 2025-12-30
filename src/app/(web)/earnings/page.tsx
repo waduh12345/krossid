@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 // --- Tipe Data Earnings ---
 type Transaction = {
   id: string;

@@ -17,7 +17,7 @@ import {
   useCreateSalesMutation,
   useDeleteSalesMutation,
 } from "@/services/programs/sales.service";
-import type { Sales } from "@/types/programs/sales"; 
+import type { Sales } from "@/types/programs/sales";
 import { useGetCategoriesListQuery } from "@/services/programs/categories.service";
 import { useGetUsersListQuery } from "@/services/users-management.service";
 import Swal from "sweetalert2";
@@ -47,13 +47,37 @@ interface UserRole {
   name: string;
 }
 
-export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Props) {
+// Interface tambahan untuk menghindari 'any'
+interface CategoryOption {
+  id: number;
+  name: string;
+}
+
+interface UserOption {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface ApiError {
+  data?: {
+    message?: string;
+  };
+}
+
+export default function ProgramsForm({
+  open,
+  mode,
+  id,
+  onClose,
+  onSuccess,
+}: Props) {
   const isEdit = mode === "edit";
   const [tagInput, setTagInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
 
   const { data: session } = useSession();
-    
+
   const isOwner = useMemo(() => {
     const user = session?.user as { roles?: UserRole[] } | undefined;
     const roles = user?.roles || [];
@@ -61,13 +85,21 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
   }, [session]);
 
   // 1. Fetch Lists
-  const { data: catResp, isLoading: loadingCats } = useGetCategoriesListQuery({ page: 1, paginate: 100 });
-  const { data: userResp, isLoading: loadingUsers } = useGetUsersListQuery({ paginate: 100 });
+  const { data: catResp, isLoading: loadingCats } = useGetCategoriesListQuery({
+    page: 1,
+    paginate: 100,
+  });
+  const { data: userResp, isLoading: loadingUsers } = useGetUsersListQuery({
+    paginate: 100,
+  });
 
   // 2. Fetch Detail
-  const { data: detail, isFetching: fetchingDetail } = useGetProgramsByIdQuery(id ?? 0, {
-    skip: !isEdit || !id,
-  });
+  const { data: detail, isFetching: fetchingDetail } = useGetProgramsByIdQuery(
+    id ?? 0,
+    {
+      skip: !isEdit || !id,
+    }
+  );
 
   // 3. Fetch Sales Emails (Edit Mode Only)
   const { data: salesResp } = useGetSalesListQuery(
@@ -110,13 +142,25 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
   useEffect(() => {
     if (open) {
       setForm(initial);
-      
+
       // Jika mode edit, kumpulkan email dari API sales dan masukkan ke formSales.email string
       if (isEdit && salesResp?.data) {
-        const existingEmails = salesResp.data.map((item: Sales) => item.email).join("|");
-        setFormSales(prev => ({ ...prev, email: existingEmails, program_id: id || 0 }));
+        const existingEmails = salesResp.data
+          .map((item: Sales) => item.email)
+          .join("|");
+        setFormSales((prev) => ({
+          ...prev,
+          email: existingEmails,
+          program_id: id || 0,
+        }));
       } else {
-        setFormSales({ id: 0, program_id: 0, email: "", is_corporate: 1, status: 1 });
+        setFormSales({
+          id: 0,
+          program_id: 0,
+          email: "",
+          is_corporate: 1,
+          status: 1,
+        });
       }
 
       if (isEdit && detail?.original) {
@@ -128,51 +172,55 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
     }
   }, [initial, open, isEdit, detail, salesResp, id]);
 
-    // Mengubah string "a|b|c" menjadi array ["a", "b", "c"] untuk tampilan
-    const tags = useMemo(() => {
-        return form.parameter ? form.parameter.split("|").filter(t => t !== "") : [];
-    }, [form.parameter]);
+  // Mengubah string "a|b|c" menjadi array ["a", "b", "c"] untuk tampilan
+  const tags = useMemo(() => {
+    return form.parameter
+      ? form.parameter.split("|").filter((t) => t !== "")
+      : [];
+  }, [form.parameter]);
 
-    const addTag = () => {
-        const val = tagInput.trim();
-        if (val && !tags.includes(val)) {
-            const newTags = [...tags, val];
-            set("parameter", newTags.join("|")); // Simpan kembali sebagai string dengan pemisah |
-        }
-        setTagInput(""); // Reset input
-    };
+  const addTag = () => {
+    const val = tagInput.trim();
+    if (val && !tags.includes(val)) {
+      const newTags = [...tags, val];
+      set("parameter", newTags.join("|")); // Simpan kembali sebagai string dengan pemisah |
+    }
+    setTagInput(""); // Reset input
+  };
 
-    const removeTag = (indexToRemove: number) => {
+  const removeTag = (indexToRemove: number) => {
     const newTags = tags.filter((_, i) => i !== indexToRemove);
-        set("parameter", newTags.join("|"));
-    };
+    set("parameter", newTags.join("|"));
+  };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            e.preventDefault(); // Mencegah form submit saat tekan enter di input tag
-            addTag();
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Mencegah form submit saat tekan enter di input tag
+      addTag();
+    }
+  };
 
-    // Mengubah string "a|b|c" menjadi array ["a", "b", "c"] untuk tampilan
-    const emails = useMemo(() => {
-        return formSales.email ? formSales.email.split("|").filter(t => t !== "") : [];
-    }, [formSales.email]);
+  // Mengubah string "a|b|c" menjadi array ["a", "b", "c"] untuk tampilan
+  const emails = useMemo(() => {
+    return formSales.email
+      ? formSales.email.split("|").filter((t) => t !== "")
+      : [];
+  }, [formSales.email]);
 
-    const addEmail = () => {
-        const val = emailInput.trim();
-        if (val && !emails.includes(val)) {
-            const newEmails = [...emails, val];
-            setFormSales((prev) => ({ ...prev, email: newEmails.join("|") })); // Simpan kembali sebagai string dengan pemisah |
-        }
-        setEmailInput(""); // Reset input
-    };
+  const addEmail = () => {
+    const val = emailInput.trim();
+    if (val && !emails.includes(val)) {
+      const newEmails = [...emails, val];
+      setFormSales((prev) => ({ ...prev, email: newEmails.join("|") })); // Simpan kembali sebagai string dengan pemisah |
+    }
+    setEmailInput(""); // Reset input
+  };
 
-    const removeEmail = (indexToRemove: number) => {
-        const newEmails = emails.filter((_, i) => i !== indexToRemove);
-        setFormSales((prev) => ({ ...prev, email: newEmails.join("|") })); // Simpan kembali sebagai string dengan pemisah |
-    };
-  
+  const removeEmail = (indexToRemove: number) => {
+    const newEmails = emails.filter((_, i) => i !== indexToRemove);
+    setFormSales((prev) => ({ ...prev, email: newEmails.join("|") })); // Simpan kembali sebagai string dengan pemisah |
+  };
+
   // Image States
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -197,7 +245,10 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
   const handleTitleChange = (val: string) => {
     set("title", val);
     if (!isEdit) {
-      const slug = val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slug = val
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
       set("slug", slug);
     }
   };
@@ -226,10 +277,13 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
     }
 
     // 2. Cari Email Owner dari list users untuk pengecekan domain
-    const selectedOwner = users.find((u: any) => u.id === Number(ownerId));
+    // FIX: Mengganti any dengan UserOption
+    const selectedOwner = users.find(
+      (u: UserOption) => u.id === Number(ownerId)
+    );
     const ownerEmail = selectedOwner?.email || "";
     // Ambil domain saja (misal: bca.com)
-    const ownerDomain = ownerEmail.split('@')[1]?.toLowerCase();
+    const ownerDomain = ownerEmail.split("@")[1]?.toLowerCase();
 
     const formData = new FormData();
     // ... (Logika append formData tetap sama seperti sebelumnya)
@@ -252,22 +306,26 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
         await updateProgram({ id, payload: formData }).unwrap();
         const existingSales = salesResp?.data || [];
         if (existingSales.length > 0) {
-          const deletePromises = existingSales.map((sale: any) => deleteSales(sale.id).unwrap());
+          // FIX: Mengganti any dengan Sales
+          const deletePromises = existingSales.map((sale: Sales) =>
+            deleteSales(sale.id).unwrap()
+          );
           await Promise.all(deletePromises);
         }
       } else {
         const res = await createProgram(formData).unwrap();
-        programId = res.id; 
+        programId = res.id;
       }
 
       // 3. Create Sales Baru dengan Logika is_corporate
       if (programId && emails.length > 0) {
         const salesPromises = emails.map((email) => {
           // Ekstraksi domain email sales (misal: user@bca.com -> bca.com)
-          const salesDomain = email.split('@')[1]?.toLowerCase();
-          
+          const salesDomain = email.split("@")[1]?.toLowerCase();
+
           // Bandingkan domain sales dengan domain owner
-          const isCorporateValue = (ownerDomain && salesDomain && ownerDomain === salesDomain) ? 1 : 0;
+          const isCorporateValue =
+            ownerDomain && salesDomain && ownerDomain === salesDomain ? 1 : 0;
 
           return createSales({
             program_id: programId as number,
@@ -285,11 +343,13 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
         title: `Program ${isEdit ? "Updated" : "Created"} & Sales Synchronized`,
       });
       onSuccess();
-    } catch (err: any) {
+      // FIX: Mengganti any dengan unknown & Interface ApiError
+    } catch (err: unknown) {
+      const error = err as ApiError;
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: err?.data?.message || "Failed to process request",
+        text: error?.data?.message || "Failed to process request",
       });
     }
   }
@@ -303,7 +363,12 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
           <h3 className="text-xl font-bold text-gray-800">
             {isEdit ? "Edit Program" : "Create New Program"}
           </h3>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-full"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -323,7 +388,8 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
                   data={categories}
                   isLoading={loadingCats}
                   placeholder="Select category"
-                  getOptionLabel={(opt: any) => opt.name}
+                  // FIX: Mengganti any dengan CategoryOption
+                  getOptionLabel={(opt: CategoryOption) => opt.name}
                 />
               </div>
               {isOwner ? (
@@ -344,7 +410,8 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
                     data={users}
                     isLoading={loadingUsers}
                     placeholder="Select owner"
-                    getOptionLabel={(opt: any) => opt.name}
+                    // FIX: Mengganti any dengan UserOption
+                    getOptionLabel={(opt: UserOption) => opt.name}
                   />
                 </div>
               )}
@@ -353,22 +420,36 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label className="font-semibold">Title *</Label>
-                <Input value={form.title} onChange={(e) => handleTitleChange(e.target.value)} />
+                <Input
+                  value={form.title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="font-semibold">Slug</Label>
-                <Input value={form.slug} onChange={(e) => set("slug", e.target.value)} className="bg-zinc-50 font-mono text-xs" />
+                <Input
+                  value={form.slug}
+                  onChange={(e) => set("slug", e.target.value)}
+                  className="bg-zinc-50 font-mono text-xs"
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="font-semibold">Sub Title</Label>
-              <Input value={form.sub_title} onChange={(e) => set("sub_title", e.target.value)} />
+              <Input
+                value={form.sub_title}
+                onChange={(e) => set("sub_title", e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
               <Label className="font-semibold">Description</Label>
-              <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} />
+              <Textarea
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                rows={3}
+              />
             </div>
 
             {/* Image Upload Section */}
@@ -378,7 +459,11 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-zinc-100">
                     {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <ImageIcon className="h-8 w-8 text-zinc-400" />
                     )}
@@ -388,9 +473,13 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
                       type="file"
                       accept="image/*"
                       className="max-w-[250px] text-xs"
-                      onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
+                      onChange={(e) =>
+                        handleImageChange(e.target.files?.[0] ?? null)
+                      }
                     />
-                    <p className="text-[10px] text-zinc-500">Recommended: 1200x630px (PNG, JPG)</p>
+                    <p className="text-[10px] text-zinc-500">
+                      Recommended: 1200x630px (PNG, JPG)
+                    </p>
                     {imagePreview && (
                       <Button
                         type="button"
@@ -408,78 +497,98 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
             </div>
 
             <div className="space-y-2">
-                <Label className="font-semibold text-gray-700">Parameters (Tag System)</Label>
-                <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-sky-500 transition-all">
-                    {/* Menampilkan Tag yang sudah ada */}
-                    {tags.map((tag, idx) => (
-                    <div 
-                        key={idx} 
-                        className="flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-1 rounded-md text-sm font-medium"
+              <Label className="font-semibold text-gray-700">
+                Parameters (Tag System)
+              </Label>
+              <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-sky-500 transition-all">
+                {/* Menampilkan Tag yang sudah ada */}
+                {tags.map((tag, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-1 rounded-md text-sm font-medium"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(idx)}
+                      className="hover:text-red-500 transition-colors"
                     >
-                        {tag}
-                        <button 
-                        type="button" 
-                        onClick={() => removeTag(idx)}
-                        className="hover:text-red-500 transition-colors"
-                        >
-                        <X className="h-3 w-3" />
-                        </button>
-                    </div>
-                    ))}
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
 
-                    {/* Input untuk mengetik tag baru */}
-                    <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={tags.length === 0 ? "Ketik lalu tekan Enter..." : "Tambah lagi..."}
-                    className="flex-1 min-w-[120px] outline-none text-sm py-1"
-                    />
-                    
-                    <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={addTag}
-                    className="h-7 px-2 text-sky-600 hover:bg-sky-100"
-                    >
-                    Tambah
-                    </Button>
-                </div>
-                <p className="text-[10px] text-zinc-500 italic">Contoh: Perusahaan, Gaji, Lokasi (Tekan Enter untuk menambah)</p>
+                {/* Input untuk mengetik tag baru */}
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    tags.length === 0
+                      ? "Ketik lalu tekan Enter..."
+                      : "Tambah lagi..."
+                  }
+                  className="flex-1 min-w-[120px] outline-none text-sm py-1"
+                />
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={addTag}
+                  className="h-7 px-2 text-sky-600 hover:bg-sky-100"
+                >
+                  Tambah
+                </Button>
+              </div>
+              <p className="text-[10px] text-zinc-500 italic">
+                Contoh: Perusahaan, Gaji, Lokasi (Tekan Enter untuk menambah)
+              </p>
             </div>
 
             {/* Tag System - Sales Emails */}
             <div className="space-y-2">
-                <Label className="font-semibold text-gray-700">Email (Sales)</Label>
-                <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                    {emails.map((email, idx) => (
-                      <div key={idx} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md text-xs font-medium">
-                          <Mail className="h-3 w-3" />
-                          {email}
-                          <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => removeEmail(idx)} />
-                      </div>
-                    ))}
-                    <input
-                        type="text"
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addEmail())}
-                        placeholder="Add email..."
-                        className="flex-1 min-w-[150px] outline-none text-sm"
+              <Label className="font-semibold text-gray-700">
+                Email (Sales)
+              </Label>
+              <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+                {emails.map((email, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md text-xs font-medium"
+                  >
+                    <Mail className="h-3 w-3" />
+                    {email}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-red-500"
+                      onClick={() => removeEmail(idx)}
                     />
-                    <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={addEmail}
-                    className="h-7 px-2 text-sky-600 hover:bg-sky-100"
-                    >
-                    Tambah
-                    </Button>
-                </div>
-                <p className="text-[10px] text-zinc-500 italic uppercase font-bold">Data akan disinkronkan ke tabel Sales setelah disimpan.</p>
+                  </div>
+                ))}
+                <input
+                  type="text"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), addEmail())
+                  }
+                  placeholder="Add email..."
+                  className="flex-1 min-w-[150px] outline-none text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={addEmail}
+                  className="h-7 px-2 text-sky-600 hover:bg-sky-100"
+                >
+                  Tambah
+                </Button>
+              </div>
+              <p className="text-[10px] text-zinc-500 italic uppercase font-bold">
+                Data akan disinkronkan ke tabel Sales setelah disimpan.
+              </p>
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border bg-zinc-50 p-4">
@@ -490,13 +599,25 @@ export default function ProgramsForm({ open, mode, id, onClose, onSuccess }: Pro
                 checked={form.status}
                 onChange={(e) => set("status", e.target.checked)}
               />
-              <Label htmlFor="p-status" className="font-bold cursor-pointer">Published / Active</Label>
+              <Label htmlFor="p-status" className="font-bold cursor-pointer">
+                Published / Active
+              </Label>
             </div>
 
             <div className="mt-8 flex justify-end gap-3 border-t pt-5">
-              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" className="bg-sky-600 px-10 hover:bg-sky-700" disabled={creating || updating}>
-                {creating || updating ? <Loader2 className="animate-spin h-4 w-4" /> : "Save Program"}
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-sky-600 px-10 hover:bg-sky-700"
+                disabled={creating || updating}
+              >
+                {creating || updating ? (
+                  <Loader2 className="animate-spin h-4 w-4" />
+                ) : (
+                  "Save Program"
+                )}
               </Button>
             </div>
           </form>

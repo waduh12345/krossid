@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { 
   User, 
   Mail, 
   Lock, 
-  Phone, 
   Users, 
   Building2, 
-  CheckCircle2, 
   ArrowRight,
   ShieldCheck
 } from "lucide-react";

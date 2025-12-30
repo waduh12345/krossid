@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 export default function ProgramDetail() {
 
   const [showModal, setShowModal] = useState(false);
-  const [isJoinedAsAffiliate, setIsJoinedAsAffiliate] = useState(false); 
+  const [isJoinedAsAffiliate] = useState(false); 
 
   const referralLink = "https://affiliatecore.com/ref/nadi-techno-01";
 

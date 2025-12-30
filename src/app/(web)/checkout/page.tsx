@@ -7,7 +7,6 @@ import {
   ChevronLeft, 
   Lock, 
   CreditCard, 
-  CheckCircle2, 
   Info,
   Clock,
   ArrowRight,
