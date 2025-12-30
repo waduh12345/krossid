@@ -1,270 +1,256 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Search, 
-  Layers, 
-  Tag, 
-  FolderOpen, 
-  Link as LinkIcon,
-  CheckCircle2,
-  XCircle,
-  MoreHorizontal
-} from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
+import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
+import Swal from "sweetalert2";
 
-// --- DUMMY DATA CATEGORIES ---
-const INITIAL_CATEGORIES = [
-  { id: 1, name: "Education", slug: "education", description: "Program untuk kursus, bimbingan belajar, dan edutech.", count: 12, status: "Active" },
-  { id: 2, name: "Fintech", slug: "fintech", description: "Layanan keuangan, dompet digital, dan investasi.", count: 8, status: "Active" },
-  { id: 3, name: "E-Commerce", slug: "e-commerce", description: "Produk retail dan marketplace fisik.", count: 24, status: "Active" },
-  { id: 4, name: "SaaS", slug: "saas", description: "Software as a Service dan alat produktivitas digital.", count: 5, status: "Inactive" },
-];
+// Sesuaikan path service dan type berikut
+import {
+  useGetCategoriesListQuery,
+  useDeleteCategoriesMutation,
+} from "@/services/programs/categories.service"; 
+import type { Categories } from "@/types/programs/categories"; 
+import CategoriesForm from "@/components/form-modal/programs/categories-form";
+
+const PER_PAGE = 10;
 
 export default function ProgramCategoriesPage() {
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [page, setPage] = useState<number>(1);
+  const [paginate, setPaginate] = useState<number>(PER_PAGE);
+  const [q, setQ] = useState<string>("");
 
-  // Form State
-  const [formData, setFormData] = useState({
-    name: "", slug: "", description: "", status: "Active"
+  const { data, isFetching, refetch } = useGetCategoriesListQuery({
+    page,
+    paginate,
+    search: q,
   });
 
-  const openAddModal = () => {
-    setEditingCategory(null);
-    setFormData({ name: "", slug: "", description: "", status: "Active" });
-    setIsModalOpen(true);
-  };
+  const items: Categories[] = useMemo(() => data?.data ?? [], [data]);
+  const lastPage = data?.last_page ?? 1;
+  const total = data?.total ?? 0;
 
-  const openEditModal = (item: any) => {
-    setEditingCategory(item);
-    setFormData(item);
-    setIsModalOpen(true);
-  };
+  // Dialog states
+  const [openForm, setOpenForm] = useState<{
+    mode: "create" | "edit";
+    id?: number;
+  } | null>(null);
 
-  const handleSave = () => {
-    if (editingCategory) {
-      setCategories(categories.map(c => c.id === editingCategory.id ? { ...formData, id: c.id, count: c.count } : c));
-    } else {
-      setCategories([...categories, { ...formData, id: Date.now(), count: 0 } as any]);
+  const [deleteCategory, { isLoading: deleting }] = useDeleteCategoriesMutation();
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 250);
+    return () => clearTimeout(t);
+  }, [q, paginate]);
+
+  async function handleDelete(id: number) {
+    const ask = await Swal.fire({
+      icon: "warning",
+      title: "Delete Category?",
+      text: "This action cannot be undone.",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+    });
+    if (!ask.isConfirmed) return;
+
+    try {
+      await deleteCategory(id).unwrap();
+      await Swal.fire({
+        icon: "success",
+        title: "Deleted!",
+        text: "The category has been removed.",
+      });
+      void refetch();
+    } catch (e: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Delete Failed",
+        text: e?.data?.message || "Something went wrong.",
+      });
     }
-    setIsModalOpen(false);
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm("Hapus kategori ini? Program di dalamnya mungkin akan kehilangan klasifikasi.")) {
-      setCategories(categories.filter(c => c.id !== id));
-    }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] p-4 md:p-10 space-y-8 font-sans">
-      
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4">
-          <div className="bg-[#F2A93B]/10 p-4 rounded-2xl">
-            <Layers className="text-[#F2A93B] h-8 w-8" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-[#4A90E2] tracking-tighter uppercase leading-none">
-              Program <span className="text-[#F2A93B]">Categories</span>
-            </h1>
-            <p className="text-sm text-[#8E8E8E] font-bold mt-1 uppercase tracking-widest">Classify Your Affiliate Assets</p>
-          </div>
-        </div>
-        <Button 
-          onClick={openAddModal}
-          className="bg-[#4A90E2] hover:bg-[#357ABD] text-white px-8 py-7 rounded-2xl font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95"
-        >
-          <Plus className="mr-2 h-5 w-5" /> TAMBAH KATEGORI
-        </Button>
-      </div>
-
-      {/* SEARCH & STATS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-        <div className="lg:col-span-8 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E8E] h-5 w-5" />
-          <Input 
-            placeholder="Cari nama kategori..." 
-            className="pl-14 bg-white border-none rounded-[1.5rem] h-14 shadow-sm focus-visible:ring-[#4A90E2] font-medium"
-          />
-        </div>
-        <div className="lg:col-span-4 flex justify-end">
-          <Badge className="bg-white text-[#4A90E2] border-gray-100 px-6 py-3 rounded-xl shadow-sm font-black text-xs tracking-widest uppercase">
-            Total Groups: {categories.length}
-          </Badge>
-        </div>
-      </div>
-
-      {/* CATEGORY TABLE */}
-      <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden">
-        <CardContent className="p-0 bg-white">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-10 font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Nama & Slug</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Deskripsi</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest text-center">Program Aktif</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Status</TableHead>
-                  <TableHead className="text-center font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Kelola</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((item) => (
-                  <TableRow key={item.id} className="group hover:bg-orange-50/20 transition-colors border-b border-gray-50">
-                    <TableCell className="px-10 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-[#4A90E2]/5 p-2.5 rounded-xl">
-                          <Tag size={18} className="text-[#4A90E2]" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-base font-black text-[#1A1A1A]">{item.name}</span>
-                          <span className="text-[10px] font-bold text-[#8E8E8E] flex items-center gap-1 uppercase tracking-tighter">
-                            <LinkIcon size={10} /> /{item.slug}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-xs text-[#8E8E8E] max-w-xs leading-relaxed font-medium">{item.description}</p>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex flex-col items-center">
-                        <span className="text-lg font-black text-[#4A90E2]">{item.count}</span>
-                        <span className="text-[9px] font-bold text-[#8E8E8E] uppercase">Programs</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {item.status === 'Active' ? (
-                        <Badge className="bg-[#7ED321] text-white rounded-full text-[9px] font-black tracking-widest py-1 px-3">
-                          <CheckCircle2 size={10} className="mr-1.5" /> ACTIVE
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-gray-200 text-[#8E8E8E] rounded-full text-[9px] font-black tracking-widest py-1 px-3">
-                          <XCircle size={10} className="mr-1.5" /> INACTIVE
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-2">
-                        <Button 
-                          onClick={() => openEditModal(item)}
-                          className="bg-white hover:bg-[#4A90E2] text-[#4A90E2] hover:text-white border border-[#4A90E2] rounded-xl h-10 w-10 p-0 transition-all"
-                        >
-                          <Pencil size={16} />
-                        </Button>
-                        <Button 
-                          onClick={() => handleDelete(item.id)}
-                          className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 rounded-xl h-10 w-10 p-0 transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* --- MODAL FORM (CATEGORIES) --- */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl">
-          <DialogHeader className="bg-[#F2A93B] p-10 text-white relative">
-            <div className="absolute right-8 top-10 opacity-10">
-              <FolderOpen size={100} />
+    <>
+      <SiteHeader title="Program Categories" />
+      <div className="space-y-6 px-4 py-6">
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <div className="relative w-full md:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-70" />
+              <Input
+                placeholder="Search category name..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="rounded-xl pl-9"
+              />
             </div>
-            <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
-              {editingCategory ? "Update" : "New"} <span className="text-[#4A90E2]">Category</span>
-            </DialogTitle>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 italic">Organize Your Affiliate Ecosystem</p>
-          </DialogHeader>
-          
-          <div className="p-10 space-y-6 bg-white">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1">Nama Kategori</Label>
-                  <Input 
-                    value={formData.name} 
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="e.g. Fintech"
-                    className="rounded-2xl bg-gray-50 border-none h-14 font-black text-[#1A1A1A] px-6" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1">URL Slug</Label>
-                  <Input 
-                    value={formData.slug} 
-                    onChange={(e) => setFormData({...formData, slug: e.target.value})}
-                    placeholder="fintech-service"
-                    className="rounded-2xl bg-gray-50 border-none h-14 font-mono text-xs text-[#4A90E2] px-6" 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1">Deskripsi Singkat</Label>
-                <Textarea 
-                  value={formData.description} 
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="rounded-2xl bg-gray-50 border-none min-h-[100px] p-6 text-sm font-medium focus:ring-2 ring-[#F2A93B]/20" 
-                  placeholder="Jelaskan tujuan kategori ini..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1">Status Kategori</Label>
-                <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-2xl bg-gray-50 border-none h-14 font-black">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="p-10 bg-gray-50 flex gap-4">
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="rounded-2xl font-black text-[#8E8E8E] h-14 px-8">TUTUP</Button>
-            <Button onClick={handleSave} className="flex-grow bg-[#F2A93B] hover:bg-[#D48A2D] text-white rounded-2xl font-black h-14 shadow-lg shadow-orange-500/20 uppercase tracking-widest transition-all">
-              SIMPAN KATEGORI
+            <select
+              className="h-9 rounded-xl border bg-background px-2 text-sm"
+              value={paginate}
+              onChange={(e) => setPaginate(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setQ("");
+                setPage(1);
+                void refetch();
+              }}
+              title="Reset Filter"
+            >
+              <RefreshCw className="h-4 w-4" />
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
 
-    </div>
+          <Button
+            variant="default"
+            className="bg-sky-600 hover:bg-sky-700"
+            onClick={() => setOpenForm({ mode: "create" })}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Category
+          </Button>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="max-w-full overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-zinc-50 text-left font-semibold text-zinc-700 border-b">
+                <tr>
+                  <th className="px-4 py-4 w-16 text-center">ID</th>
+                  <th className="px-4 py-4">Name</th>
+                  <th className="px-4 py-4">Description</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {isFetching && !items.length ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-zinc-500" colSpan={5}>
+                      Loading categories...
+                    </td>
+                  </tr>
+                ) : items.length ? (
+                  items.map((cat) => (
+                    <tr key={cat.id} className="hover:bg-zinc-50/60 transition-colors">
+                      <td className="px-4 py-3 text-center text-zinc-400 font-mono">
+                        {cat.id}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-gray-900">{cat.name}</div>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600 max-w-xs truncate">
+                        {cat.description || "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {cat.status === 1 || cat.status === true ? (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setOpenForm({ mode: "edit", id: cat.id })}
+                            className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(cat.id)}
+                            disabled={deleting}
+                            title="Delete"
+                            className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="px-4 py-12 text-center text-zinc-500" colSpan={5}>
+                      No categories found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t bg-zinc-50/30 px-4 py-3 text-xs font-medium text-zinc-500">
+            <div>
+              Showing {items.length} of {total} results • Page {page} of {lastPage}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                disabled={page === lastPage}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Form */}
+        {openForm && (
+          <CategoriesForm
+            open
+            mode={openForm.mode}
+            id={openForm.id}
+            onClose={() => setOpenForm(null)}
+            onSuccess={() => {
+              setOpenForm(null);
+              void refetch();
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }

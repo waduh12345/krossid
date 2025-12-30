@@ -68,7 +68,7 @@ export async function middleware(req: NextRequest) {
     hasRole(token, "superadmin") || hasRole(token, "owner");
   const isUser = hasRole(token, "user");
   const isCmsPath = pathname.startsWith("/cms");
-  const isStudentPath = pathname.startsWith("/student");
+  const isSalesPath = pathname.startsWith("/my-account");
 
   // Aturan akses
   if (isSuperOrOwner) {
@@ -80,9 +80,9 @@ export async function middleware(req: NextRequest) {
   }
 
   if (isUser) {
-    // user biasa: hanya boleh akses /student*
-    if (!isStudentPath) {
-      return NextResponse.redirect(new URL("/student", req.url));
+    // user biasa: hanya boleh akses /my-account*
+    if (!isSalesPath) {
+      return NextResponse.redirect(new URL("/my-account", req.url));
     }
     return NextResponse.next();
   }

@@ -2,158 +2,230 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { 
+  Briefcase, 
+  Users, 
+  TrendingUp, 
+  ShieldCheck, 
+  ArrowRight, 
+  Search,
+  Zap,
+  LayoutGrid,
+  Globe,
+} from "lucide-react";
+
+import Link from "next/link";
 
 export default function AffiliateHome() {
-  // Simulasi Masked Identity untuk Live Activity
-  const livePayouts = [
-    { id: 1, email: "us***12@bsi.ac.id", amount: "IDR 250.000", time: "2 mins ago" },
-    { id: 2, email: "he***an@gmail.com", amount: "IDR 1.200.000", time: "5 mins ago" },
-    { id: 3, email: "ni***ta@corporate.com", amount: "IDR 450.000", time: "8 mins ago" },
+  const [activeTab, setActiveTab] = useState("all");
+
+  const liveActivity = [
+    { id: 1, user: "Budi S.", role: "Affiliator", action: "Earned", amount: "IDR 250k", time: "2m" },
+    { id: 2, user: "TechStore", role: "Owner", action: "Paid out", amount: "IDR 1.2M", time: "5m" },
+    { id: 3, user: "Siska W.", role: "Affiliator", action: "Earned", amount: "IDR 450k", time: "8m" },
   ];
 
   const PROGRAMS = [
     {
       id: 1,
-      code: "PROMO-001",
-      title: "Digital Asset Accelerator",
-      sub: "BSI Domain Exclusive",
-      desc: "Program khusus untuk pemilik aset digital dengan komisi flat per lead yang valid.",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500",
-      status: "Active",
-      commission: "Flat Based"
+      owner: "EduTech Global",
+      code: "ED-2025",
+      title: "Digital Skill Bootcamp 2025",
+      sub: "Education Service",
+      desc: "Promosikan kursus pemrograman bersertifikat dengan tingkat konversi tinggi di kalangan mahasiswa.",
+      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500",
+      status: "Verified",
+      commission: "15% / Sale",
+      slots: "12 spots left"
     },
     {
       id: 2,
-      code: "PROMO-002",
-      title: "Global Traffic Harvester",
-      sub: "All Networks",
-      desc: "Optimalkan traffic sosial media Anda menjadi penghasilan pasif dengan skema dinamis.",
-      image: "https://images.unsplash.com/photo-1551288049-bbbda536339a?w=500",
-      status: "Active",
-      commission: "Dynamic"
+      owner: "IndoGadget",
+      code: "GADGET-XP",
+      title: "Electronic Master Affiliate",
+      sub: "Physical Goods",
+      desc: "Dapatkan komisi dari setiap penjualan smartphone dan aksesoris melalui link unik Anda.",
+      image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500",
+      status: "Hot",
+      commission: "Flat IDR 50k",
+      slots: "Unlimited"
     }
   ];
 
   return (
-    <div className="bg-white text-[#1A1A1A]">
-      {/* --- HERO: Traffic Harvester --- */}
-      <section className="relative bg-[#4A90E2] py-24 overflow-hidden">
-        {/* Abstract Background Element (Logo Shape) */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#F2A93B] opacity-10 rounded-l-full translate-x-1/4"></div>
+    <div className="bg-[#F4F2EE] min-h-screen font-sans text-[#1A1A1A]">
+      {/* --- TOP HEADER / NAV SIMULATION --- */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#4A90E2] rounded flex items-center justify-center font-black text-white text-xl italic">A</div>
+            <span className="font-black text-xl tracking-tighter text-[#4A90E2]">Affiliate<span className="text-[#F2A93B]">Core</span></span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-500 uppercase tracking-wider">
+            <a href="#" className="text-[#4A90E2] border-b-2 border-[#4A90E2] pb-1">Feed</a>
+            <a href="#" className="hover:text-[#4A90E2] transition-colors">Marketplace</a>
+            <a href="#" className="hover:text-[#4A90E2] transition-colors">Network</a>
+          </div>
+          <div className="flex gap-3">
+             <button className="text-sm font-bold text-[#4A90E2] hover:bg-blue-50 px-4 py-2 rounded-full transition-all">Sign In</button>
+             <button className="text-sm font-bold bg-[#4A90E2] text-white px-5 py-2 rounded-full hover:bg-[#357ABD] shadow-md transition-all">Join Now</button>
+          </div>
+        </div>
+      </nav>
+
+      {/* --- MAIN CONTENT LAYOUT --- */}
+      <div className="container mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <div className="container mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="text-white">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold mb-6">
-              <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
-              PUBLIC AFFILIATE PROGRAM READY
-            </div>
-            <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-tight">
-              Turn Your <span className="text-[#F2A93B]">Social Capital</span> Into Revenue.
-            </h1>
-            <p className="text-xl opacity-90 mb-10 font-light max-w-lg leading-relaxed">
-              Platform omni-channel untuk mengelola trafik, memantau performa, dan mencairkan komisi secara transparan.
-            </p>
-            <div className="flex gap-4">
-              <button className="bg-[#F2A93B] text-white px-8 py-4 rounded-full font-bold shadow-lg hover:scale-105 transition-all">
-                Become an Agent
-              </button>
-              <button className="border border-white/30 text-white px-8 py-4 rounded-full font-bold hover:bg-white/10">
-                Explore Programs
-              </button>
-            </div>
-          </div>
-
-          {/* Simple Form (Traffic Harvester Tool) */}
-          <div className="bg-white p-8 rounded-3xl shadow-2xl border border-gray-100">
-            <h3 className="text-xl font-bold mb-2">Check Eligibility</h3>
-            <p className="text-sm text-[#8E8E8E] mb-6">Masukkan email institusi Anda untuk melihat program eksklusif.</p>
-            <div className="space-y-4">
-              <div className="relative">
-                <input 
-                  type="email" 
-                  placeholder="name@domain.ac.id" 
-                  className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4A90E2] transition-all"
-                />
+        {/* LEFT COLUMN: User Focus Selection */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="h-16 bg-[#4A90E2]"></div>
+            <div className="px-4 pb-4">
+              <div className="w-16 h-16 bg-white border-4 border-white rounded-full -mt-8 mx-auto flex items-center justify-center shadow-md">
+                <Users className="text-[#4A90E2]" />
               </div>
-              <button className="w-full bg-[#7ED321] text-white py-4 rounded-xl font-bold shadow-md hover:bg-[#6cb91b] transition-all flex items-center justify-center gap-2">
-                Scan Available Programs <i className="fas fa-search text-sm"></i>
-              </button>
-              <p className="text-[10px] text-center text-[#8E8E8E] uppercase tracking-tighter">
-                <i className="fas fa-shield-alt mr-1"></i> Secured by Fraud Prevention System v2.0
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* --- LIVE ACTIVITY: Masked Identity --- */}
-      <section className="bg-gray-50 py-6 border-b border-gray-100">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-          <span className="text-xs font-bold text-[#8E8E8E] uppercase tracking-widest">Live Activity:</span>
-          {livePayouts.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 animate-pulse">
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
-                <i className="fas fa-check-circle text-[#7ED321] text-xs"></i>
+              <div className="text-center mt-3">
+                <h3 className="font-bold text-lg leading-tight">Welcome to AffiliateCore</h3>
+                <p className="text-xs text-gray-500 mt-1">Select your path to continue</p>
               </div>
-              <div>
-                <p className="text-[10px] font-bold text-[#8E8E8E]">{item.email}</p>
-                <p className="text-xs font-black text-[#4A90E2]">Earned {item.amount}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --- PROGRAMS LIST (Simple Info) --- */}
-      <section className="py-24 container mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-black text-[#4A90E2] mb-4">Active Affiliate Programs</h2>
-          <div className="w-20 h-1.5 bg-[#F2A93B] mx-auto rounded-full"></div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {PROGRAMS.map((prog) => (
-            <div key={prog.id} className="group bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all flex flex-col md:flex-row">
-              <div className="relative w-full md:w-48 h-48 md:h-auto overflow-hidden">
-                <Image src={prog.image} alt={prog.title} fill className="object-cover group-hover:scale-110 transition-all duration-700" />
-                <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded text-[9px] font-bold text-[#4A90E2]">
-                  {prog.code}
-                </div>
-              </div>
-              <div className="p-8 flex flex-col justify-center flex-1">
-                <div className="flex justify-between items-start mb-2">
-                   <span className="text-[#7ED321] text-[10px] font-bold uppercase tracking-widest">{prog.commission}</span>
-                   <span className="text-[10px] bg-blue-50 text-[#4A90E2] px-2 py-0.5 rounded-full">{prog.status}</span>
-                </div>
-                <h3 className="text-xl font-bold mb-2 group-hover:text-[#4A90E2] transition-colors">{prog.title}</h3>
-                <p className="text-xs text-[#8E8E8E] font-medium mb-4 italic">{prog.sub}</p>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed line-clamp-2">
-                  {prog.desc}
-                </p>
-                <button className="text-sm font-bold text-[#F2A93B] flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wider">
-                  View Program Details <i className="fas fa-chevron-right text-xs"></i>
+              <div className="mt-6 space-y-2">
+                <button className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-4 h-4 text-gray-400 group-hover:text-[#4A90E2]" />
+                    <span className="text-sm font-bold text-gray-600 group-hover:text-[#4A90E2]">Product Owner</span>
+                  </div>
+                  <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#4A90E2]" />
+                </button>
+                <button className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-orange-50 hover:border-orange-200 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-4 h-4 text-gray-400 group-hover:text-[#F2A93B]" />
+                    <span className="text-sm font-bold text-gray-600 group-hover:text-[#F2A93B]">Affiliator</span>
+                  </div>
+                  <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#F2A93B]" />
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* --- CTA SECTION --- */}
-      <section className="py-20 bg-[#fbfbfb]">
-        <div className="container mx-auto px-6 text-center">
-           <h2 className="text-4xl font-black text-gray-900 mb-6">Ready to Scale Your Earnings?</h2>
-           <p className="text-[#8E8E8E] mb-10 max-w-xl mx-auto">Gabung dengan ribuan agen lainnya. Sistem dashboard kami sudah **API Ready** untuk integrasi ke platform apa pun.</p>
-           <div className="flex justify-center gap-4">
-              <button className="bg-[#4A90E2] text-white px-10 py-4 rounded-full font-bold shadow-xl hover:-translate-y-1 transition-all">
-                 Register as Agent
-              </button>
-              <button className="bg-white border border-gray-200 text-[#4A90E2] px-10 py-4 rounded-full font-bold hover:bg-gray-50 transition-all">
-                 Inquiry for Business
-              </button>
-           </div>
-        </div>
-      </section>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hidden lg:block">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Trending Tags</h4>
+            <div className="flex flex-wrap gap-2">
+              {["#SaaS", "#EduTech", "#HighCommission", "#Verified", "#PassiveIncome"].map(tag => (
+                <span key={tag} className="text-[11px] font-bold text-gray-500 hover:text-[#4A90E2] cursor-pointer">{tag}</span>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* CENTER COLUMN: The Program Feed */}
+        <main className="lg:col-span-6 space-y-6">
+          {/* Post/Search Box Simulating Social Media */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                <Search className="w-5 h-5 text-gray-400" />
+              </div>
+              <input 
+                placeholder="Find high-converting programs..." 
+                className="w-full bg-gray-50 border border-gray-100 rounded-full px-6 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Feed Filter */}
+          <div className="flex items-center gap-4">
+            <div className="h-[1px] flex-1 bg-gray-300"></div>
+            <span className="text-xs text-gray-500 font-medium">Sort by: <span className="text-gray-900 font-bold cursor-pointer">Most Recent ▼</span></span>
+          </div>
+
+          {/* Active Programs as "Posts" */}
+          {PROGRAMS.map((prog) => (
+            <div key={prog.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden group">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-[#4A90E2] font-black text-xl border border-gray-50 overflow-hidden relative">
+                    <Image src={prog.image} alt="owner" fill className="object-cover" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm hover:text-[#4A90E2] cursor-pointer transition-colors">{prog.owner}</h4>
+                    <p className="text-[11px] text-gray-400 uppercase font-bold tracking-tighter">{prog.sub} • {prog.code}</p>
+                  </div>
+                </div>
+                <div className="bg-green-50 text-[#7ED321] text-[10px] font-black px-2 py-1 rounded-md flex items-center gap-1 border border-green-100">
+                  <ShieldCheck className="w-3 h-3" /> {prog.status}
+                </div>
+              </div>
+
+              <div className="px-4 pb-2">
+                <h3 className="text-lg font-black text-gray-900 group-hover:text-[#4A90E2] transition-colors mb-2">{prog.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">
+                  {prog.desc}
+                </p>
+              </div>
+
+              <div className="p-4 flex items-center justify-between border-t border-gray-50 mt-2">
+                <div className="flex items-center gap-6">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest leading-none mb-1">Commission</span>
+                    <span className="text-sm font-black text-[#F2A93B]">{prog.commission}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest leading-none mb-1">Availability</span>
+                    <span className="text-sm font-bold text-[#4A90E2]">{prog.slots}</span>
+                  </div>
+                </div>
+                <Link href={`/programs`} className="bg-gray-100 text-gray-600 hover:bg-[#4A90E2] hover:text-white px-5 py-2 rounded-lg text-sm font-black transition-all">
+                  Join Program
+                </Link>
+              </div>
+            </div>
+          ))}
+
+          <div className="text-center py-4">
+            <button className="text-sm font-bold text-[#4A90E2] hover:underline">View all active programs...</button>
+          </div>
+        </main>
+
+        {/* RIGHT COLUMN: Live Activity & Stats */}
+        <aside className="lg:col-span-3 space-y-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <h4 className="text-sm font-bold flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-[#7ED321]" /> Live Network Pulse
+            </h4>
+            <div className="space-y-4">
+              {liveActivity.map((activity) => (
+                <div key={activity.id} className="flex gap-3 items-start border-b border-gray-50 pb-3 last:border-0">
+                  <div className="w-8 h-8 rounded-full bg-[#4A90E2]/10 flex items-center justify-center shrink-0 text-[10px] font-bold text-[#4A90E2]">
+                    {activity.user.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-[11px] leading-tight font-medium">
+                      <span className="font-bold text-gray-900">{activity.user}</span> ({activity.role})
+                    </p>
+                    <p className="text-xs font-black text-[#7ED321] mt-0.5">{activity.action} {activity.amount}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{activity.time} ago</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#4A90E2] to-[#357ABD] rounded-xl p-5 text-white shadow-lg">
+            <h4 className="font-black text-lg mb-2">Are you a Product Owner?</h4>
+            <p className="text-xs opacity-80 mb-4 leading-relaxed">Dapatkan traffic berkualitas dari ribuan agen yang siap mempromosikan produk Anda.</p>
+            <button className="w-full bg-[#F2A93B] hover:bg-white hover:text-[#F2A93B] text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all">
+              List Your Program
+            </button>
+          </div>
+
+          {/* Footer simulation */}
+          <div className="px-4 text-[11px] text-gray-400 text-center space-y-1">
+            <p>© 2025 AffiliateCore System • Privacy • Terms</p>
+            <p>Made with ❤️ for Indonesia Digital Assets</p>
+          </div>
+        </aside>
+
+      </div>
     </div>
   );
 }

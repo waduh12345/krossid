@@ -1,240 +1,256 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import { 
+  Search, 
+  Filter, 
+  ChevronRight, 
+  ShieldCheck, 
+  Zap, 
+  Layers, 
+  TrendingUp,
+  Star,
+  MoreHorizontal
+} from "lucide-react";
 
-// --- Tipe Data Program (Sesuai Deskripsi Anda) ---
-type Program = {
-  id: number;
-  code: string;
-  title: string;
-  subTitle: string;
-  description: string;
-  imageThumb: string; // AVIF
-  imageFull: string;  // WebP
-  startDate: string;
-  endDate: string;
-  durationMonths: number;
-  status: "Active" | "Draft" | "Closed";
-  commissionType: "Flat" | "Dynamic";
-  minDomain?: string; // Untuk filter domain korporat
-};
+// Mock Data Programs
+const ALL_PROGRAMS = [
+  {
+    id: 1,
+    slug: "digital-skill-bootcamp-2025",
+    owner: "EduTech Global",
+    title: "Digital Skill Bootcamp 2025",
+    category: "Education",
+    commission: "IDR 225.000",
+    type: "Flat Based",
+    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500",
+    rating: 4.8,
+    isHot: true,
+    isVerified: true
+  },
+  {
+    id: 2,
+    slug: "electronic-master-affiliate",
+    owner: "IndoGadget",
+    title: "Electronic Master Affiliate",
+    category: "E-Commerce",
+    commission: "5% / Sale",
+    type: "Dynamic",
+    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500",
+    rating: 4.5,
+    isHot: false,
+    isVerified: true
+  },
+  {
+    id: 3,
+    slug: "saas-automation-tool",
+    owner: "CloudFlow",
+    title: "SaaS Automation Tool",
+    category: "Software",
+    commission: "IDR 500.000",
+    type: "Recurring",
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500",
+    rating: 4.9,
+    isHot: true,
+    isVerified: true
+  }
+];
 
-export default function ProgramPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+export default function MarketplacePage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
 
-  // --- Mockup Data Program ---
-  const PROGRAMS: Program[] = [
-    {
-      id: 1,
-      code: "BSI-2025-01",
-      title: "Corporate Growth Ambassador",
-      subTitle: "Exclusive for @bsi.ac.id Network",
-      description: "Bergabunglah dalam inisiatif pertumbuhan aset digital terbesar tahun ini. Program ini dirancang khusus untuk civitas dengan domain email @bsi.ac.id. Anda akan mendapatkan akses ke materi pemasaran eksklusif, dashboard real-time, dan sistem pelacakan fraud yang canggih. Komisi dibayarkan secara flat untuk setiap lead yang berhasil divalidasi oleh sistem kami. Pastikan Anda membagikan link melalui channel yang sesuai dengan social capital Anda untuk hasil maksimal.",
-      imageThumb: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500&format=avif",
-      imageFull: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1200&format=webp",
-      startDate: "2025-01-01",
-      endDate: "2025-12-31",
-      durationMonths: 12,
-      status: "Active",
-      commissionType: "Flat",
-      minDomain: "bsi.ac.id"
-    },
-    {
-      id: 2,
-      code: "O-CH-NAV",
-      title: "Omni-Channel Navigator",
-      subTitle: "Public Traffic Harvester",
-      description: "Program terbuka untuk publik (Global). Fokus pada pengumpulan trafik dari berbagai platform sosial media seperti TikTok, Instagram, dan WhatsApp. Sistem kami menggunakan alogaritma dinamis untuk menghitung nilai komisi berdasarkan kualitas trafik dan rasio konversi. Dilengkapi dengan API Ready untuk Anda yang ingin mengintegrasikan dashboard ini dengan sistem pribadi Anda. Maksimal deskripsi hingga 2000 kata untuk menjelaskan strategi pemasaran Anda di sini.",
-      imageThumb: "https://images.unsplash.com/photo-1551288049-bbbda536339a?w=500&format=avif",
-      imageFull: "https://images.unsplash.com/photo-1551288049-bbbda536339a?w=1200&format=webp",
-      startDate: "2025-02-01",
-      endDate: "2025-08-01",
-      durationMonths: 6,
-      status: "Active",
-      commissionType: "Dynamic"
-    }
-  ];
+  const categories = ["All", "Education", "E-Commerce", "Software", "Finance", "Health"];
+
+  const filteredPrograms = useMemo(() => {
+    return ALL_PROGRAMS.filter(p => {
+      const matchSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchCat = activeCategory === "All" || p.category === activeCategory;
+      return matchSearch && matchCat;
+    });
+  }, [searchTerm, activeCategory]);
 
   return (
-    <div className="bg-[#FAFBFC] min-h-screen pb-20">
-      {/* --- HEADER PROGRAM --- */}
-      <section className="bg-[#4A90E2] pt-16 pb-32 px-6">
-        <div className="container mx-auto text-center">
-          <h1 className="text-4xl font-black text-white mb-4 uppercase tracking-tight">
-            Affiliate <span className="text-[#F2A93B]">Programs</span>
-          </h1>
-          <p className="text-white/80 max-w-2xl mx-auto font-light">
-            Temukan program yang sesuai dengan jaringan sosial Anda. Gunakan filter untuk menemukan program eksklusif berdasarkan domain email Anda.
-          </p>
-        </div>
-      </section>
-
-      {/* --- FILTER & SEARCH BAR --- */}
-      <div className="container mx-auto px-6 -mt-12">
-        <div className="bg-white p-4 rounded-2xl shadow-xl border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative w-full">
-            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E8E]"></i>
-            <input 
-              type="text" 
-              placeholder="Cari kode program atau nama..." 
-              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4A90E2] text-sm"
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button className="w-full md:w-auto px-8 py-3 bg-[#4A90E2] text-white rounded-xl font-bold text-sm whitespace-nowrap">
-            Filter Domain
-          </button>
-        </div>
-      </div>
-
-      {/* --- PROGRAM GRID --- */}
-      <section className="container mx-auto px-6 mt-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {PROGRAMS.map((prog) => (
-            <div key={prog.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all group">
-              {/* Image Container with Badges */}
-              <div className="relative h-52 w-full overflow-hidden">
-                <Image 
-                  src={prog.imageThumb} 
-                  alt={prog.title} 
-                  fill 
-                  className="object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-sm ${prog.commissionType === 'Flat' ? 'bg-[#7ED321]' : 'bg-[#F2A93B]'}`}>
-                    {prog.commissionType} Commission
-                  </span>
-                  {prog.minDomain && (
-                    <span className="bg-[#4A90E2] px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-sm italic">
-                       @{prog.minDomain} Only
-                    </span>
-                  )}
+    <div className="bg-[#F4F2EE] min-h-screen font-sans">
+      
+      {/* MAIN LAYOUT */}
+      <div className="container mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT SIDEBAR: Filters */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="font-black text-sm text-gray-900 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-[#4A90E2]" /> Filter Programs
+              </h3>
+            </div>
+            <div className="p-4 space-y-6">
+              {/* Category Filter */}
+              <div>
+                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 block">Categories</Label>
+                <div className="space-y-1">
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                        activeCategory === cat 
+                        ? "bg-blue-50 text-[#4A90E2] ring-1 ring-blue-100" 
+                        : "text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] font-bold text-[#8E8E8E] tracking-widest uppercase">{prog.code}</span>
-                  <span className="text-[10px] font-bold text-[#7ED321]"><i className="fas fa-calendar-alt mr-1"></i> {prog.durationMonths} Bulan</span>
-                </div>
-                <h3 className="text-xl font-bold text-[#1A1A1A] mb-2 leading-tight group-hover:text-[#4A90E2] transition-colors">
-                  {prog.title}
-                </h3>
-                <p className="text-sm text-[#8E8E8E] mb-6 line-clamp-2 leading-relaxed">
-                  {prog.description}
-                </p>
-
-                <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] text-[#8E8E8E] uppercase font-bold">Start Date</p>
-                    <p className="text-sm font-bold text-gray-700">{new Date(prog.startDate).toLocaleDateString('id-ID', { month: 'short', year: 'numeric', day: 'numeric' })}</p>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedProgram(prog)}
-                    className="w-12 h-12 bg-gray-50 text-[#4A90E2] rounded-full flex items-center justify-center hover:bg-[#F2A93B] hover:text-white transition-all shadow-sm"
-                  >
-                    <i className="fas fa-arrow-right"></i>
-                  </button>
+              {/* Commission Type */}
+              <div>
+                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 block">Commission Type</Label>
+                <div className="space-y-2">
+                   {['Flat Based', 'Dynamic %', 'Recurring'].map(type => (
+                     <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" className="rounded border-gray-300 text-[#4A90E2] focus:ring-[#4A90E2]" />
+                        <span className="text-xs font-bold text-gray-600 group-hover:text-gray-900 transition-colors">{type}</span>
+                     </label>
+                   ))}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </aside>
 
-      {/* --- PROGRAM DETAIL MODAL (Supports 2000 Words) --- */}
-      {selectedProgram && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col relative animate-slideUp">
-            <button 
-              onClick={() => setSelectedProgram(null)}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full flex items-center justify-center text-white z-10 transition-all"
-            >
-              <i className="fas fa-times text-lg"></i>
+        {/* CENTER COLUMN: Marketplace Feed */}
+        <main className="lg:col-span-6 space-y-4">
+          
+          {/* Search Header */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div className="relative">
+              <Search className="absolute left-4 top-3 w-5 h-5 text-gray-400" />
+              <input 
+                type="text"
+                placeholder="Search programs by name or brand..."
+                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A90E2]/20 focus:border-[#4A90E2] transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-2">
+             <p className="text-xs font-bold text-gray-500">Showing {filteredPrograms.length} active programs</p>
+             <div className="flex items-center gap-1 text-xs font-bold text-gray-900 cursor-pointer">
+               Sort by: Relevance <MoreHorizontal className="w-3 h-3" />
+             </div>
+          </div>
+
+          {/* Program Cards */}
+          <div className="space-y-4">
+            {filteredPrograms.map((prog) => (
+              <div key={prog.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+                <div className="p-5 flex gap-5">
+                  {/* Thumbnail */}
+                  <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden border border-gray-100">
+                    <Image src={prog.image} alt={prog.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black text-[#4A90E2] uppercase tracking-tighter">{prog.owner}</span>
+                          {prog.isVerified && <ShieldCheck className="w-3 h-3 text-[#7ED321]" />}
+                        </div>
+                        <h3 className="text-lg font-black text-gray-900 group-hover:text-[#4A90E2] transition-colors leading-tight mb-1 truncate">
+                          {prog.title}
+                        </h3>
+                        <div className="flex items-center gap-3">
+                           <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
+                             <Layers className="w-3 h-3" /> {prog.category}
+                           </span>
+                           <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
+                             <Star className="w-3 h-3 text-[#F2A93B] fill-[#F2A93B]" /> {prog.rating}
+                           </span>
+                        </div>
+                      </div>
+                      
+                      {prog.isHot && (
+                        <div className="bg-orange-50 text-[#F2A93B] px-2 py-1 rounded-md text-[9px] font-black uppercase border border-orange-100">
+                          Hot Deal
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Potential Earn</span>
+                        <span className="text-sm font-black text-[#7ED321]">{prog.commission}</span>
+                      </div>
+                      
+                      {/* Link to Detail Page */}
+                      <Link href={`/programs/${prog.slug}`} passHref>
+                        <button className="flex items-center gap-2 bg-gray-50 text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+                          Join Program <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {filteredPrograms.length === 0 && (
+              <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
+                <p className="text-gray-400 font-bold italic">No programs found for your criteria.</p>
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* RIGHT SIDEBAR: Trending & Stats */}
+        <aside className="lg:col-span-3 space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <h4 className="font-black text-xs text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[#F2A93B]" /> Trending Now
+            </h4>
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex gap-3 group cursor-pointer">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg shrink-0"></div>
+                  <div>
+                    <p className="text-xs font-black text-gray-800 group-hover:text-[#4A90E2]">High-Ticket SaaS Offer</p>
+                    <p className="text-[10px] text-[#7ED321] font-bold">Payouts: IDR 5.2M / mo</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="w-full mt-4 py-2 text-[11px] font-black text-[#4A90E2] border border-blue-50 rounded-lg hover:bg-blue-50 transition-all">
+              View Analytics
             </button>
-
-            {/* Modal Header Image */}
-            <div className="relative h-64 w-full flex-shrink-0">
-               <Image src={selectedProgram.imageFull} alt={selectedProgram.title} fill className="object-cover" />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
-                  <div>
-                    <span className="bg-[#F2A93B] px-3 py-1 rounded-md text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block">Program Detail</span>
-                    <h2 className="text-3xl font-black text-white">{selectedProgram.title}</h2>
-                  </div>
-               </div>
-            </div>
-
-            {/* Modal Content Scrollable */}
-            <div className="p-8 overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-[#8E8E8E] uppercase mb-1">Duration</p>
-                  <p className="font-bold text-[#4A90E2]">{selectedProgram.durationMonths} Months</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-[#8E8E8E] uppercase mb-1">Commission</p>
-                  <p className="font-bold text-[#7ED321]">{selectedProgram.commissionType}</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-[#8E8E8E] uppercase mb-1">Status</p>
-                  <p className="font-bold text-blue-600">{selectedProgram.status}</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-[#8E8E8E] uppercase mb-1">Target</p>
-                  <p className="font-bold text-gray-700">{selectedProgram.minDomain || 'Global'}</p>
-                </div>
-              </div>
-
-              <div className="prose prose-sm max-w-none text-[#8E8E8E] leading-relaxed">
-                <h4 className="text-[#1A1A1A] font-bold text-lg mb-4 underline decoration-[#F2A93B] decoration-4">Full Description & Strategy</h4>
-                {/* Deskripsi mendukung hingga 2000 kata */}
-                <p className="whitespace-pre-line">{selectedProgram.description}</p>
-                <p className="mt-4">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat...
-                </p>
-              </div>
-            </div>
-
-            {/* Modal Footer CTA */}
-            <div className="p-6 border-t border-gray-100 bg-gray-50 flex flex-col md:flex-row gap-4">
-              <button className="flex-1 bg-[#4A90E2] text-white py-4 rounded-xl font-bold shadow-lg hover:bg-[#357ABD] transition-all flex items-center justify-center gap-2">
-                <i className="fas fa-link"></i> Generate Referral Link
-              </button>
-              <button className="flex-1 bg-white border border-gray-200 text-[#8E8E8E] py-4 rounded-xl font-bold hover:bg-gray-100 transition-all">
-                Download Marketing Kit
-              </button>
-            </div>
           </div>
-        </div>
-      )}
 
-      {/* --- FLOATING MOBILE SUPPORT --- */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] md:hidden z-50">
-        <div className="bg-white/80 backdrop-blur-lg border border-white/20 p-2 rounded-2xl shadow-2xl flex justify-around items-center">
-           <button className="flex flex-col items-center p-2 text-[#4A90E2]">
-              <i className="fas fa-th-large text-xl"></i>
-              <span className="text-[10px] font-bold mt-1">Explore</span>
-           </button>
-           <button className="flex flex-col items-center p-2 text-[#8E8E8E]">
-              <i className="fas fa-wallet text-xl"></i>
-              <span className="text-[10px] font-bold mt-1">Income</span>
-           </button>
-           <button className="w-12 h-12 bg-[#F2A93B] rounded-full flex items-center justify-center text-white shadow-lg -mt-8 border-4 border-[#FAFBFC]">
-              <i className="fas fa-plus"></i>
-           </button>
-           <button className="flex flex-col items-center p-2 text-[#8E8E8E]">
-              <i className="fas fa-chart-line text-xl"></i>
-              <span className="text-[10px] font-bold mt-1">Analytics</span>
-           </button>
-           <button className="flex flex-col items-center p-2 text-[#8E8E8E]">
-              <i className="fas fa-user-circle text-xl"></i>
-              <span className="text-[10px] font-bold mt-1">Profile</span>
-           </button>
-        </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm text-center">
+             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+               <Zap className="w-6 h-6 text-[#F2A93B] fill-[#F2A93B]" />
+             </div>
+             <h4 className="font-black text-sm text-gray-900 mb-1">Boost Your Earnings</h4>
+             <p className="text-[11px] text-gray-500 mb-4">Complete your profile to unlock premium programs.</p>
+             <button className="w-full bg-[#4A90E2] text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md">
+               Complete Profile
+             </button>
+          </div>
+        </aside>
+
       </div>
     </div>
   );
+}
+
+// Simple Label Component for clean UI
+function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+  return <span className={className}>{children}</span>;
 }

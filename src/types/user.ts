@@ -16,8 +16,6 @@ export interface Role {
 }
 
 export interface Register {
-  school_id: number | undefined;
-  school_name: string;
   name: string;
   email: string;
   phone?: string;
@@ -35,6 +33,8 @@ export interface User {
   created_at: string;
   updated_at: string;
   roles: Role[];
+  referral?: string;
+  is_corporate?: boolean;
   // opsional – jika backend punya status
   status?: boolean | number;
   student: Student;

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo } from "react";
-import Image from "next/image";
 import { 
   Users, 
   Wallet, 
@@ -14,10 +13,7 @@ import {
   Zap
 } from "lucide-react";
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
-  YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 

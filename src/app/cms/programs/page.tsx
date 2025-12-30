@@ -1,282 +1,296 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Search, 
-  Layers, 
-  CheckCircle2, 
-  AlertCircle,
-  Tag
-} from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  ShoppingCart,
+  ClipboardList,
+} from "lucide-react";
+import Link from "next/link"; 
+import Swal from "sweetalert2";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  useGetProgramsQuery,
+  useDeleteProgramsMutation,
+} from "@/services/programs/programs.service"; // Adjusted service path
+import type { Programs } from "@/types/programs/programs"; // Adjusted type path
+import ProgramsForm from "@/components/form-modal/programs/programs-form"; // Adjusted form path
 
-// --- DUMMY DATA DENGAN KATEGORI ---
-const INITIAL_PROGRAMS = [
-  { id: 1, code: "BSI-PRO-01", title: "BSI Corporate Growth", category: "Education", domain: "bsi.ac.id", type: "Flat", value: "Rp 250k", status: "Active" },
-  { id: 2, code: "GLB-TRF-22", title: "Global Traffic Harvester", category: "Fintech", domain: "Public", type: "Dynamic", value: "15%", status: "Active" },
-  { id: 3, code: "MKT-DRFT", title: "Marketing Sandbox", category: "E-Commerce", domain: "internal.io", type: "Flat", value: "Rp 100k", status: "Draft" },
-];
+const PER_PAGE = 10;
 
-const CATEGORIES = ["Education", "Fintech", "E-Commerce", "SaaS", "Real Estate"];
+interface UserRole {
+  id: number;
+  name: string;
+}
 
-export default function AffiliateProgramsPage() {
-  const [programs, setPrograms] = useState(INITIAL_PROGRAMS);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProgram, setEditingProgram] = useState<any>(null);
+export default function ProgramsPage() {
+  const [page, setPage] = useState<number>(1);
+  const [paginate, setPaginate] = useState<number>(PER_PAGE);
+  const [q, setQ] = useState<string>("");
 
-  // Form State
-  const [formData, setFormData] = useState({
-    title: "", code: "", category: "Education", domain: "", type: "Flat", value: "", status: "Active"
+  const { data: session } = useSession();
+  
+  const isOwner = useMemo(() => {
+    const user = session?.user as { roles?: UserRole[] } | undefined;
+    const roles = user?.roles || [];
+    return roles.some((r) => r.name === "owner");
+  }, [session]);
+
+  const { data, isFetching, refetch } = useGetProgramsQuery({
+    page,
+    paginate,
+    search: q,
+    owner_id: isOwner ? session?.user?.id as number : undefined,
+    program_category_id: undefined
   });
 
-  const openAddModal = () => {
-    setEditingProgram(null);
-    setFormData({ title: "", code: "", category: "Education", domain: "", type: "Flat", value: "", status: "Active" });
-    setIsModalOpen(true);
-  };
+  const items: Programs[] = useMemo(() => data?.data ?? [], [data]);
+  const lastPage = data?.last_page ?? 1;
+  const total = data?.total ?? 0;
 
-  const openEditModal = (prog: any) => {
-    setEditingProgram(prog);
-    setFormData(prog);
-    setIsModalOpen(true);
-  };
+  // Dialog states
+  const [openForm, setOpenForm] = useState<{
+    mode: "create" | "edit";
+    id?: number;
+  } | null>(null);
 
-  const handleSave = () => {
-    if (editingProgram) {
-      setPrograms(programs.map(p => p.id === editingProgram.id ? { ...formData, id: p.id } : p));
-    } else {
-      setPrograms([...programs, { ...formData, id: Date.now() }]);
+  const [deletePrograms, { isLoading: deleting }] = useDeleteProgramsMutation();
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 250);
+    return () => clearTimeout(t);
+  }, [q, paginate]);
+
+  async function handleDelete(id: number) {
+    const ask = await Swal.fire({
+      icon: "warning",
+      title: "Delete Program?",
+      text: "This action cannot be undone.",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+    });
+    if (!ask.isConfirmed) return;
+
+    try {
+      await deletePrograms(id).unwrap();
+      await Swal.fire({
+        icon: "success",
+        title: "Deleted!",
+        text: "The program has been removed.",
+      });
+      void refetch();
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Delete Failed",
+        text: e instanceof Error ? e.message : "Something went wrong.",
+      });
     }
-    setIsModalOpen(false);
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm("Hapus program ini secara permanen?")) {
-      setPrograms(programs.filter(p => p.id !== id));
-    }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] p-4 md:p-10 space-y-8 font-sans transition-all">
-      
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-4">
-          <div className="bg-[#4A90E2]/10 p-4 rounded-2xl">
-            <Layers className="text-[#4A90E2] h-8 w-8" />
+    <>
+      <SiteHeader title="Program Management" />
+      <div className="space-y-6 px-4 py-6">
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <div className="relative w-full md:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-70" />
+              <Input
+                placeholder="Search title, slug, or owner..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="rounded-xl pl-9"
+              />
+            </div>
+            <select
+              className="h-9 rounded-xl border bg-background px-2 text-sm"
+              value={paginate}
+              onChange={(e) => setPaginate(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setQ("");
+                setPage(1);
+                void refetch();
+              }}
+              title="Reset Filter"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-[#4A90E2] tracking-tighter uppercase leading-none">
-              All <span className="text-[#F2A93B]">Programs</span>
-            </h1>
-            <p className="text-sm text-[#8E8E8E] font-bold mt-1 uppercase tracking-widest">Campaign & Asset Management</p>
-          </div>
+
+          <Button
+            variant="default"
+            className="bg-sky-600 hover:bg-sky-700"
+            onClick={() => setOpenForm({ mode: "create" })}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Program
+          </Button>
         </div>
-        <Button 
-          onClick={openAddModal}
-          className="bg-[#7ED321] hover:bg-[#6ab21d] text-white px-8 py-7 rounded-2xl font-black shadow-lg shadow-green-500/20 transition-all active:scale-95"
-        >
-          <Plus className="mr-2 h-5 w-5" /> TAMBAH PROGRAM
-        </Button>
-      </div>
 
-      {/* SEARCH & TABLE */}
-      <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
-        <CardHeader className="p-8 border-b border-gray-50 flex flex-row items-center gap-4">
-          <div className="relative flex-grow max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E8E] h-4 w-4" />
-            <Input 
-              placeholder="Cari nama atau kode program..." 
-              className="pl-12 bg-gray-50 border-none rounded-2xl h-14 font-medium focus-visible:ring-[#4A90E2]"
-            />
+        {/* Table */}
+        <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+          <div className="max-w-full overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-zinc-50 text-left font-semibold text-zinc-700 border-b">
+                <tr>
+                  <th className="px-4 py-4">Title & Slug</th>
+                  <th className="px-4 py-4">Category</th>
+                  <th className="px-4 py-4">Owner</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {isFetching && !items.length ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-zinc-500" colSpan={5}>
+                      Loading programs...
+                    </td>
+                  </tr>
+                ) : items.length ? (
+                  items.map((u) => (
+                    <tr key={u.id} className="hover:bg-zinc-50/60 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-gray-900">{u.title}</div>
+                        <div className="text-[10px] text-zinc-400 font-mono">{u.slug}</div>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600">
+                        {u.program_category_name || "Uncategorized"}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600">
+                        {u.owner_name || "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.status === 1 || u.status === true ? (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            asChild
+                            className="h-9 w-9 p-0 border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                            title="Data Sales"
+                          >
+                            <Link href={`/cms/programs/sales?program-id=${u.id}`}>
+                              <ShoppingCart className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            asChild
+                            className="h-9 w-9 p-0 border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                            title="Data Registration"
+                          >
+                            <Link href={`/cms/programs/register?program-id=${u.id}`}>
+                              <ClipboardList className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setOpenForm({ mode: "edit", id: u.id })}
+                          className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                          title="Edit"
+                          >
+                          <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(u.id)}
+                          disabled={deleting}
+                          title="Delete"
+                          className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
+                          >
+                          <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="px-4 py-12 text-center text-zinc-500" colSpan={5}>
+                      No programs found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-10 font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Info Program</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Kategori</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Domain</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Komisi</TableHead>
-                  <TableHead className="font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Status</TableHead>
-                  <TableHead className="text-center font-black text-[10px] text-[#8E8E8E] uppercase tracking-widest">Kelola</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {programs.map((prog) => (
-                  <TableRow key={prog.id} className="group hover:bg-blue-50/30 transition-colors border-b border-gray-50">
-                    <TableCell className="px-10 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-lg font-black text-[#1A1A1A] tracking-tighter leading-tight">{prog.title}</span>
-                        <span className="text-[10px] font-bold text-[#4A90E2] uppercase tracking-widest mt-0.5">{prog.code}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-[#8E8E8E]">
-                        <Tag size={12} className="text-[#F2A93B]" />
-                        <span className="text-xs font-black uppercase tracking-widest">{prog.category}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="px-3 py-1 bg-gray-100 text-[#8E8E8E] rounded-lg text-[10px] font-bold italic uppercase tracking-tighter">@{prog.domain}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className={`text-base font-black ${prog.type === 'Flat' ? 'text-[#7ED321]' : 'text-[#F2A93B]'}`}>{prog.value}</span>
-                        <span className="text-[9px] font-bold text-[#8E8E8E] uppercase tracking-tighter">{prog.type} Based</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {prog.status === 'Active' ? (
-                        <Badge className="bg-[#7ED321] text-white rounded-full text-[9px] font-black px-3 py-1"><CheckCircle2 size={10} className="mr-1.5" /> ACTIVE</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-gray-200 text-[#8E8E8E] rounded-full text-[9px] font-black px-3 py-1"><AlertCircle size={10} className="mr-1.5" /> DRAFT</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center gap-2">
-                        <Button 
-                          onClick={() => openEditModal(prog)}
-                          className="bg-[#4A90E2] hover:bg-[#357ABD] text-white rounded-xl h-10 px-5 font-bold text-xs shadow-md shadow-blue-500/10 transition-all active:scale-95"
-                        >
-                          <Pencil size={14} className="mr-2" /> UBAH
-                        </Button>
-                        <Button 
-                          onClick={() => handleDelete(prog.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white rounded-xl h-10 px-5 font-bold text-xs shadow-md shadow-red-500/10 transition-all active:scale-95"
-                        >
-                          <Trash2 size={14} className="mr-2" /> HAPUS
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* --- MODAL FORM --- */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[550px] rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl">
-          <DialogHeader className="bg-[#4A90E2] p-10 text-white">
-            <DialogTitle className="text-3xl font-black uppercase tracking-tighter">
-              {editingProgram ? "Update" : "Create"} <span className="text-[#F2A93B]">Program</span>
-            </DialogTitle>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Classification & Asset Mapping</p>
-          </DialogHeader>
-          
-          <div className="p-10 space-y-6 bg-white">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="col-span-2 space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Nama Program</Label>
-                <Input 
-                  value={formData.title} 
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="rounded-2xl bg-gray-50 border-none h-14 font-bold text-lg px-6 focus:ring-2 ring-[#4A90E2]/20" 
-                />
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Kode Program</Label>
-                <Input 
-                  value={formData.code} 
-                  onChange={(e) => setFormData({...formData, code: e.target.value})}
-                  className="rounded-2xl bg-gray-50 border-none h-14 font-mono font-bold uppercase px-6" 
-                />
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Kategori</Label>
-                <Select value={formData.category} onValueChange={(v) => setFormData({...formData, category: v})}>
-                  <SelectTrigger className="rounded-2xl bg-gray-50 border-none h-14 font-black px-6">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat} className="font-bold text-xs">{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Target Domain</Label>
-                <Input 
-                  value={formData.domain} 
-                  onChange={(e) => setFormData({...formData, domain: e.target.value})}
-                  className="rounded-2xl bg-gray-50 border-none h-14 italic px-6" 
-                />
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Status</Label>
-                <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="rounded-2xl bg-gray-50 border-none h-14 font-black px-6">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Tipe Komisi</Label>
-                <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
-                  <SelectTrigger className="rounded-2xl bg-gray-50 border-none h-14 font-black px-6">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
-                    <SelectItem value="Flat">Flat Based</SelectItem>
-                    <SelectItem value="Dynamic">Dynamic (%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-[#8E8E8E] uppercase ml-1 tracking-widest">Nilai Komisi</Label>
-                <Input 
-                  value={formData.value} 
-                  onChange={(e) => setFormData({...formData, value: e.target.value})}
-                  className="rounded-2xl bg-gray-50 border-none h-14 font-black text-[#7ED321] text-lg px-6" 
-                />
-              </div>
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t bg-zinc-50/30 px-4 py-3 text-xs font-medium text-zinc-500">
+            <div>
+              Showing {items.length} of {total} results • Page {page} of {lastPage}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                disabled={page === lastPage}
+              >
+                Next
+              </Button>
             </div>
           </div>
+        </div>
 
-          <DialogFooter className="p-10 bg-gray-50 flex gap-4">
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="rounded-2xl font-black text-[#8E8E8E] h-14 px-8">BATAL</Button>
-            <Button onClick={handleSave} className="flex-grow bg-[#4A90E2] hover:bg-[#357ABD] text-white rounded-2xl font-black h-14 shadow-lg shadow-blue-500/20 uppercase tracking-widest">
-              SIMPAN PROGRAM
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-    </div>
+        {/* Modal Form */}
+        {openForm && (
+          <ProgramsForm
+            open
+            mode={openForm.mode}
+            id={openForm.id}
+            onClose={() => setOpenForm(null)}
+            onSuccess={() => {
+              setOpenForm(null);
+              void refetch();
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }

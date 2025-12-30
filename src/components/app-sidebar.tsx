@@ -54,10 +54,15 @@ type MenuBundle = {
 const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
   superadmin: {
     navMain: [
+      { title: "Overview", url: "/cms/dashboard", icon: IconLayoutDashboard },
       {
-        title: "Overview",
-        url: "/cms/dashboard",
-        icon: IconLayoutDashboard,
+        title: "Users & Roles",
+        url: "/cms/users",
+        icon: IconUsers,
+        children: [
+          { title: "All Users", url: "/cms/users" },
+          { title: "Roles", url: "/cms/users/roles" },
+        ],
       },
       {
         title: "Affiliate Programs",
@@ -65,12 +70,13 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         icon: IconAffiliate,
         children: [
           { title: "All Programs", url: "/cms/programs" },
-          { title: "Campaign Codes", url: "/cms/programs/codes" },
+          { title: "Sales of Programs", url: "/cms/programs/sales" },
+          { title: "Registration", url: "/cms/programs/register" },
           { title: "Categories", url: "/cms/programs/categories" },
         ],
       },
       {
-        title: "Agent Network",
+        title: "Sales",
         url: "/cms/agents",
         icon: IconUsers,
         children: [
@@ -89,11 +95,7 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
           { title: "Financial Logs", url: "/cms/payouts/logs" },
         ],
       },
-      {
-        title: "Traffic Harvester",
-        url: "/cms/traffic",
-        icon: IconTargetArrow,
-      },
+      { title: "Traffic Harvester", url: "/cms/traffic", icon: IconTargetArrow },
       {
         title: "Security & Fraud",
         url: "/cms/security",
@@ -142,7 +144,8 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         icon: IconAffiliate,
         children: [
           { title: "All Programs", url: "/cms/programs" },
-          { title: "Campaign Codes", url: "/cms/programs/codes" },
+          { title: "Sales of Programs", url: "/cms/programs/sales" },
+          { title: "Registration", url: "/cms/programs/register" },
           { title: "Categories", url: "/cms/programs/categories" },
         ],
       },

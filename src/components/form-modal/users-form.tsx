@@ -31,6 +31,7 @@ type FormState = {
   password: string;
   password_confirmation: string;
   status: boolean;
+  is_corporate: boolean;
 };
 
 export default function UsersForm({
@@ -49,15 +50,8 @@ export default function UsersForm({
 
   const [createUser, { isLoading: creating }] = useCreateUserMutation();
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
+  const { data: rolesResp, isLoading: loadingRoles, refetch: refetchRoles } = useGetRolesQuery();
 
-  // ambil daftar role
-  const {
-    data: rolesResp,
-    isLoading: loadingRoles,
-    refetch: refetchRoles,
-  } = useGetRolesQuery();
-
-  // normalisasi respon role tanpa any
   const roles: Role[] = Array.isArray(rolesResp)
     ? rolesResp
     : Array.isArray((rolesResp as { data?: Role[] })?.data)
@@ -68,25 +62,23 @@ export default function UsersForm({
     () => ({
       name: detail?.name ?? "",
       email: detail?.email ?? "",
-      phone: detail?.phone ?? "",
+      // Jika dari backend ada +62, kita hapus supaya konsisten di state (hanya angka)
+      phone: detail?.phone ? detail.phone.replace("+62", "") : "",
       password: "",
       password_confirmation: "",
       status: true,
+      is_corporate: detail?.is_corporate ?? false,
     }),
     [detail]
   );
 
   const [form, setForm] = useState<FormState>(initial);
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
-    defaultRoleId ?? null
-  );
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(defaultRoleId ?? null);
 
-  // kalau edit → isikan form dan role
   useEffect(() => {
     setForm(initial);
     if (isEdit && detail) {
-      const firstRole =
-        detail.roles && detail.roles.length > 0 ? detail.roles[0].id : null;
+      const firstRole = detail.roles && detail.roles.length > 0 ? detail.roles[0].id : null;
       setSelectedRoleId(firstRole);
     } else if (!isEdit) {
       setSelectedRoleId(defaultRoleId ?? null);
@@ -97,64 +89,95 @@ export default function UsersForm({
     setForm((s) => ({ ...s, [k]: v }));
   }
 
+  // Handler khusus nomor HP untuk mencegah input selain angka
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, ""); // Hapus karakter non-angka
+    if (value.length <= 13) { // Batas maksimal digit setelah +62 (misal 13 digit)
+      set("phone", value);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.name.trim()) {
-      await Swal.fire({ icon: "warning", title: "Nama wajib diisi" });
+    // Validasi Nama
+    if (!form.name.trim() || form.name.length < 3) {
+      await Swal.fire({ icon: "warning", title: "Nama minimal 3 karakter" });
       return;
     }
+
+    // Validasi Email (Format & Length)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!form.email.trim()) {
       await Swal.fire({ icon: "warning", title: "Email wajib diisi" });
       return;
     }
+    if (!emailRegex.test(form.email)) {
+      await Swal.fire({ icon: "warning", title: "Format email tidak valid" });
+      return;
+    }
+    if (form.email.length > 100) {
+      await Swal.fire({ icon: "warning", title: "Email terlalu panjang (maks 100)" });
+      return;
+    }
+
+    // Validasi Nomor HP
+    if (!form.phone) {
+      await Swal.fire({ icon: "warning", title: "Nomor HP wajib diisi" });
+      return;
+    }
+    if (form.phone.length < 9 || form.phone.length > 13) {
+      await Swal.fire({ icon: "warning", title: "Nomor HP harus 9-13 digit" });
+      return;
+    }
+
     if (!selectedRoleId) {
       await Swal.fire({ icon: "warning", title: "Pilih role terlebih dahulu" });
       return;
     }
-    if (!isEdit && !form.password) {
-      await Swal.fire({ icon: "warning", title: "Password wajib diisi" });
-      return;
+
+    if (!isEdit) {
+      if (!form.password) {
+        await Swal.fire({ icon: "warning", title: "Password wajib diisi" });
+        return;
+      }
+      if (form.password.length < 6) {
+        await Swal.fire({ icon: "warning", title: "Password minimal 6 karakter" });
+        return;
+      }
+      if (form.password !== form.password_confirmation) {
+        await Swal.fire({ icon: "warning", title: "Konfirmasi password tidak sama" });
+        return;
+      }
     }
-    if (!isEdit && form.password !== form.password_confirmation) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Konfirmasi password tidak sama",
-      });
-      return;
-    }
+
+    const payload = {
+      name: form.name,
+      email: form.email,
+      phone: `+62${form.phone}`, // Gabungkan kembali saat kirim ke API
+      status: form.status ? 1 : 0,
+      is_corporate: form.is_corporate ? 1 : 0,
+      role_id: selectedRoleId,
+    };
 
     try {
       if (isEdit && id) {
-        await updateUser({
-          id,
-          payload: {
-            name: form.name,
-            email: form.email,
-            phone: form.phone || null,
-            status: form.status ? 1 : 0,
-            role_id: selectedRoleId, // <-- kirim role dipilih
-          },
-        }).unwrap();
+        await updateUser({ id, payload }).unwrap();
         await Swal.fire({ icon: "success", title: "User diperbarui" });
       } else {
         await createUser({
-          name: form.name,
-          email: form.email,
-          phone: form.phone || "",
-          role_id: selectedRoleId, // <-- sekarang dari combobox
-          status: form.status ? 1 : 0,
+          ...payload,
           password: form.password,
           password_confirmation: form.password_confirmation,
         }).unwrap();
         await Swal.fire({ icon: "success", title: "User dibuat" });
       }
       onSuccess();
-    } catch (e) {
+    } catch (err: any) {
       await Swal.fire({
         icon: "error",
-        title: isEdit ? "Gagal memperbarui" : "Gagal membuat",
-        text: e instanceof Error ? e.message : "Terjadi kesalahan.",
+        title: "Terjadi Kesalahan",
+        text: err?.data?.message || "Gagal memproses data.",
       });
     }
   }
@@ -162,55 +185,64 @@ export default function UsersForm({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-xl rounded-2xl border bg-white p-5 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border bg-white p-6 shadow-2xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-800">
             {isEdit ? "Edit User" : "Tambah User"}
           </h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
             <X className="h-5 w-5" />
           </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label>Nama</Label>
+          <div className="space-y-2">
+            <Label className="font-medium">Nama Lengkap</Label>
             <Input
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="Nama lengkap"
+              placeholder="Masukkan nama sesuai KTP"
+              maxLength={50}
             />
           </div>
+
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Email</Label>
+            <div className="space-y-2">
+              <Label className="font-medium">Email</Label>
               <Input
                 type="email"
                 value={form.email}
                 onChange={(e) => set("email", e.target.value)}
-                placeholder="email@domain.com"
+                placeholder="contoh@mail.com"
               />
             </div>
-            <div>
-              <Label>Nomor HP</Label>
-              <Input
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="08xxxx"
-              />
+            <div className="space-y-2">
+              <Label className="font-medium">Nomor HP</Label>
+              <div className="relative flex items-center">
+                {/* Visual Prefix */}
+                <span className="absolute left-3 text-sm font-semibold text-gray-500">
+                  +62
+                </span>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  value={form.phone}
+                  onChange={handlePhoneChange}
+                  className="pl-12" // Padding left agar tidak bertumpuk dengan +62
+                  placeholder="8123456xxx"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 italic">*Hanya angka, 9-13 digit</p>
             </div>
           </div>
 
-          {/* pilih role */}
-          <div>
-            <Label>Role</Label>
+          <div className="space-y-2">
+            <Label className="font-medium">Role</Label>
             <Combobox<Role>
               value={selectedRoleId}
               onChange={(val) => setSelectedRoleId(val)}
-              onOpenRefetch={() => {
-                void refetchRoles();
-              }}
+              onOpenRefetch={() => { void refetchRoles(); }}
               data={roles}
               isLoading={loadingRoles}
               placeholder="Pilih role pengguna"
@@ -220,16 +252,17 @@ export default function UsersForm({
 
           {!isEdit && (
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label>Password</Label>
+              <div className="space-y-2">
+                <Label className="font-medium">Password</Label>
                 <Input
                   type="password"
                   value={form.password}
                   onChange={(e) => set("password", e.target.value)}
+                  placeholder="Min. 6 karakter"
                 />
               </div>
-              <div>
-                <Label>Konfirmasi Password</Label>
+              <div className="space-y-2">
+                <Label className="font-medium">Konfirmasi Password</Label>
                 <Input
                   type="password"
                   value={form.password_confirmation}
@@ -239,26 +272,40 @@ export default function UsersForm({
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <input
-              id="status"
-              type="checkbox"
-              checked={form.status}
-              onChange={(e) => set("status", e.target.checked)}
-            />
-            <Label htmlFor="status">Aktif</Label>
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex items-center gap-3">
+              <input
+                id="status"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                checked={form.status}
+                onChange={(e) => set("status", e.target.checked)}
+              />
+              <Label htmlFor="status" className="cursor-pointer">User Aktif</Label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="is_corporate"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                checked={form.is_corporate}
+                onChange={(e) => set("is_corporate", e.target.checked)}
+              />
+              <Label htmlFor="is_corporate" className="cursor-pointer">Akun Corporate</Label>
+            </div>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose} className="rounded-lg">
               Batal
             </Button>
             <Button
               type="submit"
-              className="rounded-xl bg-sky-600 hover:bg-sky-700"
+              className="rounded-lg bg-sky-600 px-8 hover:bg-sky-700"
               disabled={creating || updating || (isEdit && isFetching)}
             >
-              {isEdit ? "Simpan Perubahan" : "Buat User"}
+              {isEdit ? "Simpan Perubahan" : "Buat User Baru"}
             </Button>
           </div>
         </form>
