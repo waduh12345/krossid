@@ -18,7 +18,7 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login", "/home", "/programs", "/earnings", "/agents", "/api-ready", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/home", "/programs", "/programs", "/programs/[slug]", "/api-ready", "/forgot-password"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
@@ -60,9 +60,9 @@ export async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   })) as TokenLike | null;
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/home", req.url));
-  }
+  // if (!token) {
+  //   return NextResponse.redirect(new URL("/home", req.url));
+  // }
 
   const isSuperOrOwner =
     hasRole(token, "superadmin") || hasRole(token, "owner");
@@ -88,7 +88,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Role tidak dikenali
-  return NextResponse.redirect(new URL("/unauthorized", req.url));
+  // return NextResponse.redirect(new URL("/unauthorized", req.url));
 }
 
 // Terapkan ke semua route kecuali asset umum & next internals
