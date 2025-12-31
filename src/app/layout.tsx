@@ -16,9 +16,9 @@ import ClientAuthGuard from "@/components/client-guards";
 
 export const metadata: Metadata = {
   title: "Kross.id",
-  description: "Platform CBT untuk meningkatkan kemampuan belajar.",
+  description: "Platform Affiliate - Kross.id.",
   icons: {
-    icon: "/icon-qubic.jpg",
+    icon: "/kross-id.png",
   },
 };
 

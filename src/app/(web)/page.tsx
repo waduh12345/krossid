@@ -196,7 +196,7 @@ export default function AffiliateHome() {
 
           {/* Footer simulation */}
           <div className="px-4 text-[11px] text-gray-400 text-center space-y-1">
-            <p>© 2025 AffiliateCore System • Privacy • Terms</p>
+            <p>© 2025 Kross.id • Privacy • Terms</p>
             <p>Made with ❤️ for Indonesia Digital Assets</p>
           </div>
         </aside>

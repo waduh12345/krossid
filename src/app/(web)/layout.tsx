@@ -12,8 +12,8 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#4A90E2] rounded flex items-center justify-center font-black text-white text-xl italic">A</div>
-            <span className="font-black text-xl tracking-tighter text-[#4A90E2]">Affiliate<span className="text-[#F2A93B]">Core</span></span>
+            <div className="w-8 h-8 bg-[#4A90E2] rounded flex items-center justify-center font-black text-white text-xl italic"></div>
+            <span className="font-black text-xl tracking-tighter text-[#4A90E2]">Kross<span className="text-[#F2A93B]">.id</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-bold text-gray-500 uppercase tracking-wider">
             <Link href="/home" className="text-[#4A90E2] border-b-2 border-[#4A90E2] pb-1">Feed</Link>
@@ -37,7 +37,7 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center gap-2 mb-6 opacity-80 grayscale">
                 <div className="w-6 h-6 bg-black rounded-sm"></div>
-                <span className="font-bold text-black">AFFILIATECORE</span>
+                <span className="font-bold text-black">Kross.id</span>
               </div>
               <p className="text-[#8E8E8E] text-sm leading-relaxed">
                 Platform afiliasi publik dengan sistem Masked Identity dan tracking real-time. Kelola trafik Anda secara profesional.
@@ -65,7 +65,7 @@ export default function AffiliateLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-[#8E8E8E] uppercase tracking-widest font-bold">
-            <p>© 2025 AffiliateCore System. All Rights Reserved.</p>
+            <p>© 2025 Kross.id. All Rights Reserved.</p>
             <div className="flex gap-6">
               <span>Status: <span className="text-[#7ED321]">API Online</span></span>
             </div>
