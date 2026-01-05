@@ -75,47 +75,47 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
           { title: "Categories", url: "/cms/programs/categories" },
         ],
       },
-      {
-        title: "Sales",
-        url: "/cms/agents",
-        icon: IconUsers,
-        children: [
-          { title: "Active Agents", url: "/cms/agents" },
-          { title: "Invitations & Filters", url: "/cms/agents/invites" },
-          { title: "Domain Restrictions", url: "/cms/agents/domains" },
-        ],
-      },
-      {
-        title: "Earnings & Payouts",
-        url: "/cms/payouts",
-        icon: IconWallet,
-        children: [
-          { title: "Commission Logic", url: "/cms/payouts/logic" },
-          { title: "Payout Requests", url: "/cms/payouts/requests" },
-          { title: "Financial Logs", url: "/cms/payouts/logs" },
-        ],
-      },
-      { title: "Traffic Harvester", url: "/cms/traffic", icon: IconTargetArrow },
-      {
-        title: "Security & Fraud",
-        url: "/cms/security",
-        icon: IconShieldLock,
-        children: [
-          { title: "Fraud Attempts", url: "/cms/security/fraud" },
-          { title: "Blocked IPs", url: "/cms/security/blocked" },
-          { title: "Verification Rules", url: "/cms/security/rules" },
-        ],
-      },
-      {
-        title: "System Config",
-        url: "#",
-        icon: IconSettings,
-        children: [
-          { title: "App Parameters", url: "/cms/config/params" },
-          { title: "Multi-language (i18n)", url: "/cms/config/languages" },
-          { title: "Asset Management", url: "/cms/config/assets" },
-        ],
-      },
+      // {
+      //   title: "Sales",
+      //   url: "/cms/agents",
+      //   icon: IconUsers,
+      //   children: [
+      //     { title: "Active Agents", url: "/cms/agents" },
+      //     { title: "Invitations & Filters", url: "/cms/agents/invites" },
+      //     { title: "Domain Restrictions", url: "/cms/agents/domains" },
+      //   ],
+      // },
+      // {
+      //   title: "Earnings & Payouts",
+      //   url: "/cms/payouts",
+      //   icon: IconWallet,
+      //   children: [
+      //     { title: "Commission Logic", url: "/cms/payouts/logic" },
+      //     { title: "Payout Requests", url: "/cms/payouts/requests" },
+      //     { title: "Financial Logs", url: "/cms/payouts/logs" },
+      //   ],
+      // },
+      // { title: "Traffic Harvester", url: "/cms/traffic", icon: IconTargetArrow },
+      // {
+      //   title: "Security & Fraud",
+      //   url: "/cms/security",
+      //   icon: IconShieldLock,
+      //   children: [
+      //     { title: "Fraud Attempts", url: "/cms/security/fraud" },
+      //     { title: "Blocked IPs", url: "/cms/security/blocked" },
+      //     { title: "Verification Rules", url: "/cms/security/rules" },
+      //   ],
+      // },
+      // {
+      //   title: "System Config",
+      //   url: "#",
+      //   icon: IconSettings,
+      //   children: [
+      //     { title: "App Parameters", url: "/cms/config/params" },
+      //     { title: "Multi-language (i18n)", url: "/cms/config/languages" },
+      //     { title: "Asset Management", url: "/cms/config/assets" },
+      //   ],
+      // },
     ],
     navSecondary: [
       {

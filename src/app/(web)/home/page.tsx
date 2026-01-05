@@ -54,7 +54,26 @@ export default function AffiliateHome() {
         
         {/* LEFT COLUMN: User Focus Selection */}
         <aside className="lg:col-span-3 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="h-16 bg-[#4A90E2]"></div>
+            <div className="px-4 pb-4">
+              <div className="w-16 h-16 bg-white border-4 border-white rounded-full -mt-8 mx-auto flex items-center justify-center shadow-md overflow-hidden">
+              <Image
+                src="https://randomuser.me/api/portraits/men/32.jpg"
+                alt="Profile Photo"
+                width={64}
+                height={64}
+                className="rounded-full object-cover"
+              />
+              </div>
+              <div className="text-center mt-3">
+              <h3 className="font-bold text-lg leading-tight">Budi Setiawan</h3>
+              <p className="text-xs text-gray-500 mt-1">Sebagai <span className="font-bold text-[#4A90E2]">Affiliator</span></p>
+              <p className="text-xs text-gray-400 mt-1">PT EduTech Global</p>
+              </div>
+            </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="h-16 bg-[#4A90E2]"></div>
             <div className="px-4 pb-4">
               <div className="w-16 h-16 bg-white border-4 border-white rounded-full -mt-8 mx-auto flex items-center justify-center shadow-md">
@@ -83,14 +102,27 @@ export default function AffiliateHome() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hidden lg:block">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Trending Tags</h4>
-            <div className="flex flex-wrap gap-2">
-              {["#SaaS", "#EduTech", "#HighCommission", "#Verified", "#PassiveIncome"].map(tag => (
-                <span key={tag} className="text-[11px] font-bold text-gray-500 hover:text-[#4A90E2] cursor-pointer">{tag}</span>
-              ))}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hidden lg:block">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Quick Access</h4>
+            <div className="space-y-3">
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-all">
+              <span className="bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center font-black text-[#4A90E2] text-sm">S</span>
+              <span className="text-sm font-bold text-gray-700">Saved Items</span>
+              </button>
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-all">
+              <span className="bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center font-black text-[#F2A93B] text-sm">G</span>
+              <span className="text-sm font-bold text-gray-700">Groups</span>
+              </button>
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-all">
+              <span className="bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center font-black text-[#7ED321] text-sm">B</span>
+              <span className="text-sm font-bold text-gray-700">Bulletins</span>
+              </button>
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-all">
+              <span className="bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center font-black text-[#357ABD] text-sm">E</span>
+              <span className="text-sm font-bold text-gray-700">Events</span>
+              </button>
             </div>
-          </div>
+            </div>
         </aside>
 
         {/* CENTER COLUMN: The Program Feed */}
@@ -106,12 +138,16 @@ export default function AffiliateHome() {
                 className="w-full bg-gray-50 border border-gray-100 rounded-full px-6 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 transition-all"
               />
             </div>
-          </div>
-
-          {/* Feed Filter */}
-          <div className="flex items-center gap-4">
-            <div className="h-[1px] flex-1 bg-gray-300"></div>
-            <span className="text-xs text-gray-500 font-medium">Sort by: <span className="text-gray-900 font-bold cursor-pointer">Most Recent ▼</span></span>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {["#SaaS", "#EduTech", "#HighCommission", "#Verified", "#PassiveIncome"].map(tag => (
+                <button
+                  key={tag}
+                  className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full hover:bg-[#4A90E2] hover:text-white transition-colors"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Active Programs as "Posts" */}
@@ -186,18 +222,28 @@ export default function AffiliateHome() {
             </div>
           </div>
 
+            {/* List Berita Utama */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-4">
+            <h4 className="text-sm font-bold mb-3">Berita Utama</h4>
+            <ul className="space-y-2 text-xs">
+              <li>
+              <span className="font-bold text-[#4A90E2]">[Update]</span> Program EduTech Global kini menawarkan komisi lebih tinggi!
+              </li>
+              <li>
+              <span className="font-bold text-[#F2A93B]">[Event]</span> Webinar gratis untuk semua affiliator minggu ini.
+              </li>
+              <li>
+              <span className="font-bold text-[#7ED321]">[Tips]</span> Cara meningkatkan konversi link affiliate Anda.
+              </li>
+            </ul>
+          </div>
+
           <div className="bg-gradient-to-br from-[#4A90E2] to-[#357ABD] rounded-xl p-5 text-white shadow-lg">
             <h4 className="font-black text-lg mb-2">Are you a Product Owner?</h4>
             <p className="text-xs opacity-80 mb-4 leading-relaxed">Dapatkan traffic berkualitas dari ribuan agen yang siap mempromosikan produk Anda.</p>
             <button className="w-full bg-[#F2A93B] hover:bg-white hover:text-[#F2A93B] text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all">
               List Your Program
             </button>
-          </div>
-
-          {/* Footer simulation */}
-          <div className="px-4 text-[11px] text-gray-400 text-center space-y-1">
-            <p>© 2025 Kross.id • Privacy • Terms</p>
-            <p>Made with ❤️ for Indonesia Digital Assets</p>
           </div>
         </aside>
 

@@ -75,6 +75,8 @@ export default function ProgramsForm({
   const isEdit = mode === "edit";
   const [tagInput, setTagInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
+  const [emailRaw, setEmailRaw] = useState("");
+  const PUBLIC_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
 
   const { data: session } = useSession();
 
@@ -138,6 +140,41 @@ export default function ProgramsForm({
     status: 1,
   });
 
+  const ownerInfo = useMemo(() => {
+    const selectedOwner = users.find((u: UserOption) => u.id === Number(form.owner_id || (isOwner ? session?.user?.id : 0)));
+    const email = selectedOwner?.email || "";
+    const domain = email.split("@")[1]?.toLowerCase() || "";
+    // Dianggap corporate jika ada domain dan bukan domain public
+    const isCorporate = domain && !PUBLIC_DOMAINS.includes(domain);
+    
+    return { email, domain, isCorporate };
+  }, [form.owner_id, users, session, isOwner]);
+
+  const extractEmails = (text: string): string[] => {
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const matches = text.match(emailRegex) || [];
+    return Array.from(new Set(matches)); // Mengambil nilai unik
+  };
+
+  const detectedEmails = useMemo(() => {
+    const rawList = extractEmails(emailRaw);
+    
+    if (ownerInfo.isCorporate) {
+      // Jika Corporate: Filter hanya yang domainnya sama dengan owner
+      return rawList.filter(email => email.toLowerCase().endsWith(`@${ownerInfo.domain}`));
+    }
+    
+    // Jika Non-Corporate: Izinkan semua format email valid
+    return rawList;
+  }, [emailRaw, ownerInfo]);
+
+  useEffect(() => {
+    setFormSales((prev) => ({
+      ...prev,
+      email: detectedEmails.join("|"),
+    }));
+  }, [detectedEmails]);
+
   // Sync Form & Sales Data when Edit Mode
   useEffect(() => {
     if (open) {
@@ -145,15 +182,18 @@ export default function ProgramsForm({
 
       // Jika mode edit, kumpulkan email dari API sales dan masukkan ke formSales.email string
       if (isEdit && salesResp?.data) {
-        const existingEmails = salesResp.data
-          .map((item: Sales) => item.email)
-          .join("|");
+        const existingEmailsArray = salesResp.data.map((item: Sales) => item.email);
+        const emailString = existingEmailsArray.join("|");
+
         setFormSales((prev) => ({
           ...prev,
-          email: existingEmails,
+          email: emailString,
           program_id: id || 0,
         }));
+
+        setEmailRaw(existingEmailsArray.join("\n"));
       } else {
+        setEmailRaw("");
         setFormSales({
           id: 0,
           program_id: 0,
@@ -172,6 +212,14 @@ export default function ProgramsForm({
     }
   }, [initial, open, isEdit, detail, salesResp, id]);
 
+  const handleEmailRawChange = (val: string) => {
+    setEmailRaw(val);
+    const parsed = extractEmails(val);
+    setFormSales((prev) => ({
+      ...prev,
+      email: parsed.join("|"), // Ini yang akan dikirim ke API
+    }));
+  };
   // Mengubah string "a|b|c" menjadi array ["a", "b", "c"] untuk tampilan
   const tags = useMemo(() => {
     return form.parameter
@@ -318,19 +366,12 @@ export default function ProgramsForm({
       }
 
       // 3. Create Sales Baru dengan Logika is_corporate
-      if (programId && emails.length > 0) {
-        const salesPromises = emails.map((email) => {
-          // Ekstraksi domain email sales (misal: user@bca.com -> bca.com)
-          const salesDomain = email.split("@")[1]?.toLowerCase();
-
-          // Bandingkan domain sales dengan domain owner
-          const isCorporateValue =
-            ownerDomain && salesDomain && ownerDomain === salesDomain ? 1 : 0;
-
+      if (programId && detectedEmails.length > 0) {
+        const salesPromises = detectedEmails.map((email) => {
           return createSales({
             program_id: programId as number,
             email: email,
-            is_corporate: isCorporateValue, // Set dinamis di sini
+            is_corporate: ownerInfo.isCorporate ? 1 : 0, // Mengikuti status owner
             status: 1,
           }).unwrap();
         });
@@ -379,59 +420,94 @@ export default function ProgramsForm({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-1">
               <div className="space-y-2">
-                <Label className="font-semibold">Category *</Label>
-                <Combobox
-                  value={form.program_category_id}
-                  onChange={(val) => set("program_category_id", val)}
-                  data={categories}
-                  isLoading={loadingCats}
-                  placeholder="Select category"
-                  // FIX: Mengganti any dengan CategoryOption
-                  getOptionLabel={(opt: CategoryOption) => opt.name}
-                />
+              <Label className="font-semibold">Category *</Label>
+              <Combobox
+                value={form.program_category_id}
+                onChange={(val) => set("program_category_id", val)}
+                data={categories}
+                isLoading={loadingCats}
+                placeholder="Select category"
+                getOptionLabel={(opt: CategoryOption) => opt.name}
+              />
               </div>
               {isOwner ? (
-                <div className="space-y-2">
-                  <Label className="font-semibold">Owner *</Label>
+              <div className="space-y-2">
+                <Label className="font-semibold">Owner *</Label>
+                <Input
+                value={session?.user?.name || ""}
+                disabled
+                className="bg-zinc-100"
+                />
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                <div>
+                  <Label className="text-xs font-semibold">Email</Label>
                   <Input
-                    value={session?.user?.name || ""}
-                    disabled
-                    className="bg-zinc-100"
+                  value={session?.user?.email || ""}
+                  readOnly
+                  className="bg-zinc-100 text-xs"
                   />
                 </div>
+                <div>
+                  <Label className="text-xs font-semibold">Type</Label>
+                  <Input
+                  value="Corporate"
+                  readOnly
+                  className="bg-zinc-100 text-xs"
+                  />
+                </div>
+                </div>
+              </div>
               ) : (
-                <div className="space-y-2">
-                  <Label className="font-semibold">Owner *</Label>
-                  <Combobox
-                    value={form.owner_id}
-                    onChange={(val) => set("owner_id", val)}
-                    data={users}
-                    isLoading={loadingUsers}
-                    placeholder="Select owner"
-                    // FIX: Mengganti any dengan UserOption
-                    getOptionLabel={(opt: UserOption) => opt.name}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label className="font-semibold">Owner *</Label>
+                <Combobox
+                value={form.owner_id}
+                onChange={(val) => set("owner_id", val)}
+                data={users}
+                isLoading={loadingUsers}
+                placeholder="Select owner"
+                getOptionLabel={(opt: UserOption) => opt.name}
+                />
+                {form.owner_id && (() => {
+                const selectedOwner = users.find((u: UserOption) => u.id === Number(form.owner_id));
+                if (!selectedOwner) return null;
+                const ownerDomain = selectedOwner.email?.split("@")[1]?.toLowerCase();
+                return (
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div>
+                    <Label className="text-xs font-semibold">Email</Label>
+                    <Input
+                    value={selectedOwner.email}
+                    readOnly
+                    className="bg-zinc-100 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Type</Label>
+                    <Input
+                    value={ownerDomain ? "Corporate" : "Non Corporate"}
+                    readOnly
+                    className="bg-zinc-100 text-xs"
+                    />
+                  </div>
+                  </div>
+                );
+                })()}
+              </div>
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="font-semibold">Title *</Label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-semibold">Slug</Label>
-                <Input
-                  value={form.slug}
-                  onChange={(e) => set("slug", e.target.value)}
-                  className="bg-zinc-50 font-mono text-xs"
-                />
+
+            <div className="space-y-2">
+              <Label className="font-semibold">Title *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+              Slug: <span className="font-mono">{form.slug || "-"}</span>
               </div>
             </div>
 
@@ -547,48 +623,55 @@ export default function ProgramsForm({
               </p>
             </div>
 
-            {/* Tag System - Sales Emails */}
-            <div className="space-y-2">
-              <Label className="font-semibold text-gray-700">
-                Email (Sales)
-              </Label>
-              <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                {emails.map((email, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md text-xs font-medium"
-                  >
-                    <Mail className="h-3 w-3" />
-                    {email}
-                    <X
-                      className="h-3 w-3 cursor-pointer hover:text-red-500"
-                      onClick={() => removeEmail(idx)}
-                    />
-                  </div>
-                ))}
-                <input
-                  type="text"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addEmail())
-                  }
-                  placeholder="Add email..."
-                  className="flex-1 min-w-[150px] outline-none text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addEmail}
-                  className="h-7 px-2 text-sky-600 hover:bg-sky-100"
-                >
-                  Tambah
-                </Button>
+            {/* Bagian Email Sales */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <Label className="font-semibold text-gray-700">Email (Sales)</Label>
+                  <p className="text-[10px] text-zinc-500">
+                    {ownerInfo.isCorporate 
+                      ? `Mode Corporate: Hanya domain @${ownerInfo.domain} yang diterima` 
+                      : "Mode Personal: Semua domain email diterima"}
+                  </p>
+                </div>
+                <span className="text-[10px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
+                  {detectedEmails.length} Email Terdeteksi
+                </span>
               </div>
-              <p className="text-[10px] text-zinc-500 italic uppercase font-bold">
-                Data akan disinkronkan ke tabel Sales setelah disimpan.
-              </p>
+              
+              <Textarea
+                placeholder="Masukkan banyak email di sini... (Copy-paste dari mana saja)"
+                value={emailRaw}
+                onChange={(e) => setEmailRaw(e.target.value)} // Langsung set raw, filter diurus useMemo
+                className="min-h-[120px] font-mono text-sm resize-y focus-visible:ring-sky-500"
+              />
+              
+              {/* Preview Email yang Lolos Filter */}
+              {detectedEmails.length > 0 && (
+                <div className="rounded-lg border border-dashed p-3 bg-zinc-50">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase mb-2 tracking-wider">
+                    List Email Terfilter:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {detectedEmails.map((email, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-medium animate-in fade-in zoom-in duration-200"
+                      >
+                        <Mail className="h-3 w-3" />
+                        {email}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Info tambahan jika ada email yang terbuang/terfilter (Optional) */}
+              {emailRaw && extractEmails(emailRaw).length > detectedEmails.length && (
+                <p className="text-[10px] text-red-500 font-medium">
+                  * Beberapa email diabaikan karena tidak sesuai dengan domain owner (@{ownerInfo.domain})
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border bg-zinc-50 p-4">
