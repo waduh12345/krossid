@@ -1,7 +1,15 @@
 // services/auth.service.ts
 import { apiSlice } from "./base-query";
-import type { Register, User } from "@/types/user";
+import type {
+  RegisterPayload,
+  User,
+  ValidateOtpPayload,
+  AuthTokenResponse,
+  ForgotPasswordPayload, // ✅ Import baru
+  ResetPasswordPayload, // ✅ Import baru
+} from "@/types/user";
 
+// Helper type untuk response standar
 type ApiEnvelope<T> = {
   code: number;
   message: string;
@@ -21,7 +29,6 @@ export const authApi = apiSlice.injectEndpoints({
         method: "POST",
         body: credentials,
       }),
-      // setelah login, tandai data /me sebagai stale
       invalidatesTags: [{ type: "User", id: "ME" }],
     }),
 
@@ -31,7 +38,6 @@ export const authApi = apiSlice.injectEndpoints({
         url: "/logout",
         method: "POST",
       }),
-      // setelah logout, tandai data /me sebagai stale
       invalidatesTags: [{ type: "User", id: "ME" }],
     }),
 
@@ -41,11 +47,9 @@ export const authApi = apiSlice.injectEndpoints({
         url: "/me",
         method: "GET",
       }),
-      // terima dua kemungkinan bentuk response: langsung User atau amplop { code, message, data }
       transformResponse: (res: User | ApiEnvelope<User>) =>
         "data" in res ? res.data : res,
       keepUnusedDataFor: 300,
-      // ✅ gunakan tag yang sudah terdaftar di apiSlice (mis. "User")
       providesTags: (res) =>
         res?.id != null
           ? [
@@ -55,18 +59,75 @@ export const authApi = apiSlice.injectEndpoints({
           : [{ type: "User" as const, id: "ME" }],
     }),
 
-    // POST /register 
-    register: builder.mutation<
-      | { token: string; user: User }
-      | ApiEnvelope<{ token: string; user: User }>,
-      Register
+    // POST /register
+    register: builder.mutation<ApiEnvelope<AuthTokenResponse>, RegisterPayload>(
+      {
+        query: (payload) => ({
+          url: "/register",
+          method: "POST",
+          body: payload,
+        }),
+      }
+    ),
+
+    // POST /register/resend-otp (Resend OTP Register - Pakai Token Header)
+    resendOtp: builder.mutation<ApiEnvelope<string>, string>({
+      query: (token) => ({
+        url: "/register/resend-otp",
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    }),
+
+    // PUT /register (Validate OTP Register)
+    validateOtp: builder.mutation<
+      ApiEnvelope<string>,
+      ValidateOtpPayload & { token: string }
+    >({
+      query: ({ token, ...body }) => ({
+        url: "/register",
+        method: "PUT",
+        body: body,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+      invalidatesTags: [{ type: "User", id: "ME" }],
+    }),
+
+    // ✅ POST /password/reset (Request Forgot Password)
+    forgotPassword: builder.mutation<
+      ApiEnvelope<string>,
+      ForgotPasswordPayload
     >({
       query: (payload) => ({
-        url: "/register",
+        url: "/password/reset",
         method: "POST",
         body: payload,
       }),
-      invalidatesTags: [{ type: "User", id: "ME" }],
+    }),
+
+    // ✅ POST /password/resend-otp (Resend OTP Forgot Password)
+    resendForgotPasswordOtp: builder.mutation<
+      ApiEnvelope<string>,
+      ForgotPasswordPayload
+    >({
+      query: (payload) => ({
+        url: "/password/resend-otp",
+        method: "POST",
+        body: payload,
+      }),
+    }),
+
+    // ✅ PUT /password/reset (Validate OTP & Set New Password)
+    resetPassword: builder.mutation<ApiEnvelope<string>, ResetPasswordPayload>({
+      query: (payload) => ({
+        url: "/password/reset",
+        method: "PUT",
+        body: payload,
+      }),
     }),
   }),
   overrideExisting: false,
@@ -77,4 +138,9 @@ export const {
   useLogoutMutation,
   useGetMeQuery,
   useRegisterMutation,
+  useResendOtpMutation,
+  useValidateOtpMutation,
+  useForgotPasswordMutation,
+  useResendForgotPasswordOtpMutation,
+  useResetPasswordMutation,
 } = authApi;

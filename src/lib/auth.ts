@@ -12,7 +12,7 @@ export const authOptions: AuthOptions = {
     maxAge: 60 * 60 * 24 * 365 * 100,
   },
   pages: {
-    signIn: "/login",
+    signIn: "/signin",
   },
   providers: [
     CredentialsProvider({
@@ -67,7 +67,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           token: token,
           roles: user.roles || [],
-          student: user.student
+          student: user.student,
         };
       },
     }),
@@ -89,7 +89,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as number;
         session.user.token = token.token as string;
         session.user.roles = token.roles as User["roles"];
-        session.user.student = token.student as User["student"]
+        session.user.student = token.student as User["student"];
       }
       return session;
     },

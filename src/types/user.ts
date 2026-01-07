@@ -1,3 +1,5 @@
+// types/user.ts
+
 import { Student } from "./student";
 
 export interface UserRolePivot {
@@ -15,12 +17,24 @@ export interface Role {
   pivot?: UserRolePivot;
 }
 
-export interface Register {
+export interface RegisterPayload {
   name: string;
   email: string;
-  phone?: string;
+  phone: string;
   password: string;
   password_confirmation: string;
+  referral?: string | null;
+  program_id?: string | null;
+  sales?: boolean;
+}
+
+export interface ValidateOtpPayload {
+  otp: string;
+}
+
+export interface AuthTokenResponse {
+  token: string;
+  token_type: string;
 }
 
 export interface User {
@@ -35,7 +49,6 @@ export interface User {
   roles: Role[];
   referral?: string;
   is_corporate?: boolean;
-  // opsional – jika backend punya status
   status?: boolean | number;
   student: Student;
 }
@@ -63,10 +76,10 @@ export interface ItemResponse<T> {
 }
 
 export type UserListFilters = {
-  page?: number; // default 1
-  paginate?: number; // default 10
-  search?: string; // kata kunci
-  role_id?: number; // contoh: 2 (student)
+  page?: number;
+  paginate?: number;
+  search?: string;
+  role_id?: number;
 };
 
 export type CreateUserPayload = {
@@ -75,8 +88,8 @@ export type CreateUserPayload = {
   phone?: string | null;
   password: string;
   password_confirmation: string;
-  role_id: number; // role target saat create (contoh: 2)
-  status?: boolean | number; // ⬅️ ditambahkan
+  role_id: number;
+  status?: boolean | number;
 };
 
 export type UpdateUserPayload = Partial<{
@@ -84,10 +97,21 @@ export type UpdateUserPayload = Partial<{
   email: string;
   phone: string | null;
   role_id: number;
-  status: boolean | number; // ⬅️ ditambahkan
+  status: boolean | number;
 }>;
 
 export type UpdatePasswordPayload = {
   password: string;
   password_confirmation: string;
 };
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  password: string;
+  password_confirmation: string;
+}
