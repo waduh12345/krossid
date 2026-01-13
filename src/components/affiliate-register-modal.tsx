@@ -18,16 +18,19 @@ import { Label } from "@/components/ui/label";
 import { useSession } from "next-auth/react"; // Import Session
 import Swal from "sweetalert2";
 
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   programTitle: string;
+  programId?: number;
 };
 
 export default function AffiliateRegisterModal({
   isOpen,
   onClose,
   programTitle,
+  programId,
 }: Props) {
   const { data: session, status } = useSession();
   // const isLoggedIn = status === "authenticated";

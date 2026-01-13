@@ -26,6 +26,7 @@ export interface RegisterPayload {
   referral?: string | null;
   program_id?: string | null;
   sales?: boolean;
+  role?: string;
 }
 
 export interface ValidateOtpPayload {
@@ -51,6 +52,7 @@ export interface User {
   is_corporate?: boolean;
   status?: boolean | number;
   student: Student;
+  image?: string | null;
 }
 
 export type Users = User;

@@ -44,7 +44,7 @@ export const authApi = apiSlice.injectEndpoints({
     // GET /me
     getMe: builder.query<User, void>({
       query: () => ({
-        url: "/me",
+        url: "/me?forceRefresh=1",
         method: "GET",
       }),
       transformResponse: (res: User | ApiEnvelope<User>) =>
@@ -129,6 +129,43 @@ export const authApi = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
+
+    // ✅ POST /me?_method=PUT (Update Profile with FormData)
+    updateProfile: builder.mutation<
+      ApiEnvelope<User>,
+      {
+        name: string;
+        email: string;
+        phone: string;
+        image?: File | null;
+        password?: string | null;
+        password_confirmation?: string | null;
+      }
+    >({
+      query: (payload) => {
+        const formData = new FormData();
+        formData.append("name", payload.name);
+        formData.append("email", payload.email);
+        formData.append("phone", payload.phone);
+        
+        if (payload.image) {
+          formData.append("image", payload.image);
+        }
+        if (payload.password) {
+          formData.append("password", payload.password);
+        }
+        if (payload.password_confirmation) {
+          formData.append("password_confirmation", payload.password_confirmation);
+        }
+
+        return {
+          url: "/me?_method=PUT",
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: [{ type: "User", id: "ME" }],
+    }),
   }),
   overrideExisting: false,
 });
@@ -143,4 +180,5 @@ export const {
   useForgotPasswordMutation,
   useResendForgotPasswordOtpMutation,
   useResetPasswordMutation,
+  useUpdateProfileMutation,
 } = authApi;

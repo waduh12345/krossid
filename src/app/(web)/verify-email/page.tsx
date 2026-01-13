@@ -93,6 +93,29 @@ const OTPVerifyPage = () => {
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData("text");
+    
+    // Filter hanya angka dan ambil maksimal 6 karakter
+    const numbers = pasteData.replace(/\D/g, "").slice(0, 6);
+    
+    if (numbers.length > 0) {
+      const newOtp = [...otp];
+      
+      // Isi field dari posisi paste atau dari awal
+      for (let i = 0; i < 6; i++) {
+        newOtp[i] = numbers[i] || "";
+      }
+      
+      setOtp(newOtp);
+      
+      // Focus ke field terakhir yang terisi atau field ke-6
+      const lastFilledIndex = Math.min(numbers.length - 1, 5);
+      inputRefs.current[lastFilledIndex]?.focus();
+    }
+  };
+
   // --- HANDLER VERIFY OTP ---
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,6 +227,7 @@ const OTPVerifyPage = () => {
                   value={data}
                   onChange={(e) => handleChange(e.target.value, i)}
                   onKeyDown={(e) => handleKeyDown(e, i)}
+                  onPaste={handlePaste}
                   className="w-full h-14 md:h-16 bg-black/40 border border-white/10 rounded-2xl text-center text-2xl font-black text-white focus:ring-2 focus:ring-[#DF9B35] focus:outline-none transition-all"
                 />
               ))}

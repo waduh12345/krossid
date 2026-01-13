@@ -13,4 +13,6 @@ export interface Programs {
   status: boolean | number;
   original?: string; // URL original image
   avif?: string; // URL avif image
+  commission?: number; // Commission percentage
+  nominal?: number; // Fixed commission amount
 }

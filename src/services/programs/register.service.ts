@@ -13,23 +13,24 @@ export const registerApi = apiSlice.injectEndpoints({
       total: number;
       per_page: number;
       },
-      { page: number; paginate: number; search?: string; program_id?: number; owner_id?: number }
+      { page: number; paginate: number; search?: string; program_id?: number; owner_id?: number; email?: string }
     >({
-      query: ({ page, paginate, search, program_id, owner_id }) => {
-      const params = [
-        `page=${page}`,
-        `paginate=${paginate}`,
-        search && search.trim() ? `search=${encodeURIComponent(search.trim())}` : "",
-        program_id ? `program_id=${program_id}` : "",
-        owner_id !== undefined && owner_id !== null ? `owner_id=${owner_id}` : "",
-      ]
-        .filter(Boolean)
-        .join("&");
+      query: ({ page, paginate, search, program_id, owner_id, email }) => {
+        const params = [
+          `page=${page}`,
+          `paginate=${paginate}`,
+          search && search.trim() ? `search=${encodeURIComponent(search.trim())}` : "",
+          program_id ? `program_id=${program_id}` : "",
+          owner_id !== undefined && owner_id !== null ? `owner_id=${owner_id}` : "",
+          email ? `email=${encodeURIComponent(email)}` : "",
+        ]
+          .filter(Boolean)
+          .join("&");
 
-      return {
-        url: `/program/registrations?${params}`,
-        method: "GET",
-      };
+        return {
+          url: `/program/registrations?${params}`,
+          method: "GET",
+        };
       },
       transformResponse: (response: {
         code: number;

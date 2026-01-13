@@ -12,9 +12,9 @@ type ClientAuthGuardProps = {
 };
 
 export default function ClientAuthGuard({
-  excludedRoutes = ["/auth", "/auth/login"],
+  excludedRoutes = ["/auth", "/login"],
   excludedFetchPrefixes = ["/api/auth/", "/auth/"],
-  loginPath = "/auth/login",
+  loginPath = "/login",
 }: ClientAuthGuardProps) {
   const { status } = useSession();
   const router = useRouter();

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { 
   ShieldCheck, 
   ChevronLeft, 
@@ -16,45 +18,458 @@ import {
   Copy,
   ExternalLink,
   BarChart3,
-  Download
+  Download,
+  Globe,
+  Award,
+  ChevronRight,
+  X,
+  Loader2,
+  User,
+  Mail,
+  Phone,
+  Clock,
+  TrendingUp,
+  Flame,
+  Gift,
+  Sparkles
 } from "lucide-react";
-import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import AffiliateRegisterModal from "@/components/affiliate-register-modal";
 import Swal from "sweetalert2";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  useGetPublicProgramsQuery,
+  useGetPublicProgramByIdQuery
+} from "@/services/public/program.service";
+
+import { usePublicRegisterMutation } from "@/services/public/register.service";
+import { useGetMeQuery } from "@/services/auth.service";
+
 
 export default function ProgramDetail() {
+  const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  console.log("Session Data:", session);
+  const slug = params.slug as string;
+  const id = parseInt(slug); // Convert slug to number ID
+
+  // Get referral from URL param "reff", default to "saleswebsite" if empty
+  const referralCode = searchParams.get("reff") || "salesmen";
 
   const [showModal, setShowModal] = useState(false);
-  const [isJoinedAsAffiliate] = useState(true); 
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
-  const referralLink = "https://affiliatecore.com/ref/nadi-techno-01";
+  // Timer state for urgency (10 minutes = 600 seconds)
+  const TIMER_DURATION = 600; // 10 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
+  const [isTimerExpired, setIsTimerExpired] = useState(false);
+
+  // Progress step for form (neuroscience: progress indicator)
+  const [formStep, setFormStep] = useState(1);
+  const totalSteps = 2;
+
+  // Fake live activity for social proof
+  const [recentBuyers, setRecentBuyers] = useState<string[]>([]);
+  const [currentViewers, setCurrentViewers] = useState(0);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
+  const [parameterValues, setParameterValues] = useState<Record<string, string>>({});
+
+  const { data: programData, isLoading, error } = useGetPublicProgramByIdQuery(id, {
+    skip: !id || isNaN(id), // Skip query if ID is invalid
+  });
+
+  const [createRegister, { isLoading: isSubmitting }] = usePublicRegisterMutation();
+
+  // Get user data including referral code
+  const { data: userData } = useGetMeQuery(undefined, {
+    skip: !session, // Skip if not logged in
+  });
+
+  // Check if user is a sales/affiliate
+  const isSalesRole = userData?.roles?.some(
+    (role) => role.name.toLowerCase() === 'sales' || role.name.toLowerCase() === 'affiliate'
+  );
+  const userReferralCode = userData?.referral || '';
+
+  // Parse parameter fields from programData.parameter
+  const parameterFields = programData?.parameter 
+    ? programData.parameter.split("|").filter(Boolean) 
+    : [];
+
+  // Timer persistence using localStorage
+  useEffect(() => {
+    if (!id || isNaN(id)) return;
+    
+    const timerKey = `program_timer_${id}`;
+    const storedTimer = localStorage.getItem(timerKey);
+    
+    if (storedTimer) {
+      const { startTime, duration } = JSON.parse(storedTimer);
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = duration - elapsed;
+      
+      if (remaining > 0) {
+        setTimeLeft(remaining);
+        setIsTimerExpired(false);
+      } else {
+        setTimeLeft(0);
+        setIsTimerExpired(true);
+      }
+    } else {
+      // First visit - start fresh timer
+      localStorage.setItem(timerKey, JSON.stringify({
+        startTime: Date.now(),
+        duration: TIMER_DURATION
+      }));
+      setTimeLeft(TIMER_DURATION);
+    }
+  }, [id]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setIsTimerExpired(true);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsTimerExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeLeft]);
+
+  // Format timer display
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  // Social proof: simulate recent buyers
+  useEffect(() => {
+    const names = [
+      "Andi S.", "Budi W.", "Citra D.", "Dewi A.", "Eko P.", 
+      "Fitri L.", "Gilang R.", "Hana M.", "Irfan T.", "Joko S.",
+      "Kevin A.", "Lina P.", "Maya S.", "Nina R.", "Oscar L."
+    ];
+    
+    // Set initial viewers
+    setCurrentViewers(Math.floor(Math.random() * 15) + 8);
+    
+    // Set initial recent buyers (3 random names)
+    const shuffled = [...names].sort(() => 0.5 - Math.random());
+    setRecentBuyers(shuffled.slice(0, 3));
+
+    // Update viewers periodically
+    const viewerInterval = setInterval(() => {
+      setCurrentViewers((prev) => {
+        const change = Math.floor(Math.random() * 5) - 2;
+        return Math.max(5, Math.min(25, prev + change));
+      });
+    }, 8000);
+
+    // Add new buyer occasionally
+    const buyerInterval = setInterval(() => {
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      setRecentBuyers((prev) => [randomName, ...prev.slice(0, 2)]);
+    }, 15000);
+
+    return () => {
+      clearInterval(viewerInterval);
+      clearInterval(buyerInterval);
+    };
+  }, []);
+
+  // Pre-fill form with session data when available
+  useEffect(() => {
+    if (session?.user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: session.user.name || prev.name,
+        email: session.user.email || prev.email,
+      }));
+    }
+  }, [session]);
+
+  // Initialize parameterValues when parameterFields change
+  useEffect(() => {
+    if (parameterFields.length > 0) {
+      const initialValues: Record<string, string> = {};
+      parameterFields.forEach((field) => {
+        initialValues[field] = "";
+      });
+      setParameterValues(initialValues);
+    }
+  }, [programData?.parameter]);
+
+  // Generate referral link with user's referral code
+  const referralLink = programData?.id && userReferralCode
+    ? `https://kross.id/programs/${programData.id}?reff=${userReferralCode}`
+    : programData?.id
+    ? `https://kross.id/programs/${programData.id}`
+    : "https://kross.id/programs";
+
+  // Share to social media functions
+  const shareToWhatsApp = () => {
+    const text = `🔥 Cek program keren ini: ${program.title}\n\n${program.description}\n\nDaftar sekarang: ${referralLink}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const shareToFacebook = () => {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}&quote=${encodeURIComponent(`🔥 ${program.title} - ${program.description}`)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const shareToTikTok = () => {
+    // TikTok doesn't have direct share API, so we copy the link and show instructions
+    navigator.clipboard.writeText(referralLink);
+    Swal.fire({
+      icon: 'info',
+      title: 'Link Disalin!',
+      html: `
+        <p>Link sudah disalin ke clipboard.</p>
+        <p class="mt-2 text-sm">Buka TikTok dan paste link di bio atau caption video Anda.</p>
+      `,
+      confirmButtonText: 'Buka TikTok',
+      showCancelButton: true,
+      cancelButtonText: 'Tutup',
+      background: '#0f172a',
+      color: '#fff',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.open('https://www.tiktok.com', '_blank');
+      }
+    });
+  };
+
+  const shareToTwitter = () => {
+    const text = `🔥 ${program.title}\n\n${program.description}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralLink)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
     Swal.fire({
       icon: 'success',
       title: 'Link Disalin!',
-      text: 'Sekarang Anda bisa membagikannya di media sosial.',
-      timer: 1500,
+      text: 'Sekarang Anda bisa membagikannya di jaringan Anda.',
+      timer: 2000,
       showConfirmButton: false,
       toast: true,
-      position: 'top-end'
+      position: 'top-end',
+      background: '#0f172a',
+      color: '#fff',
+      iconColor: '#7ED321'
     });
   };
 
-  // Simulasi Data Program yang dipilih
+  // Handle form input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle parameter input change
+  const handleParameterChange = (field: string, value: string) => {
+    setParameterValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({ name: "", email: "", phone: "" });
+    const resetParams: Record<string, string> = {};
+    parameterFields.forEach((field) => {
+      resetParams[field] = "";
+    });
+    setParameterValues(resetParams);
+    setFormStep(1);
+  };
+
+  // Handle modal close
+  const handleCloseModal = () => {
+    setShowRegisterModal(false);
+    setFormStep(1);
+  };
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showRegisterModal) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = '15px'; // Prevent layout shift
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [showRegisterModal]);
+
+  // Handle next step in form
+  const handleNextStep = () => {
+    if (!formData.name || !formData.email || !formData.phone) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Form Tidak Lengkap',
+        text: 'Mohon lengkapi semua field yang wajib diisi.',
+        background: '#0f172a',
+        color: '#fff',
+      });
+      return;
+    }
+    setFormStep(2);
+  };
+
+  // Handle form submit
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate required fields
+    if (!formData.name || !formData.email || !formData.phone) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Form Tidak Lengkap',
+        text: 'Mohon lengkapi semua field yang wajib diisi.',
+        background: '#0f172a',
+        color: '#fff',
+      });
+      return;
+    }
+
+    // Combine parameter values with |
+    const parameterValueString = parameterFields.length > 0
+      ? parameterFields.map((field) => parameterValues[field] || "").join("|")
+      : "";
+
+    try {
+      await createRegister({
+        program_id: Number(programData?.id),
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        parameter_value: parameterValueString as any,
+        referral: referralCode,
+      }).unwrap();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Registrasi Berhasil!',
+        text: 'Anda telah berhasil mendaftar program ini.',
+        timer: 3000,
+        showConfirmButton: false,
+        background: '#0f172a',
+        color: '#fff',
+        iconColor: '#7ED321'
+      });
+
+      setShowRegisterModal(false);
+      resetForm();
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Registrasi Gagal',
+        text: err?.data?.message || 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.',
+        background: '#0f172a',
+        color: '#fff',
+      });
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="relative min-h-screen text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#367CC0] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white/60 text-sm font-bold uppercase tracking-widest">Loading Program...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !programData || isNaN(id)) {
+    return (
+      <div className="relative min-h-screen text-white flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">Program Not Found</h2>
+          <p className="text-white/60 text-sm mb-6">Program yang Anda cari tidak ditemukan atau telah dihapus.</p>
+          <button 
+            onClick={() => router.push('/programs')}
+            className="bg-[#367CC0] text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-[#367CC0]/80 transition-all"
+          >
+            Back to Programs
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Format currency
+  const formatCurrency = (value: number | null | undefined) => {
+    if (!value) return "Free";
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  // Calculate commission display
+  const getCommissionDisplay = () => {
+    if (programData.commission && programData.commission > 0) {
+      return `${programData.commission}%`;
+    }
+    if (programData.nominal && programData.nominal > 0) {
+      return formatCurrency(programData.nominal);
+    }
+    return "Contact Owner";
+  };
+
+  // Get display image
+  const getImageUrl = () => {
+    if (programData.avif) return programData.avif;
+    if (programData.original) return programData.original;
+    if (typeof programData.image === 'string' && programData.image) return programData.image;
+    return "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200";
+  };
+
   const program = {
-    title: "Digital Skill Bootcamp 2025",
-    owner: "EduTech Global",
-    category: "Professional Development",
+    title: programData.title || "Program Title",
+    subtitle: programData.sub_title || "",
+    owner: programData.owner_name || "Program Owner",
+    category: programData.program_category_name || "General",
+    parameter: programData.parameter || "",
     rating: 4.8,
     reviews: 124,
     participants: "1,200+",
-    price: "IDR 1.500.000",
-    commission: "15% (IDR 225k) per sale",
-    description: "Program intensif 3 bulan untuk menguasai Fullstack Development dengan kurikulum yang disesuaikan dengan kebutuhan industri startup global.",
+    price: formatCurrency(programData.nominal),
+    commission: getCommissionDisplay() + " per sale",
+    description: programData.description || "No description available",
     benefits: [
       "Sertifikat Kompetensi Internasional",
       "Akses Lifetime ke Modul Pembelajaran",
@@ -65,267 +480,381 @@ export default function ProgramDetail() {
       "Memiliki minimal 500 followers di Sosmed",
       "Aktif di komunitas edukasi/teknologi",
       "Paham dasar-dasar digital marketing"
-    ]
+    ],
+    imageUrl: getImageUrl()
   };
 
   return (
-    <div className="bg-[#F4F2EE] min-h-screen pb-12 font-sans">
-      {/* --- HEADER NAV --- */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <button className="flex items-center gap-2 text-gray-500 hover:text-[#4A90E2] font-bold text-sm transition-all">
-            <ChevronLeft className="w-4 h-4" /> Back to Marketplace
+    <div className="relative min-h-screen text-white">
+      {/* --- HEADER NAV (Glassmorphism) --- */}
+      <nav className="sticky top-0 z-[100] bg-white/5 backdrop-blur-xl border-b border-white/10 h-20">
+        <div className="container mx-auto px-6 h-full flex items-center justify-between">
+          <button 
+            onClick={() => router.push('/programs')}
+            className="flex items-center gap-3 text-white/50 hover:text-white font-black text-xs uppercase tracking-widest transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-[#367CC0]">
+                <ChevronLeft className="w-4 h-4" />
+            </div>
+            Back to Marketplace
           </button>
           <div className="flex gap-4">
-            <button className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all">
+            <button 
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: program.title,
+                    text: program.description,
+                    url: window.location.href,
+                  });
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Link Disalin!',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end',
+                  });
+                }
+              }}
+              className="w-10 h-10 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/60 hover:text-white"
+            >
               <Share2 className="w-5 h-5" />
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="container mx-auto px-6 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* --- LEFT COLUMN: CONTENT (LinkedIn Post/Article Style) --- */}
-          <div className="lg:col-span-8 space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              {/* Banner Image */}
-              <div className="h-64 relative bg-gray-200">
+          {/* --- LEFT COLUMN: Main Content Area --- */}
+          <div className="lg:col-span-8 space-y-8">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[48px] overflow-hidden shadow-2xl"
+            >
+              {/* Premium Banner */}
+              <div className="h-80 relative overflow-hidden group">
                 <Image 
-                  src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200" 
-                  alt="Program Banner" 
+                  src={program.imageUrl} 
+                  alt={program.title} 
                   fill 
-                  className="object-cover"
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
                 />
-                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-lg flex items-center gap-2 border border-white">
-                  <span className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse"></span>
-                  <span className="text-[10px] font-black text-[#4A90E2] uppercase tracking-widest">Active Program</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-60"></div>
+                <div className="absolute bottom-6 left-8 bg-white/10 backdrop-blur-md px-5 py-2 rounded-2xl flex items-center gap-3 border border-white/20">
+                  <div className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse shadow-[0_0_10px_#7ED321]"></div>
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">
+                    {programData.status ? "Active Program" : "Inactive"}
+                  </span>
                 </div>
               </div>
 
-              {/* Program Identity */}
-              <div className="p-8">
-                <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-                  <div>
-                    <p className="text-[#4A90E2] font-black text-xs uppercase tracking-widest mb-1">{program.category}</p>
-                    <h1 className="text-3xl font-black text-gray-900 leading-tight mb-2">{program.title}</h1>
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1 font-bold text-gray-700">
-                        <Star className="w-4 h-4 text-[#F2A93B] fill-[#F2A93B]" /> {program.rating} 
-                        <span className="text-gray-400 font-medium">({program.reviews} reviews)</span>
+              {/* Program Identity Area */}
+              <div className="p-10">
+                <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-10 border-b border-white/5 pb-10">
+                  <div className="flex-1">
+                    <span className="text-[#367CC0] font-black text-[10px] uppercase tracking-[0.3em] block mb-3">{program.category}</span>
+                    <h1 className="text-4xl font-black text-white leading-tight mb-4 tracking-tighter">{program.title}</h1>
+                    {program.subtitle && (
+                      <p className="text-white/60 text-base mb-4 italic">{program.subtitle}</p>
+                    )}
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-[#DF9B35]">
+                        <Star className="w-4 h-4 fill-[#DF9B35]" /> {program.rating} 
+                        <span className="text-white/30 font-medium">({program.reviews} reviews)</span>
                       </div>
-                      <div className="flex items-center gap-1 font-bold text-gray-700">
-                        <Users className="w-4 h-4 text-gray-400" /> {program.participants} <span className="text-gray-400 font-medium">Students</span>
+                      <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
+                        <Users className="w-4 h-4" /> {program.participants} <span className="font-medium">Students Joined</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="w-10 h-10 bg-[#4A90E2] rounded-lg flex items-center justify-center text-white font-black italic">E</div>
+                  
+                  {/* Owner Diamond Frame */}
+                  <div className="flex items-center gap-5 p-6 bg-white/5 rounded-[32px] border border-white/10 group hover:bg-white/10 transition-all">
+                    <div className="relative w-14 h-14 rotate-45 bg-[#367CC0] rounded-2xl flex items-center justify-center shadow-lg shadow-[#367CC0]/30 overflow-hidden">
+                        <div className="-rotate-45 font-black text-white text-xl">
+                          {program.owner.charAt(0).toUpperCase()}
+                        </div>
+                    </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase leading-none mb-1">Created by</p>
-                      <p className="text-sm font-black text-gray-900">{program.owner}</p>
+                      <p className="text-[9px] text-white/40 font-black uppercase tracking-widest mb-1">Asset Owner</p>
+                      <p className="text-sm font-black text-white uppercase tracking-tighter">{program.owner}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed mb-8">
-                  <h4 className="text-lg font-bold text-gray-900 mb-3">About this program</h4>
-                  <p>{program.description}</p>
+                {/* About Content */}
+                <div className="space-y-4 mb-12">
+                  <h4 className="text-xs font-black text-[#367CC0] uppercase tracking-[0.2em]">Asset Overview</h4>
+                  <p className="text-white/60 text-lg leading-relaxed italic font-light">"{program.description}"</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-[#7ED321]" /> Student Benefits
+                <div className="grid md:grid-cols-2 gap-10">
+                  <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+                      <Award className="w-4 h-4 text-[#7ED321]" /> Student Value
                     </h4>
-                    <ul className="space-y-3">
+                    <ul className="space-y-4">
                       {program.benefits.map((b, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-gray-600 font-medium">
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full mt-1.5"></span> {b}
+                        <li key={i} className="flex items-start gap-4 text-sm text-white/60 group">
+                          <CheckCircle className="w-4 h-4 text-[#7ED321] shrink-0 mt-0.5" /> 
+                          <span className="group-hover:text-white transition-colors">{b}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-[#F2A93B]" /> Affiliate Guidelines
+                  <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+                      <Target className="w-4 h-4 text-[#DF9B35]" /> Promotion Guide
                     </h4>
-                    <ul className="space-y-3">
+                    <ul className="space-y-4">
                       {program.affiliateRequirements.map((r, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-gray-600 font-medium italic">
-                          <span className="w-1.5 h-1.5 border border-[#F2A93B] rounded-full mt-1.5"></span> {r}
+                        <li key={i} className="flex items-start gap-4 text-sm text-white/40 italic">
+                          <Zap className="w-4 h-4 text-[#DF9B35] shrink-0 mt-0.5" /> 
+                          <span>{r}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* --- RIGHT COLUMN: DUAL ACTION CARDS --- */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* --- RIGHT COLUMN: Double Action Cards --- */}
+          <div className="lg:col-span-4 space-y-8">
             
-            {/* CARD 1: For Students/Users */}
-            <div className="bg-white rounded-2xl border-2 border-transparent shadow-xl p-6 ring-1 ring-gray-100 relative overflow-hidden group hover:border-[#4A90E2] transition-all">
-              <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-50 rounded-full opacity-50 group-hover:scale-150 transition-all"></div>
+            {/* CARD 1: Student Enrollment (White Glass Notch) - Enhanced with Urgency */}
+            <motion.div 
+                whileHover={{ y: -5 }}
+                className="bg-white p-8 pt-12 rounded-[40px] shadow-2xl relative border border-white group overflow-hidden"
+                style={{ WebkitMaskImage: 'radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)' }}
+            >
+              {/* Timer Badge - Urgency */}
+              {!isTimerExpired && (
+                <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-orange-500 py-2 px-4 flex items-center justify-center gap-2">
+                  <Flame className="w-4 h-4 text-white animate-pulse" />
+                  <span className="text-white text-[10px] font-black uppercase tracking-wider">
+                    Promo berakhir: {formatTime(timeLeft)}
+                  </span>
+                </div>
+              )}
               
-              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4" /> Join as Participant
-              </h3>
-              <div className="mb-6">
-                <span className="text-3xl font-black text-gray-900">{program.price}</span>
-                <p className="text-xs text-gray-500 font-medium mt-1">One-time payment for full access</p>
+              {/* Live viewers indicator */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-1.5 bg-green-100 px-2.5 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-green-700 text-[9px] font-bold">{currentViewers} sedang melihat</span>
+                </div>
               </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                   <ShieldCheck className="w-4 h-4 text-[#7ED321]" /> 100% Secure Transaction
+
+              <h3 className="text-[10px] font-black text-black/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+                <Globe className="w-4 h-4 text-[#367CC0]" /> Public Enrollment
+              </h3>
+              <div className="mb-8">
+                <span className="text-4xl font-black text-black tracking-tighter">{program.price}</span>
+                <p className="text-[11px] text-black/40 font-bold uppercase tracking-widest mt-2">Full Access Authorization</p>
+              </div>
+              <ul className="space-y-4 mb-10">
+                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
+                   <ShieldCheck className="w-5 h-5 text-[#7ED321]" /> Secure Transaction
                 </li>
-                <li className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                   <CheckCircle className="w-4 h-4 text-[#7ED321]" /> Lifetime Support Access
+                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
+                   <Award className="w-5 h-5 text-[#367CC0]" /> Lifetime Verification
+                </li>
+                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
+                   <Gift className="w-5 h-5 text-[#DF9B35]" /> Bonus Eksklusif
                 </li>
               </ul>
-              <Link href="/checkout" className="w-full bg-[#4A90E2] text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3" >
-                <CreditCard className="w-5 h-5" /> Buy & Join Program
-              </Link>
-            </div>
-
-            {/* CARD 2: Affiliate Control Panel (POV: Sudah Login & Join) */}
-            {!isJoinedAsAffiliate ? (
-              /* Tampilan Jika Belum Join (Sama seperti sebelumnya) */
-              <div className="bg-gradient-to-br from-[#1A1A1A] to-[#333] rounded-2xl p-6 shadow-xl relative overflow-hidden group">
-              {/* Highlight Effect */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#F2A93B]/20 rounded-full blur-3xl group-hover:bg-[#F2A93B]/30 transition-all"></div>
+              <button 
+                onClick={() => setShowRegisterModal(true)}
+                disabled={isTimerExpired}
+                className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl transition-all flex items-center justify-center gap-3 relative overflow-hidden group ${
+                  isTimerExpired 
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                    : 'bg-[#0f172a] text-white hover:bg-gradient-to-r hover:from-[#367CC0] hover:to-[#7ED321]'
+                }`}
+              >
+                {!isTimerExpired && (
+                  <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12" />
+                )}
+                <CreditCard className="w-5 h-5" /> 
+                {isTimerExpired ? 'Promo Berakhir' : 'Buy Program'}
+              </button>
               
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-black text-[#F2A93B] uppercase tracking-widest flex items-center gap-2">
-                    <Zap className="w-4 h-4" /> Become an Affiliate
-                  </h3>
-                  <div className="bg-[#F2A93B] text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase">High Earning</div>
-                </div>
-                
-                <div className="mb-6">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mb-1">Commission Potential</p>
-                  <span className="text-2xl font-black text-white">{program.commission}</span>
-                </div>
+              {/* Scarcity text */}
+              {!isTimerExpired && (
+                <p className="text-center text-[9px] text-red-500 font-bold mt-3 animate-pulse">
+                  ⚡ Kuota terbatas! Segera daftar sekarang
+                </p>
+              )}
+            </motion.div>
 
-                <div className="space-y-4 mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                      <Rocket className="w-4 h-4 text-[#F2A93B]" />
+            {/* CARD 2: Affiliate Dashboard (Dark Glass Notch) */}
+            {!isSalesRole ? (
+              <div 
+                className="bg-[#0a0a0a] p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5"
+                style={{ WebkitMaskImage: 'radial-gradient(circle 60px at 100% 0%, transparent 100%, black 101%)' }}
+              >
+                <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.3em] flex items-center gap-3">
+                        <Zap className="w-4 h-4 fill-[#DF9B35]" /> Earnings Hub
+                    </h3>
+                    <div className="bg-[#DF9B35]/10 text-[#DF9B35] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[#DF9B35]/20">High Potential</div>
                     </div>
-                    <p className="text-[11px] text-gray-300 leading-tight">Dapatkan **Marketing Kit** (Banner & Copywriting) gratis setelah pendaftaran disetujui.</p>
+                    
+                    <div className="mb-8">
+                    <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.2em] mb-2">Commission Rate</p>
+                    <span className="text-3xl font-black text-white tracking-tighter">{program.commission}</span>
+                    </div>
+
+                    <p className="text-xs text-white/40 leading-relaxed italic mb-10">"Authorized agents receive 24/7 tracking support and marketing assets instantly."</p>
+
+                    <button 
+                        onClick={() => setShowModal(true)}
+                        className="w-full bg-[#DF9B35] text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-lg shadow-[#DF9B35]/20 hover:brightness-110 transition-all flex items-center justify-center gap-3"
+                    >
+                        Register Access
+                    </button>
+                    <p className="text-center text-[9px] text-white/20 font-black mt-5 uppercase tracking-[0.2em]">Verified Agents Only</p>
+                </div>
+                {/* Background Decoration */}
+                <Rocket className="absolute right-[-20px] bottom-[-20px] w-40 h-40 text-white/[0.02] -rotate-12 pointer-events-none" />
+              </div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="bg-white/10 backdrop-blur-3xl p-10 rounded-[48px] border border-white/10 shadow-2xl relative overflow-hidden"
+                style={{ WebkitMaskImage: 'radial-gradient(circle 60px at 100% 0%, transparent 100%, black 101%)' }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="bg-[#7ED321]/10 text-[#7ED321] px-4 py-1.5 rounded-full text-[9px] font-black uppercase border border-[#7ED321]/20 tracking-widest flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#7ED321] animate-pulse"></div>
+                    Active Sales
                   </div>
+                  <BarChart3 className="w-5 h-5 text-white/20" />
                 </div>
 
-                <button className="w-full bg-white text-gray-900 py-4 rounded-xl font-black uppercase tracking-widest hover:bg-[#F2A93B] hover:text-white transition-all flex items-center justify-center gap-3" onClick={() => setShowModal(true)}>
-                  Register as Affiliate
-                </button>
-                
-                <AffiliateRegisterModal 
-                  isOpen={showModal} 
-                  onClose={() => setShowModal(false)} 
-                  programTitle="Digital Skill Bootcamp 2025" 
-                />
-                <p className="text-center text-[10px] text-gray-500 font-bold mt-4 uppercase tracking-tighter">Subject to Owner Approval</p>
-              </div>
-            </div>
-            ) : (
-              /* Tampilan Jika SUDAH Join (Marketing Dashboard) */
-              <div className="bg-white rounded-2xl border-2 border-[#F2A93B] shadow-xl p-6 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="bg-orange-50 text-[#F2A93B] px-3 py-1 rounded-full text-[10px] font-black uppercase border border-orange-100">
-                    Affiliate Active
-                  </div>
-                  <BarChart3 className="w-5 h-5 text-gray-400" />
+                {/* User Referral Code Display */}
+                <div className="bg-gradient-to-r from-[#DF9B35]/20 to-[#7ED321]/20 border border-[#DF9B35]/30 rounded-2xl p-4 mb-6">
+                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Kode Referral Anda</p>
+                  <p className="text-2xl font-black text-[#DF9B35] tracking-tighter">{userReferralCode || 'N/A'}</p>
                 </div>
 
                 <div className="mb-6">
-                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Your Referral Link</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-xs font-bold text-gray-600 truncate">
+                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-3 block">Link Referral Anda</span>
+                  <div className="flex gap-2 p-1.5 bg-black/40 border border-white/5 rounded-2xl">
+                    <div className="flex-1 px-3 py-2 text-[10px] font-bold text-white/60 truncate italic leading-loose">
                       {referralLink}
                     </div>
                     <button 
                       onClick={handleCopyLink}
-                      className="bg-[#F2A93B] text-white p-2 rounded-lg hover:bg-[#d89632] transition-all"
+                      className="bg-[#DF9B35] text-white w-10 h-10 rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-[#DF9B35]/20"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase leading-none mb-1">Total Clicks</p>
-                      <p className="text-lg font-black text-gray-900">142</p>
-                   </div>
-                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase leading-none mb-1">Earnings</p>
-                      <p className="text-lg font-black text-[#7ED321]">IDR 450k</p>
-                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Share to Networks</Label>
-                  <div className="flex gap-2">
+                {/* Share to Social Media Buttons */}
+                <div className="mb-8">
+                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-4 block">Bagikan ke Sosial Media</span>
+                  <div className="grid grid-cols-4 gap-3">
                     {/* WhatsApp */}
-                    <Button className="flex-1 bg-[#25D366] text-white py-2.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                        </svg>
-                    </Button>
+                    <button 
+                      onClick={shareToWhatsApp}
+                      className="flex flex-col items-center gap-2 p-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-2xl transition-all group"
+                    >
+                      <svg className="w-6 h-6 text-[#25D366] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      <span className="text-[8px] font-bold text-white/60 uppercase">WhatsApp</span>
+                    </button>
+
                     {/* Facebook */}
-                    <Button className="flex-1 bg-[#1877F2] text-white py-2.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                        </svg>
-                    </Button>
+                    <button 
+                      onClick={shareToFacebook}
+                      className="flex flex-col items-center gap-2 p-3 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border border-[#1877F2]/30 rounded-2xl transition-all group"
+                    >
+                      <svg className="w-6 h-6 text-[#1877F2] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                      <span className="text-[8px] font-bold text-white/60 uppercase">Facebook</span>
+                    </button>
+
                     {/* TikTok */}
-                    <Button className="flex-1 bg-black text-white py-2.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
-                        </svg>
-                    </Button>
-                    {/* Instagram */}
-                    <Button className="flex-1 bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] text-white py-2.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                        </svg>
-                    </Button>
+                    <button 
+                      onClick={shareToTikTok}
+                      className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 border border-white/20 rounded-2xl transition-all group"
+                    >
+                      <svg className="w-6 h-6 text-white group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                      </svg>
+                      <span className="text-[8px] font-bold text-white/60 uppercase">TikTok</span>
+                    </button>
+
+                    {/* Twitter/X */}
+                    <button 
+                      onClick={shareToTwitter}
+                      className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 border border-white/20 rounded-2xl transition-all group"
+                    >
+                      <svg className="w-6 h-6 text-white group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                      <span className="text-[8px] font-bold text-white/60 uppercase">X</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
-                  <button className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all">
-                    <Download className="w-4 h-4" /> Download Marketing Kit
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                   <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Total Clicks</p>
+                      <p className="text-2xl font-black text-white tracking-tighter">142</p>
+                   </div>
+                   <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Total Earned</p>
+                      <p className="text-2xl font-black text-[#7ED321] tracking-tighter">450k</p>
+                   </div>
+                </div>
+
+                <div className="space-y-4 pt-6 border-t border-white/5">
+                  <button className="w-full flex items-center justify-center gap-3 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#367CC0] hover:text-white transition-all shadow-xl">
+                    <Download className="w-4 h-4" /> Marketing Kit
                   </button>
-                  <button className="w-full flex items-center justify-center gap-2 py-3 text-[#4A90E2] font-black text-xs uppercase hover:bg-blue-50 rounded-xl transition-all">
-                    View Full Report <ExternalLink className="w-3 h-3" />
+                  <button className="w-full flex items-center justify-center gap-3 py-4 text-[#367CC0] font-black text-[10px] uppercase tracking-widest hover:bg-white/5 rounded-2xl transition-all">
+                    Full Performance <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* Stats / Proof Sidebar */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Program Vitality</h4>
-               <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-xs font-bold text-gray-500">Avg. Payout Time</span>
-                    <span className="text-sm font-black text-gray-900">24 Hours</span>
+            {/* Vitality Sidebar */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-xl">
+               <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-8">Asset Metrics</h4>
+               <div className="space-y-8">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                        <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Payout Cycle</span>
+                        <span className="text-sm font-black text-white uppercase tracking-tighter">24 Hours</span>
+                    </div>
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} transition={{ duration: 1.5 }} className="bg-[#7ED321] h-full shadow-[0_0_10px_#7ED321]"></motion.div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-[#7ED321] h-full w-[85%]"></div>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <span className="text-xs font-bold text-gray-500">Conv. Rate</span>
-                    <span className="text-sm font-black text-gray-900">12.4%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-[#4A90E2] h-full w-[60%]"></div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                        <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Conversion Rate</span>
+                        <span className="text-sm font-black text-white uppercase tracking-tighter">12.4%</span>
+                    </div>
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: "60%" }} transition={{ duration: 1.5 }} className="bg-[#367CC0] h-full shadow-[0_0_10px_#367CC0]"></motion.div>
+                    </div>
                   </div>
                </div>
             </div>
@@ -333,6 +862,331 @@ export default function ProgramDetail() {
           </div>
         </div>
       </main>
+
+      <AffiliateRegisterModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        programTitle={program.title}
+        programId={programData?.id}
+      />
+
+      {/* Register Program Modal - Enhanced with Neuroscience */}
+      <AnimatePresence>
+        {showRegisterModal && (
+          <>
+            {/* Fixed overlay that blocks all interaction */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md"
+              aria-hidden="true"
+            />
+            
+            {/* Modal container - centered, not clickable to close */}
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none mt-16">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/10 rounded-[32px] w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl relative pointer-events-auto"
+              >
+              {/* Urgency Timer Bar - Always visible at top */}
+              <div className="bg-gradient-to-r from-red-600 via-orange-500 to-red-600 px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
+                <Flame className="w-5 h-5 text-white animate-bounce" />
+                <span className="text-white font-black text-sm uppercase tracking-wider">
+                  {isTimerExpired ? (
+                    "Penawaran Telah Berakhir!"
+                  ) : (
+                    <>Penawaran Berakhir Dalam: <span className="text-yellow-300 text-lg ml-2">{formatTime(timeLeft)}</span></>
+                  )}
+                </span>
+                <Clock className="w-5 h-5 text-white" />
+              </div>
+
+              {/* Modal Header */}
+              <div className="relative p-6 pb-4 border-b border-white/10">
+                <button
+                  onClick={handleCloseModal}
+                  className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                
+                {/* Progress Steps - Neuroscience: Progress Indicator */}
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {[1, 2].map((step) => (
+                    <div key={step} className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                        formStep >= step 
+                          ? 'bg-[#7ED321] text-white shadow-lg shadow-[#7ED321]/30' 
+                          : 'bg-white/10 text-white/40'
+                      }`}>
+                        {formStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+                      </div>
+                      {step < totalSteps && (
+                        <div className={`w-12 h-1 rounded-full transition-all ${
+                          formStep > step ? 'bg-[#7ED321]' : 'bg-white/10'
+                        }`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#367CC0] to-[#7ED321] flex items-center justify-center shadow-lg">
+                    <Sparkles className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-black text-white tracking-tight">
+                      {formStep === 1 ? "Daftar Sekarang" : "Konfirmasi Data"}
+                    </h2>
+                    <p className="text-xs text-white/40 font-medium">{program.title}</p>
+                  </div>
+                </div>
+
+                {/* Social Proof - Live Activity */}
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-green-400 text-[10px] font-bold uppercase">{currentViewers} orang sedang melihat</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#DF9B35]/10 px-3 py-1.5 rounded-full border border-[#DF9B35]/20">
+                    <TrendingUp className="w-3 h-3 text-[#DF9B35]" />
+                    <span className="text-[#DF9B35] text-[10px] font-bold uppercase">Trending</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Body - Form */}
+              <form onSubmit={handleRegisterSubmit} className="p-6 space-y-5 max-h-[50vh] overflow-y-auto">
+                
+                {formStep === 1 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="space-y-5"
+                  >
+                    {/* Exclusive Offer Banner */}
+                    <div className="bg-gradient-to-r from-[#367CC0]/20 to-[#7ED321]/20 border border-[#367CC0]/30 rounded-2xl p-4 flex items-center gap-3">
+                      <Gift className="w-8 h-8 text-[#7ED321]" />
+                      <div>
+                        <p className="text-white font-bold text-sm">🎁 Bonus Eksklusif!</p>
+                        <p className="text-white/60 text-xs">Daftar dalam 10 menit & dapatkan akses premium gratis</p>
+                      </div>
+                    </div>
+
+                    {/* Name Field */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                        <User className="w-4 h-4" /> Nama Lengkap <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        placeholder="Masukkan nama lengkap"
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        required
+                        readOnly={!!session?.user}
+                        disabled={!!session?.user}
+                      />
+                      {session?.user && (
+                        <p className="text-[10px] text-[#7ED321] italic flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Data terverifikasi dari akun Anda
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Email Field */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                        <Mail className="w-4 h-4" /> Email <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="Masukkan email"
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        required
+                        readOnly={!!session?.user}
+                        disabled={!!session?.user}
+                      />
+                      {session?.user && (
+                        <p className="text-[10px] text-[#7ED321] italic flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Data terverifikasi dari akun Anda
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Phone Field */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+                        <Phone className="w-4 h-4" /> Nomor Telepon <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="Masukkan nomor telepon"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
+                        required
+                      />
+                    </div>
+
+                    {/* Continue Button */}
+                    <button
+                      type="button"
+                      onClick={parameterFields.length > 0 ? handleNextStep : undefined}
+                      className="w-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
+                    >
+                      <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+                      {parameterFields.length > 0 ? (
+                        <>
+                          Lanjutkan <ChevronRight className="w-5 h-5" />
+                        </>
+                      ) : (
+                        <>
+                          <Rocket className="w-5 h-5" /> Daftar Sekarang
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+
+                {formStep === 2 && parameterFields.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-5"
+                  >
+                    {/* Back button */}
+                    <button
+                      type="button"
+                      onClick={() => setFormStep(1)}
+                      className="flex items-center gap-2 text-white/50 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Kembali
+                    </button>
+
+                    {/* Summary Card */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Data Anda</p>
+                      <div className="space-y-1 text-sm">
+                        <p className="text-white"><span className="text-white/50">Nama:</span> {formData.name}</p>
+                        <p className="text-white"><span className="text-white/50">Email:</span> {formData.email}</p>
+                        <p className="text-white"><span className="text-white/50">Telepon:</span> {formData.phone}</p>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Parameter Fields */}
+                    <div className="space-y-4">
+                      <p className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> Informasi Tambahan
+                      </p>
+                      {parameterFields.map((field, index) => (
+                        <div key={index} className="space-y-2">
+                          <Label className="text-xs font-black text-white/60 uppercase tracking-widest">
+                            {field}
+                          </Label>
+                          <Input
+                            type="text"
+                            value={parameterValues[field] || ""}
+                            onChange={(e) => handleParameterChange(field, e.target.value)}
+                            placeholder={`Masukkan ${field.toLowerCase()}`}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || isTimerExpired}
+                      className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative overflow-hidden group"
+                    >
+                      <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Mendaftar...
+                        </>
+                      ) : (
+                        <>
+                          <Rocket className="w-5 h-5" />
+                          Konfirmasi & Daftar
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* If no parameter fields, show submit directly in step 1 */}
+                {formStep === 1 && parameterFields.length === 0 && (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isTimerExpired}
+                    className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative overflow-hidden group"
+                  >
+                    <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Mendaftar...
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="w-5 h-5" />
+                        Daftar Sekarang
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Recent Buyers - Social Proof */}
+                <div className="pt-4 border-t border-white/10">
+                  <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3 text-center">Baru saja mendaftar</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {recentBuyers.map((name, i) => (
+                      <motion.div
+                        key={`${name}-${i}`}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2"
+                      >
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#367CC0] to-[#7ED321] flex items-center justify-center text-[8px] font-bold text-white">
+                          {name.charAt(0)}
+                        </div>
+                        <span className="text-[10px] text-white/60">{name}</span>
+                        <CheckCircle className="w-3 h-3 text-[#7ED321]" />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Trust Badges */}
+                <div className="flex items-center justify-center gap-4 pt-2">
+                  <div className="flex items-center gap-1 text-[9px] text-white/30">
+                    <ShieldCheck className="w-3 h-3" /> SSL Secured
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] text-white/30">
+                    <Award className="w-3 h-3" /> Verified Partner
+                  </div>
+                </div>
+              </form>
+            </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

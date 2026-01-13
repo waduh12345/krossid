@@ -12,8 +12,11 @@ import {
   Layers, 
   TrendingUp,
   Star,
-  MoreHorizontal
+  MoreHorizontal,
+  Flame,
+  Award
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Mock Data Programs
 const ALL_PROGRAMS = [
@@ -73,32 +76,31 @@ export default function MarketplacePage() {
   }, [searchTerm, activeCategory]);
 
   return (
-    <div className="bg-[#F4F2EE] min-h-screen font-sans">
-      
-      {/* MAIN LAYOUT */}
-      <div className="container mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="relative min-h-screen">
+      {/* --- MAIN LAYOUT --- */}
+      <div className="container mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
         
         {/* LEFT SIDEBAR: Filters */}
-        <aside className="lg:col-span-3 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="font-black text-sm text-gray-900 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-[#4A90E2]" /> Filter Programs
+        <aside className="lg:col-span-3 space-y-6">
+          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/5">
+              <h3 className="font-black text-xs text-white uppercase tracking-[0.2em] flex items-center gap-3">
+                <Filter className="w-4 h-4 text-[#367CC0]" /> Filter Hub
               </h3>
             </div>
-            <div className="p-4 space-y-6">
+            <div className="p-6 space-y-8">
               {/* Category Filter */}
               <div>
-                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 block">Categories</Label>
+                <span className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-4 block">Main Categories</span>
                 <div className="space-y-1">
                   {categories.map(cat => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                      className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                         activeCategory === cat 
-                        ? "bg-blue-50 text-[#4A90E2] ring-1 ring-blue-100" 
-                        : "text-gray-500 hover:bg-gray-50"
+                        ? "bg-[#367CC0] text-white shadow-lg shadow-[#367CC0]/20" 
+                        : "text-white/50 hover:bg-white/5"
                       }`}
                     >
                       {cat}
@@ -109,12 +111,15 @@ export default function MarketplacePage() {
 
               {/* Commission Type */}
               <div>
-                <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 block">Commission Type</Label>
-                <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-4 block">Income Model</span>
+                <div className="space-y-3">
                    {['Flat Based', 'Dynamic %', 'Recurring'].map(type => (
-                     <label key={type} className="flex items-center gap-2 cursor-pointer group">
-                        <input type="checkbox" className="rounded border-gray-300 text-[#4A90E2] focus:ring-[#4A90E2]" />
-                        <span className="text-xs font-bold text-gray-600 group-hover:text-gray-900 transition-colors">{type}</span>
+                     <label key={type} className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative flex items-center justify-center">
+                          <input type="checkbox" className="peer appearance-none w-5 h-5 rounded-lg border border-white/10 bg-white/5 checked:bg-[#DF9B35] transition-all" />
+                          <ShieldCheck className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                        </div>
+                        <span className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">{type}</span>
                      </label>
                    ))}
                 </div>
@@ -124,133 +129,146 @@ export default function MarketplacePage() {
         </aside>
 
         {/* CENTER COLUMN: Marketplace Feed */}
-        <main className="lg:col-span-6 space-y-4">
+        <main className="lg:col-span-6 space-y-6">
           
-          {/* Search Header */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          {/* Premium Search Header */}
+          <div className="bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[32px] p-6 shadow-2xl">
             <div className="relative">
-              <Search className="absolute left-4 top-3 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
               <input 
                 type="text"
-                placeholder="Search programs by name or brand..."
-                className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4A90E2]/20 focus:border-[#4A90E2] transition-all"
+                placeholder="Search premium programs or corporate brands..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-2">
-             <p className="text-xs font-bold text-gray-500">Showing {filteredPrograms.length} active programs</p>
-             <div className="flex items-center gap-1 text-xs font-bold text-gray-900 cursor-pointer">
-               Sort by: Relevance <MoreHorizontal className="w-3 h-3" />
+          <div className="flex items-center justify-between px-4">
+             <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Live Inventory: {filteredPrograms.length} Programs</p>
+             <div className="flex items-center gap-2 text-[10px] font-black text-white/60 uppercase tracking-[0.2em] cursor-pointer hover:text-[#367CC0] transition-colors">
+               Sort: Relevance <MoreHorizontal className="w-3 h-3" />
              </div>
           </div>
 
           {/* Program Cards */}
-          <div className="space-y-4">
-            {filteredPrograms.map((prog) => (
-              <div key={prog.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group overflow-hidden">
-                <div className="p-5 flex gap-5">
-                  {/* Thumbnail */}
-                  <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden border border-gray-100">
-                    <Image src={prog.image} alt={prog.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-black text-[#4A90E2] uppercase tracking-tighter">{prog.owner}</span>
-                          {prog.isVerified && <ShieldCheck className="w-3 h-3 text-[#7ED321]" />}
-                        </div>
-                        <h3 className="text-lg font-black text-gray-900 group-hover:text-[#4A90E2] transition-colors leading-tight mb-1 truncate">
-                          {prog.title}
-                        </h3>
-                        <div className="flex items-center gap-3">
-                           <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
-                             <Layers className="w-3 h-3" /> {prog.category}
-                           </span>
-                           <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
-                             <Star className="w-3 h-3 text-[#F2A93B] fill-[#F2A93B]" /> {prog.rating}
-                           </span>
-                        </div>
+          <div className="space-y-6">
+            <AnimatePresence>
+              {filteredPrograms.map((prog) => (
+                <motion.div 
+                  key={prog.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[40px] shadow-2xl group overflow-hidden hover:bg-white/[0.08] transition-all"
+                >
+                  <div className="p-8 flex flex-col md:flex-row gap-8">
+                    {/* Thumbnail within Diamond Frame */}
+                    <div className="relative w-28 h-28 shrink-0 mx-auto md:mx-0">
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#367CC0] to-[#DF9B35] rounded-3xl rotate-12 opacity-20 group-hover:rotate-45 transition-transform duration-700"></div>
+                      <div className="relative w-full h-full rounded-3xl overflow-hidden border border-white/20 shadow-xl">
+                        <Image src={prog.image} alt={prog.title} fill className="object-cover group-hover:scale-125 transition-transform duration-700" />
                       </div>
-                      
-                      {prog.isHot && (
-                        <div className="bg-orange-50 text-[#F2A93B] px-2 py-1 rounded-md text-[9px] font-black uppercase border border-orange-100">
-                          Hot Deal
-                        </div>
-                      )}
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Potential Earn</span>
-                        <span className="text-sm font-black text-[#7ED321]">{prog.commission}</span>
+                    {/* Info Area */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[10px] font-black text-[#367CC0] uppercase tracking-[0.2em]">{prog.owner}</span>
+                            {prog.isVerified && <ShieldCheck className="w-4 h-4 text-[#7ED321]" />}
+                          </div>
+                          <h3 className="text-xl font-black text-white leading-tight mb-2 group-hover:text-[#367CC0] transition-colors">
+                            {prog.title}
+                          </h3>
+                          <div className="flex items-center gap-4">
+                             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                               <Layers className="w-3 h-3" /> {prog.category}
+                             </span>
+                             <span className="text-[10px] font-black text-[#DF9B35] uppercase tracking-widest flex items-center gap-1.5">
+                               <Star className="w-3 h-3 fill-[#DF9B35]" /> {prog.rating}
+                             </span>
+                          </div>
+                        </div>
+                        
+                        {prog.isHot && (
+                          <div className="bg-[#DF9B35]/10 text-[#DF9B35] px-4 py-1.5 rounded-full text-[9px] font-black uppercase border border-[#DF9B35]/20 flex items-center gap-2">
+                            <Flame size={12} /> Hot Deal
+                          </div>
+                        )}
                       </div>
-                      
-                      {/* Link to Detail Page */}
-                      <Link href={`/programs/${prog.slug}`} passHref>
-                        <button className="flex items-center gap-2 bg-gray-50 text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
-                          Join Program <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </Link>
+
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-white/5">
+                        <div className="bg-black/40 px-6 py-3 rounded-2xl border border-white/5">
+                          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Potential Earn</span>
+                          <span className="text-lg font-black text-[#7ED321]">{prog.commission}</span>
+                        </div>
+                        
+                        <Link href={`/programs/${prog.slug}`} className="w-full sm:w-auto">
+                          <button className="w-full flex items-center justify-center gap-3 bg-[#367CC0] text-white hover:bg-[#2d6699] px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#367CC0]/30 transition-all hover:scale-105 active:scale-95">
+                            Authorize Access <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
             
             {filteredPrograms.length === 0 && (
-              <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-                <p className="text-gray-400 font-bold italic">No programs found for your criteria.</p>
+              <div className="bg-white/5 backdrop-blur-xl border border-dashed border-white/10 rounded-[40px] p-20 text-center">
+                <p className="text-white/20 font-black uppercase tracking-[0.3em] italic">No Authorized Assets Found</p>
               </div>
             )}
           </div>
         </main>
 
-        {/* RIGHT SIDEBAR: Trending & Stats */}
-        <aside className="lg:col-span-3 space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <h4 className="font-black text-xs text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#F2A93B]" /> Trending Now
+        {/* RIGHT SIDEBAR: Trending & Boosting */}
+        <aside className="lg:col-span-3 space-y-6">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 shadow-2xl">
+            <h4 className="font-black text-xs text-white uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+              <TrendingUp className="w-4 h-4 text-[#DF9B35]" /> Market Pulse
             </h4>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {[1, 2].map((i) => (
-                <div key={i} className="flex gap-3 group cursor-pointer">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg shrink-0"></div>
+                <div key={i} className="flex gap-4 group cursor-pointer p-2 rounded-2xl hover:bg-white/5 transition-all">
+                  <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl shrink-0 flex items-center justify-center font-black text-[#367CC0]">
+                    {i === 1 ? 'S' : 'F'}
+                  </div>
                   <div>
-                    <p className="text-xs font-black text-gray-800 group-hover:text-[#4A90E2]">High-Ticket SaaS Offer</p>
-                    <p className="text-[10px] text-[#7ED321] font-bold">Payouts: IDR 5.2M / mo</p>
+                    <p className="text-xs font-black text-white/80 group-hover:text-[#367CC0] leading-tight">High-Ticket Enterprise SaaS</p>
+                    <p className="text-[10px] text-[#7ED321] font-black mt-1 uppercase tracking-widest">IDR 5.2M / Sale</p>
                   </div>
                 </div>
               ))}
             </div>
-            <button className="w-full mt-4 py-2 text-[11px] font-black text-[#4A90E2] border border-blue-50 rounded-lg hover:bg-blue-50 transition-all">
-              View Analytics
+            <button className="w-full mt-8 py-4 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] border border-white/5 rounded-2xl hover:bg-white/5 hover:text-white transition-all">
+              Market Intelligence
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm text-center">
-             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-               <Zap className="w-6 h-6 text-[#F2A93B] fill-[#F2A93B]" />
+          {/* Secure Boost Card with Concave Notch */}
+          <div 
+            className="bg-[#0a0a0a] p-8 rounded-[40px] relative overflow-hidden shadow-2xl border border-white/5"
+            style={{ WebkitMaskImage: 'radial-gradient(circle 50px at 100% 0%, transparent 100%, black 101%)' }}
+          >
+             <div className="relative z-10">
+                <Zap className="text-[#DF9B35] mb-4 fill-[#DF9B35]" size={32} />
+                <h4 className="font-black text-xl text-white leading-tight mb-3 tracking-tighter">Maximize Your<br />Asset Reach</h4>
+                <p className="text-[11px] text-white/40 leading-relaxed italic mb-8">"Complete your corporate profile to unlock restricted high-tier programs."</p>
+                <button className="w-full bg-[#DF9B35] text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#DF9B35]/20 hover:brightness-110 transition-all">
+                  Get Verified
+                </button>
              </div>
-             <h4 className="font-black text-sm text-gray-900 mb-1">Boost Your Earnings</h4>
-             <p className="text-[11px] text-gray-500 mb-4">Complete your profile to unlock premium programs.</p>
-             <button className="w-full bg-[#4A90E2] text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md">
-               Complete Profile
-             </button>
+             {/* Decorative Background Icon */}
+             <Award className="absolute right-[-20px] bottom-[-20px] w-40 h-40 text-white/[0.03] -rotate-12 pointer-events-none" />
           </div>
         </aside>
 
       </div>
     </div>
   );
-}
-
-// Simple Label Component for clean UI
-function Label({ children, className }: { children: React.ReactNode, className?: string }) {
-  return <span className={className}>{children}</span>;
 }

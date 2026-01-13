@@ -18,12 +18,15 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login", "/home", "/programs", "/programs", "/programs/[slug]", "/api-ready", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password"];
+const PUBLIC_PATH_PREFIXES = ["/programs/"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
 const isPublic = (pathname: string) =>
-  PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/auth");
+  PUBLIC_PATHS.includes(pathname) || 
+  PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p)) ||
+  pathname.startsWith("/api/auth");
 
 const isAssetLike = (pathname: string) =>
   ALWAYS_ALLOW_EXACT.includes(pathname) ||

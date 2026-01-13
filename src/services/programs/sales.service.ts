@@ -13,20 +13,22 @@ export const salesApi = apiSlice.injectEndpoints({
         total: number;
         per_page: number;
       },
-      { page: number; paginate: number; search?: string; program_id?: number; owner_id?: number }
+      { page: number; paginate: number; search?: string; program_id?: number; owner_id?: number; email?: string }
     >({
-      query: ({ page, paginate, search, program_id, owner_id }) => {
-        const s =
-          search && search.trim()
-            ? `&search=${encodeURIComponent(search.trim())}`
-            : "";
-
-        // Only include owner_id if program_id is NOT provided
-        const ownerParam =
-          program_id == null && owner_id != null ? `&owner_id=${owner_id}` : "";
+      query: ({ page, paginate, search, program_id, owner_id, email }) => {
+        const params = [
+          `page=${page}`,
+          `paginate=${paginate}`,
+          search && search.trim() ? `search=${encodeURIComponent(search.trim())}` : "",
+          program_id ? `program_id=${program_id}` : "",
+          program_id == null && owner_id != null ? `owner_id=${owner_id}` : "",
+          email ? `email=${encodeURIComponent(email)}` : "",
+        ]
+          .filter(Boolean)
+          .join("&");
 
         return {
-          url: `/program/sales?page=${page}&paginate=${paginate}${s}${program_id ? `&program_id=${program_id}` : ""}${ownerParam}`,
+          url: `/program/sales?${params}`,
           method: "GET",
         };
       },

@@ -99,15 +99,25 @@ const LoginPage = () => {
         {/* Left Section: Login Form */}
         <div className="flex-1 p-8 lg:p-12 text-white">
           <div className="mb-10">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-10 border border-white/10">
-              <div className="w-6 h-6 border-2 border-white rounded-sm rotate-45 flex items-center justify-center">
-                <div className="w-2 h-2 bg-[#DF9B35] rounded-full"></div>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 border-2 border-white rounded-sm flex items-center justify-center">
+                  <img
+                    src="/kross-id.png"
+                    alt="Kross.id Logo"
+                    className="w-12 h-12 object-contain"
+                  />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold tracking-tight">
+                  Welcome back
+                </h1>
+                <p className="text-white/70 text-sm italic">
+                  Please Enter your Account details
+                </p>
               </div>
             </div>
-            <h1 className="text-4xl font-bold mb-2">Welcome back</h1>
-            <p className="text-white/70 text-sm italic">
-              Please Enter your Account details
-            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -187,107 +197,23 @@ const LoginPage = () => {
         {/* Right Section: Black Card with SMOOTH CONCAVE NOTCH */}
         <div className="flex-1 relative hidden md:block">
           <div
-            className="h-full w-full bg-[#0a0a0a] rounded-[40px] p-12 flex flex-col relative overflow-hidden shadow-inner"
+            className="h-full w-full bg-transparent rounded-[40px] overflow-hidden relative shadow-inner"
             style={{
               maskImage:
-                "radial-gradient(circle 45px at calc(100% - 10px) 10px, transparent 100%, black 101%)",
+          "radial-gradient(circle 45px at calc(100% - 10px) 10px, transparent 100%, black 101%)",
               WebkitMaskImage:
-                "radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)",
+          "radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)",
             }}
           >
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <AnimatePresence custom={direction} mode="wait">
-                <motion.div
-                  key={index}
-                  custom={direction}
-                  variants={variants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  className="space-y-8"
-                >
-                  <h2 className="text-[40px] font-bold text-white leading-tight whitespace-pre-line tracking-tight">
-                    {testimonials[index].title}
-                  </h2>
-                  <div className="text-5xl text-[#DF9B35] leading-none italic font-serif opacity-80">
-                    “
-                  </div>
-                  <p className="text-white/60 text-lg leading-relaxed max-w-xs italic font-light">
-                    {testimonials[index].quote}
-                  </p>
-
-                  <div>
-                    <h4 className="text-white text-xl font-bold">
-                      {testimonials[index].name}
-                    </h4>
-                    <p className="text-[#367CC0] text-sm mt-1 font-bold uppercase tracking-widest">
-                      {testimonials[index].role}
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={prevTestimonial}
-                      className="w-12 h-10 bg-[#DF9B35] text-white rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg"
-                    >
-                      <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={nextTestimonial}
-                      className="w-12 h-10 bg-[#367CC0] text-white rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg"
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Background Starburst */}
-            <div className="absolute right-[-30px] bottom-10 opacity-20 pointer-events-none">
-              <svg width="300" height="300" viewBox="0 0 200 200" fill="none">
-                {[...Array(16)].map((_, i) => (
-                  <line
-                    key={i}
-                    x1="100"
-                    y1="100"
-                    x2={100 + 100 * Math.cos((i * 22.5 * Math.PI) / 180)}
-                    y2={100 + 100 * Math.sin((i * 22.5 * Math.PI) / 180)}
-                    stroke="#367CC0"
-                    strokeWidth="0.8"
-                  />
-                ))}
-              </svg>
-            </div>
-          </div>
-
-          {/* Floating White Card with SMOOTH CONCAVE NOTCH */}
-          <div
-            className="absolute -bottom-8 -right-4 w-[300px] bg-white p-8 pt-12 rounded-[32px] shadow-2xl z-20 border border-gray-100"
-            style={{
-              WebkitMaskImage:
-                "radial-gradient(circle 50px at 100% 0%, transparent 100%, black 101%)",
-            }}
-          >
-            <h5 className="font-black text-gray-900 text-sm leading-snug mb-3 uppercase tracking-tighter">
-              Get your right job and right place apply now
-            </h5>
-            <p className="text-[11px] text-gray-500 mb-6 leading-relaxed font-medium">
-              Be among the first founders to experience the easiest way to start
-              run a business.
-            </p>
-            <div className="flex items-center -space-x-2">
-              {[1, 2, 3, 4].map((i) => (
-                <img
-                  key={i}
-                  className="w-8 h-8 rounded-full border-2 border-white shadow-sm"
-                  src={`https://i.pravatar.cc/150?u=${i + 60}`}
-                  alt="user"
-                />
-              ))}
-              <div className="w-8 h-8 rounded-full bg-[#367CC0] text-white text-[9px] flex items-center justify-center border-2 border-white font-black shadow-sm">
-                +2
-              </div>
-            </div>
+            {/* Hero Image */}
+            <img
+              src="/hero-login.webp"
+              alt="Hero Login"
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Overlay Gradient (optional, untuk memberikan efek gelap) */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
           </div>
         </div>
       </div>
