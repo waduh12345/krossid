@@ -18,7 +18,7 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password", "/register-owner"];
+const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password", "/register-owner", "/my-account", "/about-us", "/privacy-policy", "/terms-of-service", "/faq", "/contact-us"];
 const PUBLIC_PATH_PREFIXES = ["/programs/"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
@@ -67,31 +67,46 @@ export async function middleware(req: NextRequest) {
   //   return NextResponse.redirect(new URL("/home", req.url));
   // }
 
-  const isSuperOrOwner =
-    hasRole(token, "superadmin") || hasRole(token, "owner") || hasRole(token, "director") || hasRole(token, "manager");
+  const isSuperAdmin = hasRole(token, "superadmin");
+  const isOwner = hasRole(token, "owner");
+  const isDirector = hasRole(token, "director");
+  const isManager = hasRole(token, "manager");
+  const isSales = hasRole(token, "sales") || hasRole(token, "affiliate");
   const isUser = hasRole(token, "user");
+  
   const isCmsPath = pathname.startsWith("/cms");
-  const isSalesPath = pathname.startsWith("/my-account");
+  const isMyAccountPath = pathname.startsWith("/my-account");
 
   // Aturan akses
-  if (isSuperOrOwner) {
-    // superadmin / Owner: hanya /cms*
+  if (isSuperAdmin || isDirector || isManager) {
+    // superadmin, director, manager: hanya /cms*
     if (!isCmsPath) {
       return NextResponse.redirect(new URL("/cms", req.url));
     }
     return NextResponse.next();
   }
 
-  if (isUser) {
-    // user biasa: hanya boleh akses /my-account*
-    if (!isSalesPath) {
-      return NextResponse.redirect(new URL("/my-account", req.url));
+  if (isOwner) {
+    // owner: bisa akses /cms* dan /my-account*
+    if (isCmsPath || isMyAccountPath) {
+      return NextResponse.next();
     }
-    return NextResponse.next();
+    // Jika bukan keduanya, redirect ke /cms
+    return NextResponse.redirect(new URL("/cms", req.url));
   }
 
-  // Role tidak dikenali
-  // return NextResponse.redirect(new URL("/unauthorized", req.url));
+  if (isSales || isUser) {
+    // sales dan user: bisa akses /my-account*
+    if (isMyAccountPath) {
+      return NextResponse.next();
+    }
+    // Jika bukan my-account, redirect ke /my-account
+    return NextResponse.redirect(new URL("/my-account", req.url));
+  }
+
+  // Role tidak dikenali atau tidak ada token
+  // Allow access to public paths (already handled above)
+  return NextResponse.next();
 }
 
 // Terapkan ke semua route kecuali asset umum & next internals

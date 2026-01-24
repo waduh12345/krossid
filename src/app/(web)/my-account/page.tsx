@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   LayoutDashboard, User, Lock, Briefcase, TrendingUp, 
   Wallet, Camera, Eye, EyeOff, Loader2, 
-  Save, ShieldCheck, ExternalLink, ArrowRight, Users, Copy, Share2
+  Save, ShieldCheck, ExternalLink, ArrowRight, Users, Copy, Share2, Trophy, UserPlus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetMeQuery, useUpdateProfileMutation } from "@/services/auth.service";
@@ -13,6 +13,25 @@ import Swal from "sweetalert2";
 import Link from "next/link";
 import Image from "next/image";
 import { useGetSalesListQuery } from "@/services/programs/sales.service";
+import { useRouter } from "next/navigation";
+import {
+  useGetTotalProgramsQuery,
+  useGetTotalProgramRegistrationsQuery,
+  useGetTotalProgramViewsQuery,
+  useGetTop5ProgramsQuery,
+  useGetTopSalesQuery,
+} from "@/services/dashboard-admin.service";
+import { useGetProgramsQuery } from "@/services/programs/programs.service";
+import { 
+  XAxis, 
+  YAxis,
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart,
+  Line,
+  Legend
+} from 'recharts';
 
 // --- UTILS (Tetap di luar) ---
 const formatPhoneNumber = (value: string) => {
@@ -28,29 +47,251 @@ const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
 // --- SUB-COMPONENTS (Pindahkan ke luar komponen utama) ---
 
-const DashboardView = ({ userData, myProgramsData }: any) => (
-  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
-      <h3 className="text-white font-bold mb-4">Analytics Overview</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          { label: "My Programs", val: myProgramsData?.total?.toString() || "0", icon: Briefcase },
-          { label: "Status", val: userData?.status ? "Active" : "Inactive", icon: TrendingUp },
-          { label: "Member Since", val: userData?.created_at ? new Date(userData.created_at).getFullYear().toString() : "-", icon: Wallet },
-        ].map((s, i) => (
-          <div key={i} className="flex flex-col">
-            <span className="text-white/50 text-xs font-bold uppercase tracking-wider">{s.label}</span>
-            <span className="text-2xl font-black text-white mt-1">{s.val}</span>
+// Dashboard View Component - Role-based
+const DashboardView = ({ userData, myProgramsData, userRole, userId }: any) => {
+  const nf = new Intl.NumberFormat("id-ID");
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentYear = new Date().getFullYear();
+
+  // Owner Dashboard Data
+  const { data: totalPrograms } = useGetTotalProgramsQuery(undefined, { skip: userRole !== 'owner' });
+  const { data: totalRegistrations } = useGetTotalProgramRegistrationsQuery(undefined, { skip: userRole !== 'owner' });
+  const { data: totalViews } = useGetTotalProgramViewsQuery(undefined, { skip: userRole !== 'owner' });
+  const { data: ownerPrograms } = useGetProgramsQuery(
+    { page: 1, paginate: 10, owner_id: userId },
+    { skip: userRole !== 'owner' || !userId }
+  );
+
+  // Sales Dashboard Data
+  const { data: topSalesData, isLoading: isLoadingTopSales } = useGetTopSalesQuery(
+    { top: 5 },
+    { skip: userRole !== 'sales' }
+  );
+  const { data: topProgramsData, isLoading: isLoadingTopPrograms } = useGetTop5ProgramsQuery(
+    { period: "month", top: 5 },
+    { skip: userRole !== 'sales' }
+  );
+
+  // Transform top sales data for ranking
+  const SALES_RANKING = useMemo(() => {
+    if (!topSalesData || userRole !== 'sales') return [];
+    return topSalesData.map((sale: any, index: number) => ({
+      rank: index + 1,
+      name: sale.name,
+      registrations: sale.program_registrations_count,
+      shares: sale.program_shares_count,
+      isCurrentUser: userId === sale.id,
+    }));
+  }, [topSalesData, userId, userRole]);
+
+  // Transform top programs data
+  const TOP_PROGRAMS = useMemo(() => {
+    if (!topProgramsData || userRole !== 'sales') return [];
+    return Object.values(topProgramsData).map((program: any) => {
+      const totalRegistrations = program.performance.reduce((sum: number, p: any) => sum + p.registrations, 0);
+      const totalShares = program.performance.reduce((sum: number, p: any) => sum + p.shares, 0);
+      const totalViews = program.performance.reduce((sum: number, p: any) => sum + Number(p.views || 0), 0);
+      return {
+        id: program.id,
+        name: program.title,
+        registrations: totalRegistrations,
+        shares: totalShares,
+        views: totalViews,
+      };
+    });
+  }, [topProgramsData, userRole]);
+
+  // Owner Dashboard
+  if (userRole === 'owner') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-md border border-blue-400/30 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Briefcase className="h-8 w-8 text-blue-400" />
+              <TrendingUp className="h-5 w-5 text-green-400" />
+            </div>
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Total Programs</p>
+            <p className="text-3xl font-black text-white">{totalPrograms || 0}</p>
           </div>
-        ))}
+          
+          <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 backdrop-blur-md border border-green-400/30 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <UserPlus className="h-8 w-8 text-green-400" />
+              <TrendingUp className="h-5 w-5 text-green-400" />
+            </div>
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Total Registrations</p>
+            <p className="text-3xl font-black text-white">{nf.format(totalRegistrations || 0)}</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-md border border-purple-400/30 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Eye className="h-8 w-8 text-purple-400" />
+              <TrendingUp className="h-5 w-5 text-green-400" />
+            </div>
+            <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Total Views</p>
+            <p className="text-3xl font-black text-white">{nf.format(totalViews || 0)}</p>
+          </div>
+        </div>
+
+        {/* Quick Access */}
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+            <LayoutDashboard className="h-5 w-5" />
+            Quick Access
+          </h3>
+          <Link 
+            href="/cms/dashboard"
+            className="inline-flex items-center gap-2 bg-[#367CC0] hover:bg-[#367CC0]/90 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all"
+          >
+            <ExternalLink size={16} />
+            Go to Owner Dashboard
+          </Link>
+        </div>
+
+        {/* Recent Programs */}
+        {ownerPrograms && ownerPrograms.data && ownerPrograms.data.length > 0 && (
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+            <h3 className="text-white font-bold mb-4">Recent Programs</h3>
+            <div className="space-y-3">
+              {ownerPrograms.data.slice(0, 5).map((program: any) => (
+                <Link
+                  key={program.id}
+                  href={`/programs/${program.id}`}
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all"
+                >
+                  <div>
+                    <p className="text-white font-semibold">{program.title}</p>
+                    <p className="text-white/50 text-xs">{program.sub_title || 'No subtitle'}</p>
+                  </div>
+                  <ExternalLink size={16} className="text-white/40" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
+  // Sales Dashboard
+  if (userRole === 'sales') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        {/* Ranking Section */}
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Trophy className="h-6 w-6 text-[#F2A93B]" />
+            <h3 className="text-white font-bold text-lg">Your Ranking</h3>
+          </div>
+          
+          {isLoadingTopSales ? (
+            <div className="text-center py-8 text-white/60">Loading ranking...</div>
+          ) : SALES_RANKING.length === 0 ? (
+            <div className="text-center py-8 text-white/60">No ranking data available</div>
+          ) : (
+            <div className="space-y-3">
+              {SALES_RANKING.map((sale: any) => (
+                <div
+                  key={sale.rank}
+                  className={`flex items-center justify-between p-4 rounded-lg ${
+                    sale.isCurrentUser 
+                      ? 'bg-gradient-to-r from-[#367CC0]/30 to-[#7ED321]/30 border-2 border-[#367CC0]' 
+                      : 'bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-xl font-black ${
+                      sale.rank === 1 ? 'bg-yellow-500/20 text-yellow-400' :
+                      sale.rank === 2 ? 'bg-gray-500/20 text-gray-400' :
+                      sale.rank === 3 ? 'bg-orange-500/20 text-orange-400' :
+                      'bg-white/10 text-white/60'
+                    }`}>
+                      #{sale.rank}
+                    </div>
+                    <div>
+                      <p className="text-white font-bold">
+                        {sale.name}
+                        {sale.isCurrentUser && (
+                          <span className="ml-2 text-xs bg-[#367CC0] text-white px-2 py-0.5 rounded-full">YOU</span>
+                        )}
+                      </p>
+                      <p className="text-white/50 text-xs">
+                        {sale.registrations} Registrations • {sale.shares} Shares
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-black text-[#367CC0]">{nf.format(sale.registrations)}</p>
+                    <p className="text-white/50 text-xs">Registrations</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top Program */}
+        {isLoadingTopPrograms ? (
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+            <div className="text-center py-8 text-white/60">Loading top program...</div>
+          </div>
+        ) : TOP_PROGRAMS.length > 0 ? (
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+            <h3 className="text-white font-bold mb-4">Your Top Program</h3>
+            {TOP_PROGRAMS.slice(0, 1).map((program: any) => (
+              <div key={program.id} className="space-y-4">
+                <div>
+                  <h4 className="text-xl font-black text-white mb-2">{program.name}</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-blue-500/20 rounded-lg p-3 border border-blue-400/30">
+                      <p className="text-white/60 text-xs mb-1">Views</p>
+                      <p className="text-xl font-black text-white">{nf.format(program.views)}</p>
+                    </div>
+                    <div className="bg-green-500/20 rounded-lg p-3 border border-green-400/30">
+                      <p className="text-white/60 text-xs mb-1">Shares</p>
+                      <p className="text-xl font-black text-white">{nf.format(program.shares)}</p>
+                    </div>
+                    <div className="bg-orange-500/20 rounded-lg p-3 border border-orange-400/30">
+                      <p className="text-white/60 text-xs mb-1">Registrations</p>
+                      <p className="text-xl font-black text-white">{nf.format(program.registrations)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </motion.div>
+    );
+  }
+
+  // Default Dashboard (for other roles)
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+        <h3 className="text-white font-bold mb-4">Analytics Overview</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[
+            { label: "My Programs", val: myProgramsData?.total?.toString() || "0", icon: Briefcase },
+            { label: "Status", val: userData?.status ? "Active" : "Inactive", icon: TrendingUp },
+            { label: "Member Since", val: userData?.created_at ? new Date(userData.created_at).getFullYear().toString() : "-", icon: Wallet },
+          ].map((s, i) => (
+            <div key={i} className="flex flex-col">
+              <span className="text-white/50 text-xs font-bold uppercase tracking-wider">{s.label}</span>
+              <span className="text-2xl font-black text-white mt-1">{s.val}</span>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
-       <h3 className="text-white font-bold mb-2">Account Info</h3>
-       <p className="text-white/60 text-sm italic">Welcome back, {userData?.name || "User"}!</p>
-    </div>
-  </motion.div>
-);
+      <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+         <h3 className="text-white font-bold mb-2">Account Info</h3>
+         <p className="text-white/60 text-sm italic">Welcome back, {userData?.name || "User"}!</p>
+      </div>
+    </motion.div>
+  );
+};
 
 const ProfileView = ({ 
   profileForm, handleProfileChange, handleProfileUpdate, 
@@ -463,10 +704,13 @@ const MyAccountLinkedInUI = () => {
     { skip: !userData?.email }
   );
 
-  // Check if user has sales role
-  const isSalesRole = userData?.roles?.some(
-    (role) => role.name.toLowerCase() === 'sales' || role.name.toLowerCase() === 'affiliate'
+  // Check user roles
+  const userRole = userData?.roles?.[0]?.name?.toLowerCase();
+  const isOwnerRole = userRole === 'owner';
+  const isSalesRole = userRole === 'sales' || userData?.roles?.some(
+    (role: any) => role.name.toLowerCase() === 'sales' || role.name.toLowerCase() === 'affiliate'
   );
+  const userId = userData?.id;
 
   const { data: mySalesData, isLoading: isLoadingSales } = useGetSalesListQuery(
     { page: 1, paginate: 100, email: userData?.email || "" },
@@ -662,23 +906,43 @@ const MyAccountLinkedInUI = () => {
                { id: "myPrograms", label: "My Programs", icon: Briefcase },
                ...(isSalesRole ? [{ id: "affiliate", label: "Affiliate", icon: Users }] : []),
                { id: "profile", label: "Edit Profile", icon: User },
-               { id: "security", label: "Security", icon: Lock }
+               { id: "security", label: "Security", icon: Lock },
+               ...(isOwnerRole ? [{ id: "ownerDashboard", label: "Owner Dashboard", icon: LayoutDashboard, external: true, href: "/cms/dashboard" }] : [])
              ].map((tab) => (
-               <button
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id)}
-                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${activeTab === tab.id ? "bg-[#367CC0]" : "hover:bg-white/5"}`}
-               >
-                 <tab.icon size={16} /> {tab.label}
-               </button>
+               tab.external ? (
+                 <Link
+                   key={tab.id}
+                   href={tab.href || "#"}
+                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all hover:bg-white/5 text-white"
+                 >
+                   <tab.icon size={16} /> {tab.label}
+                   <ExternalLink size={14} className="ml-auto" />
+                 </Link>
+               ) : (
+                 <button
+                   key={tab.id}
+                   onClick={() => setActiveTab(tab.id)}
+                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${activeTab === tab.id ? "bg-[#367CC0]" : "hover:bg-white/5"}`}
+                 >
+                   <tab.icon size={16} /> {tab.label}
+                 </button>
+               )
              ))}
           </div>
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="lg:col-span-6">
+        <main className="lg:col-span-9">
            <AnimatePresence mode="wait">
-              {activeTab === "dashboard" && <DashboardView key="dash" userData={userData} myProgramsData={myProgramsData} />}
+              {activeTab === "dashboard" && (
+                <DashboardView 
+                  key="dash" 
+                  userData={userData} 
+                  myProgramsData={myProgramsData}
+                  userRole={userRole}
+                  userId={userId}
+                />
+              )}
               {activeTab === "myPrograms" && (
                 <MyProgramsView 
                   key="myprogs" 
@@ -727,14 +991,6 @@ const MyAccountLinkedInUI = () => {
               )}
            </AnimatePresence>
         </main>
-
-        {/* RIGHT BAR */}
-        <aside className="lg:col-span-3">
-          <div className="bg-white/10 border border-white/20 rounded-xl p-5">
-             <h5 className="text-xs font-black uppercase mb-4">Account Status</h5>
-             <div className="text-xs text-white/60">Verified: {userData?.email_verified_at ? "Yes" : "No"}</div>
-          </div>
-        </aside>
       </div>
     </div>
   );
