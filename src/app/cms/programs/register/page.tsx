@@ -13,8 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Trash2, RefreshCw, Eye, Info } from "lucide-react";
+import { Search, Trash2, RefreshCw, Eye, Info, Download, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
 import {
   useGetRegisterListQuery,
   useDeleteRegisterMutation,
@@ -27,6 +28,9 @@ import type { Register } from "@/types/programs/register";
 import { ApiError } from "@/lib/utils";
 
 const PER_PAGE = 10;
+
+type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
+
 interface UserRole {
   id: number;
   name: string;
@@ -46,14 +50,22 @@ function RegisterTableContent() {
 
   const [selectedRecord, setSelectedRecord] = useState<Register | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { data: session } = useSession();
+  
+  const userRole = session?.user?.roles?.[0]?.name as RoleName | undefined;
 
   const isOwner = useMemo(() => {
     const user = session?.user as { roles?: UserRole[] } | undefined;
     const roles = user?.roles || [];
     return roles.some((r) => r.name === "owner");
   }, [session]);
+
+  // Check if user can perform delete operations (superadmin or owner)
+  const canDelete = useMemo(() => {
+    return userRole === "superadmin" || userRole === "owner";
+  }, [userRole]);
 
   // 1. Sinkronisasi Program ID dari URL ke State
   useEffect(() => {
@@ -101,6 +113,76 @@ function RegisterTableContent() {
   const handleOpenDetail = (item: Register) => {
     setSelectedRecord(item);
     setIsModalOpen(true);
+  };
+
+  // Export to Excel
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+
+    try {
+      // Use refetch to get current data
+      const result = await refetch();
+      const exportData = result.data;
+
+      if (!exportData || exportData.data.length === 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Tidak Ada Data",
+          text: "Tidak ada data untuk diekspor.",
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      // Map data untuk Excel
+      const excelData = exportData.data.map((reg) => ({
+        ID: reg.id,
+        "Program Name": reg.program_name || "-",
+        Name: reg.name || "-",
+        Email: reg.email || "-",
+        Phone: reg.phone || "-",
+        "Parameter Value": reg.parameter_value || "-",
+        Status: reg.status === 1 ? "Active" : "Inactive",
+      }));
+
+      // Buat worksheet
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Registrations");
+
+      // Set column widths
+      const maxWidths = [
+        { wch: 8 },  // ID
+        { wch: 30 }, // Program Name
+        { wch: 25 }, // Name
+        { wch: 30 }, // Email
+        { wch: 20 }, // Phone
+        { wch: 40 }, // Parameter Value
+        { wch: 12 }, // Status
+      ];
+      worksheet["!cols"] = maxWidths;
+
+      // Download file
+      const fileName = `Program_Registrations_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil!",
+        text: `Data registrasi berhasil diekspor ke Excel (${exportData.data.length} data).`,
+        timer: 2000,
+        timerProgressBar: true,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Terjadi kesalahan saat mengekspor data.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   async function handleDelete(id: number) {
@@ -194,6 +276,28 @@ function RegisterTableContent() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Export Button - Available for all roles */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isExporting || total === 0}
+            className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Export Excel
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Table Main */}
@@ -258,15 +362,21 @@ function RegisterTableContent() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deleting}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {/* Delete Button - Only for Superadmin and Owner */}
+                      {canDelete ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deleting}
+                          className="h-8 w-8 p-0"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Read Only</span>
+                      )}
                     </td>
                   </tr>
                 ))

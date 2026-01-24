@@ -5,7 +5,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 // Import tambahan untuk fungsionalitas login
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 const testimonials = [
@@ -69,7 +69,42 @@ const LoginPage = () => {
       });
 
       if (res?.ok) {
-        router.push("/home");
+        // Wait for session to update, then get session to check role
+        // Retry mechanism to ensure session is loaded
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const checkSessionAndRedirect = async () => {
+          const session = await getSession();
+          
+          // Check if session and roles are available
+          if (session?.user?.roles && Array.isArray(session.user.roles) && session.user.roles.length > 0) {
+            // Get first role name
+            const firstRole = session.user.roles[0];
+            const userRole = typeof firstRole === "object" && "name" in firstRole 
+              ? firstRole.name 
+              : typeof firstRole === "string" 
+              ? firstRole 
+              : null;
+
+            // Redirect based on role
+            if (userRole === "superadmin" || userRole === "owner") {
+              router.push("/cms");
+            } else {
+              router.push("/home");
+            }
+          } else if (attempts < maxAttempts) {
+            // Retry if session not ready yet
+            attempts++;
+            setTimeout(checkSessionAndRedirect, 200);
+          } else {
+            // Fallback to /home if session not available after max attempts
+            router.push("/home");
+          }
+        };
+
+        // Start checking session
+        setTimeout(checkSessionAndRedirect, 100);
       } else {
         setError("Email atau password salah.");
         setIsLoading(false);

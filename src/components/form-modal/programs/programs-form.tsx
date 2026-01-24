@@ -21,7 +21,7 @@ import type { Sales } from "@/types/programs/sales";
 import { useGetCategoriesListQuery } from "@/services/programs/categories.service";
 import { useGetUsersListQuery } from "@/services/users-management.service";
 import Swal from "sweetalert2";
-import { X, Loader2, Image as ImageIcon, Mail } from "lucide-react";
+import { X, Loader2, Image as ImageIcon, Mail, GripVertical, Type, Hash, DollarSign } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -74,6 +74,8 @@ export default function ProgramsForm({
 }: Props) {
   const isEdit = mode === "edit";
   const [tagInput, setTagInput] = useState("");
+  const [numericTagInput, setNumericTagInput] = useState("");
+  const [currencyTagInput, setCurrencyTagInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [emailRaw, setEmailRaw] = useState("");
   const PUBLIC_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
@@ -93,20 +95,22 @@ export default function ProgramsForm({
   });
   const { data: userResp, isLoading: loadingUsers } = useGetUsersListQuery({
     paginate: 100,
-  });
+    role_id: 3
+  })
 
   // 2. Fetch Detail
   const { data: detail, isFetching: fetchingDetail } = useGetProgramsByIdQuery(
     id ?? 0,
     {
       skip: !isEdit || !id,
+      refetchOnMountOrArgChange: true, // Always fetch fresh data when editing
     }
   );
 
   // 3. Fetch Sales Emails (Edit Mode Only)
   const { data: salesResp } = useGetSalesListQuery(
     { page: 1, paginate: 1000, program_id: id },
-    { skip: !isEdit || !id }
+    { skip: !isEdit || !id, refetchOnMountOrArgChange: true }
   );
 
   const [createProgram, { isLoading: creating }] = useCreateProgramsMutation();
@@ -227,6 +231,99 @@ export default function ProgramsForm({
       : [];
   }, [form.parameter]);
 
+  // State untuk parameter items dengan tipe dan urutan
+  const [parameterItems, setParameterItems] = useState<Array<{id: string; name: string; type: 'alphanumeric' | 'numeric' | 'currency'}>>([]);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+
+  // Parse parameter dari form ke parameterItems saat modal dibuka atau initial berubah
+  useEffect(() => {
+    if (open) {
+      // Gunakan initial.parameter karena form mungkin belum terupdate
+      const parameterValue = initial.parameter || "";
+      if (parameterValue) {
+        const parsed = parameterValue.split("|").filter(t => t !== "").map((item, idx) => {
+          // Format: "name:type" atau hanya "name" (default alphanumeric)
+          const [name, type] = item.split(":");
+          return {
+            id: `item-${idx}-${Date.now()}-${Math.random()}`,
+            name: name || item,
+            type: (type as 'alphanumeric' | 'numeric' | 'currency') || 'alphanumeric'
+          };
+        });
+        setParameterItems(parsed);
+      } else {
+        setParameterItems([]);
+      }
+    }
+  }, [open, initial.parameter]);
+
+  // Update form.parameter when parameterItems change
+  const updateParameterFromItems = (items: typeof parameterItems) => {
+    const paramString = items.map(item => `${item.name}:${item.type}`).join("|");
+    set("parameter", paramString);
+  };
+
+  const addAlphanumericTag = () => {
+    const val = tagInput.trim();
+    if (val && !parameterItems.some(item => item.name.toLowerCase() === val.toLowerCase())) {
+      const newItems = [...parameterItems, { id: `item-${Date.now()}`, name: val, type: 'alphanumeric' as const }];
+      setParameterItems(newItems);
+      updateParameterFromItems(newItems);
+    }
+    setTagInput("");
+  };
+
+  const addNumericTag = () => {
+    const val = numericTagInput.trim();
+    if (val && !parameterItems.some(item => item.name.toLowerCase() === val.toLowerCase())) {
+      const newItems = [...parameterItems, { id: `item-${Date.now()}`, name: val, type: 'numeric' as const }];
+      setParameterItems(newItems);
+      updateParameterFromItems(newItems);
+    }
+    setNumericTagInput("");
+  };
+
+  const addCurrencyTag = () => {
+    const val = currencyTagInput.trim();
+    if (val && !parameterItems.some(item => item.name.toLowerCase() === val.toLowerCase())) {
+      const newItems = [...parameterItems, { id: `item-${Date.now()}`, name: val, type: 'currency' as const }];
+      setParameterItems(newItems);
+      updateParameterFromItems(newItems);
+    }
+    setCurrencyTagInput("");
+  };
+
+  const removeParameterItem = (id: string) => {
+    const newItems = parameterItems.filter(item => item.id !== id);
+    setParameterItems(newItems);
+    updateParameterFromItems(newItems);
+  };
+
+  const handleDragStart = (id: string) => {
+    setDraggedItem(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedItem || draggedItem === targetId) return;
+    
+    const draggedIndex = parameterItems.findIndex(item => item.id === draggedItem);
+    const targetIndex = parameterItems.findIndex(item => item.id === targetId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    const newItems = [...parameterItems];
+    const [removed] = newItems.splice(draggedIndex, 1);
+    newItems.splice(targetIndex, 0, removed);
+    
+    setParameterItems(newItems);
+    updateParameterFromItems(newItems);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+  };
+
   const addTag = () => {
     const val = tagInput.trim();
     if (val && !tags.includes(val)) {
@@ -241,10 +338,30 @@ export default function ProgramsForm({
     set("parameter", newTags.join("|"));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent, type: 'alphanumeric' | 'numeric' | 'currency') => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Mencegah form submit saat tekan enter di input tag
-      addTag();
+      e.preventDefault();
+      if (type === 'alphanumeric') addAlphanumericTag();
+      else if (type === 'numeric') addNumericTag();
+      else if (type === 'currency') addCurrencyTag();
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'alphanumeric': return <Type className="h-3 w-3" />;
+      case 'numeric': return <Hash className="h-3 w-3" />;
+      case 'currency': return <DollarSign className="h-3 w-3" />;
+      default: return <Type className="h-3 w-3" />;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'alphanumeric': return 'bg-sky-50 text-sky-700 border-sky-200';
+      case 'numeric': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'currency': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -399,7 +516,7 @@ export default function ProgramsForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border bg-white p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+      <div className="w-full max-w-4xl rounded-2xl border bg-white p-6 shadow-2xl max-h-[98vh] overflow-y-auto">
         <div className="mb-6 flex items-center justify-between border-b pb-4">
           <h3 className="text-xl font-bold text-gray-800">
             {isEdit ? "Edit Program" : "Create New Program"}
@@ -420,7 +537,7 @@ export default function ProgramsForm({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-1">
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
               <Label className="font-semibold">Category *</Label>
               <Combobox
@@ -440,24 +557,6 @@ export default function ProgramsForm({
                 disabled
                 className="bg-zinc-100"
                 />
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                <div>
-                  <Label className="text-xs font-semibold">Email</Label>
-                  <Input
-                  value={session?.user?.email || ""}
-                  readOnly
-                  className="bg-zinc-100 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold">Type</Label>
-                  <Input
-                  value="Corporate"
-                  readOnly
-                  className="bg-zinc-100 text-xs"
-                  />
-                </div>
-                </div>
               </div>
               ) : (
               <div className="space-y-2">
@@ -470,70 +569,68 @@ export default function ProgramsForm({
                 placeholder="Select owner"
                 getOptionLabel={(opt: UserOption) => opt.name}
                 />
-                {form.owner_id && (() => {
-                const selectedOwner = users.find((u: UserOption) => u.id === Number(form.owner_id));
-                if (!selectedOwner) return null;
-                const ownerDomain = selectedOwner.email?.split("@")[1]?.toLowerCase();
-                return (
-                  <div className="grid grid-cols-2 gap-2 mt-1">
-                  <div>
-                    <Label className="text-xs font-semibold">Email</Label>
-                    <Input
-                    value={selectedOwner.email}
-                    readOnly
-                    className="bg-zinc-100 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-semibold">Type</Label>
-                    <Input
-                    value={ownerDomain ? "Corporate" : "Non Corporate"}
-                    readOnly
-                    className="bg-zinc-100 text-xs"
-                    />
-                  </div>
-                  </div>
-                );
-                })()}
               </div>
               )}
             </div>
 
+            {/* Owner Info Row */}
+            {(isOwner || form.owner_id) && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs font-semibold">Email</Label>
+                  <Input
+                    value={isOwner ? (session?.user?.email || "") : (users.find((u: UserOption) => u.id === Number(form.owner_id))?.email || "")}
+                    readOnly
+                    className="bg-zinc-100 text-xs h-8"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Type</Label>
+                  <Input
+                    value={ownerInfo.isCorporate ? "Corporate" : "Non Corporate"}
+                    readOnly
+                    className="bg-zinc-100 text-xs h-8"
+                  />
+                </div>
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label className="font-semibold">Title *</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => handleTitleChange(e.target.value)}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-              Slug: <span className="font-mono">{form.slug || "-"}</span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="font-semibold">Title *</Label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                />
+                <div className="text-xs text-gray-500">
+                  Slug: <span className="font-mono">{form.slug || "-"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold">Sub Title</Label>
+                <Input
+                  value={form.sub_title}
+                  onChange={(e) => set("sub_title", e.target.value)}
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="font-semibold">Sub Title</Label>
-              <Input
-                value={form.sub_title}
-                onChange={(e) => set("sub_title", e.target.value)}
-              />
-            </div>
+            <div className="grid gap-4 md:grid-cols-1">
+              <div className="space-y-2">
+                <Label className="font-semibold">Description</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  rows={3}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label className="font-semibold">Description</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            {/* Image Upload Section */}
-            <div className="space-y-2">
-              <Label className="font-semibold">Program Cover Image</Label>
-              <div className="flex flex-col gap-3 rounded-xl border-2 border-dashed p-4 transition-colors hover:bg-zinc-50">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-zinc-100">
+              {/* Image Upload Section - Compact */}
+              <div className="space-y-2">
+                <Label className="font-semibold">Program Cover Image</Label>
+                <div className="flex gap-3 rounded-xl border-2 border-dashed p-3 transition-colors hover:bg-zinc-50">
+                  <div className="relative flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-zinc-100">
                     {imagePreview ? (
                       <img
                         src={imagePreview}
@@ -541,30 +638,30 @@ export default function ProgramsForm({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <ImageIcon className="h-8 w-8 text-zinc-400" />
+                      <ImageIcon className="h-6 w-6 text-zinc-400" />
                     )}
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1 flex-1">
                     <Input
                       type="file"
                       accept="image/*"
-                      className="max-w-[250px] text-xs"
+                      className="text-xs h-8"
                       onChange={(e) =>
                         handleImageChange(e.target.files?.[0] ?? null)
                       }
                     />
-                    <p className="text-[10px] text-zinc-500">
-                      Recommended: 1200x630px (PNG, JPG)
+                    <p className="text-[9px] text-zinc-500">
+                      Recommended: 1200x630px
                     </p>
                     {imagePreview && (
                       <Button
                         type="button"
                         variant="destructive"
                         size="sm"
-                        className="h-7 w-fit px-3 text-[10px]"
+                        className="h-6 w-fit px-2 text-[9px]"
                         onClick={() => handleImageChange(null)}
                       >
-                        Remove Image
+                        Remove
                       </Button>
                     )}
                   </div>
@@ -572,93 +669,173 @@ export default function ProgramsForm({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               <Label className="font-semibold text-gray-700">
-                Parameters (Tag System)
+                Required Data from Applicant
               </Label>
-              <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-white focus-within:ring-2 focus-within:ring-sky-500 transition-all">
-                {/* Menampilkan Tag yang sudah ada */}
-                {tags.map((tag, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-1 rounded-md text-sm font-medium"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(idx)}
-                      className="hover:text-red-500 transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+              
+              {/* 3 Input Fields in Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Alphanumeric Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-sky-600">
+                    <Type className="h-3.5 w-3.5" />
+                    <span>Text (Alphanumeric)</span>
                   </div>
-                ))}
+                  <div className="flex gap-1">
+                    <Input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'alphanumeric')}
+                      placeholder="Contoh: Nama, Alamat..."
+                      className="text-sm h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAlphanumericTag}
+                      className="h-9 px-3 text-sky-600 border-sky-200 hover:bg-sky-50"
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
 
-                {/* Input untuk mengetik tag baru */}
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    tags.length === 0
-                      ? "Ketik lalu tekan Enter..."
-                      : "Tambah lagi..."
-                  }
-                  className="flex-1 min-w-[120px] outline-none text-sm py-1"
-                />
+                {/* Numeric Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-purple-600">
+                    <Hash className="h-3.5 w-3.5" />
+                    <span>Number (Numeric)</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Input
+                      type="text"
+                      value={numericTagInput}
+                      onChange={(e) => setNumericTagInput(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'numeric')}
+                      placeholder="Contoh: Usia, Jumlah..."
+                      className="text-sm h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addNumericTag}
+                      className="h-9 px-3 text-purple-600 border-purple-200 hover:bg-purple-50"
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addTag}
-                  className="h-7 px-2 text-sky-600 hover:bg-sky-100"
-                >
-                  Tambah
-                </Button>
+                {/* Currency Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    <span>Currency (Rupiah)</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Input
+                      type="text"
+                      value={currencyTagInput}
+                      onChange={(e) => setCurrencyTagInput(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'currency')}
+                      placeholder="Contoh: Gaji, Budget..."
+                      className="text-sm h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addCurrencyTag}
+                      className="h-9 px-3 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
               </div>
+
+              {/* Sortable Result List */}
+              {parameterItems.length > 0 && (
+                <div className="rounded-xl border border-dashed p-3 bg-zinc-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                      Parameter Terdaftar (Drag untuk urutkan)
+                    </p>
+                    <span className="text-[10px] font-medium text-zinc-500 bg-white px-2 py-0.5 rounded-full border">
+                      {parameterItems.length} item
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {parameterItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={() => handleDragStart(item.id)}
+                        onDragOver={(e) => handleDragOver(e, item.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex items-center gap-1.5 ${getTypeColor(item.type)} border px-2 py-1.5 rounded-lg text-xs font-medium cursor-grab active:cursor-grabbing transition-all hover:shadow-md ${
+                          draggedItem === item.id ? 'opacity-50 scale-95' : ''
+                        }`}
+                      >
+                        <GripVertical className="h-3 w-3 opacity-50" />
+                        <span className="bg-white/50 rounded px-1 text-[10px] font-bold">{idx + 1}</span>
+                        {getTypeIcon(item.type)}
+                        <span>{item.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeParameterItem(item.id)}
+                          className="hover:text-red-500 transition-colors ml-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p className="text-[10px] text-zinc-500 italic">
-                Contoh: Perusahaan, Gaji, Lokasi (Tekan Enter untuk menambah)
+                Tekan Enter atau klik + untuk menambah. Drag & drop untuk mengubah urutan.
               </p>
             </div>
 
-            {/* Bagian Email Sales */}
-            <div className="space-y-3">
+            {/* Bagian Email Sales - Compact */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
                   <Label className="font-semibold text-gray-700">Email (Sales)</Label>
                   <p className="text-[10px] text-zinc-500">
                     {ownerInfo.isCorporate 
-                      ? `Mode Corporate: Hanya domain @${ownerInfo.domain} yang diterima` 
-                      : "Mode Personal: Semua domain email diterima"}
+                      ? `Corporate: @${ownerInfo.domain}` 
+                      : "Personal: Semua domain"}
                   </p>
                 </div>
                 <span className="text-[10px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
-                  {detectedEmails.length} Email Terdeteksi
+                  {detectedEmails.length} Email
                 </span>
               </div>
               
               <Textarea
                 placeholder="Masukkan banyak email di sini... (Copy-paste dari mana saja)"
                 value={emailRaw}
-                onChange={(e) => setEmailRaw(e.target.value)} // Langsung set raw, filter diurus useMemo
-                className="min-h-[120px] font-mono text-sm resize-y focus-visible:ring-sky-500"
+                onChange={(e) => setEmailRaw(e.target.value)}
+                className="min-h-[80px] font-mono text-sm resize-y focus-visible:ring-sky-500"
               />
               
               {/* Preview Email yang Lolos Filter */}
               {detectedEmails.length > 0 && (
-                <div className="rounded-lg border border-dashed p-3 bg-zinc-50">
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase mb-2 tracking-wider">
-                    List Email Terfilter:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="rounded-lg border border-dashed p-2 bg-zinc-50">
+                  <div className="flex flex-wrap gap-1.5">
                     {detectedEmails.map((email, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-medium animate-in fade-in zoom-in duration-200"
+                        className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-medium"
                       >
-                        <Mail className="h-3 w-3" />
+                        <Mail className="h-2.5 w-2.5" />
                         {email}
                       </div>
                     ))}
@@ -666,28 +843,27 @@ export default function ProgramsForm({
                 </div>
               )}
 
-              {/* Info tambahan jika ada email yang terbuang/terfilter (Optional) */}
               {emailRaw && extractEmails(emailRaw).length > detectedEmails.length && (
-                <p className="text-[10px] text-red-500 font-medium">
-                  * Beberapa email diabaikan karena tidak sesuai dengan domain owner (@{ownerInfo.domain})
+                <p className="text-[9px] text-red-500 font-medium">
+                  * Beberapa email diabaikan (domain tidak sesuai)
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl border bg-zinc-50 p-4">
+            <div className="flex items-center gap-3 rounded-lg border bg-zinc-50 p-3">
               <input
                 id="p-status"
                 type="checkbox"
-                className="h-5 w-5 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
                 checked={form.status}
                 onChange={(e) => set("status", e.target.checked)}
               />
-              <Label htmlFor="p-status" className="font-bold cursor-pointer">
+              <Label htmlFor="p-status" className="font-bold cursor-pointer text-sm">
                 Published / Active
               </Label>
             </div>
 
-            <div className="mt-8 flex justify-end gap-3 border-t pt-5">
+            <div className="flex justify-end gap-3 border-t pt-4">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>

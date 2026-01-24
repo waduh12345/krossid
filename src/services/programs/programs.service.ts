@@ -53,6 +53,13 @@ export const lmsApi = apiSlice.injectEndpoints({
       total: response.data.total,
       per_page: response.data.per_page,
       }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'Programs' as const, id })),
+              { type: 'Programs', id: 'LIST' },
+            ]
+          : [{ type: 'Programs', id: 'LIST' }],
     }),
 
     // ✅ GET by ID
@@ -66,6 +73,7 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: string;
         data: Programs;
       }) => response.data,
+      providesTags: (result, error, id) => [{ type: 'Programs', id }],
     }),
 
     // ✅ CREATE (pakai FormData karena ada field file "cover")
@@ -80,6 +88,7 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: string;
         data: Programs;
       }) => response.data,
+      invalidatesTags: [{ type: 'Programs', id: 'LIST' }],
     }),
 
     // ✅ UPDATE (PUT via POST + _method=PUT)
@@ -94,6 +103,10 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: string;
         data: Programs;
       }) => response.data,
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Programs', id },
+        { type: 'Programs', id: 'LIST' },
+      ],
     }),
 
     // ✅ DELETE
@@ -107,6 +120,30 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: string;
         data: null;
       }) => response,
+      invalidatesTags: (result, error, id) => [
+        { type: 'Programs', id },
+        { type: 'Programs', id: 'LIST' },
+      ],
+    }),
+
+    // ✅ SHARE
+    shareProgram: builder.mutation<
+      { code: number; message: string },
+      { id: number; shared_to: string }
+    >({
+      query: ({ id, shared_to }) => ({
+        url: `/program/programs/share/${id}`,
+        method: "POST",
+        body: { shared_to },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data?: unknown;
+      }) => ({
+        code: response.code,
+        message: response.message,
+      }),
     }),
   }),
   overrideExisting: false,
@@ -118,4 +155,5 @@ export const {
   useCreateProgramsMutation,
   useUpdateProgramsMutation,
   useDeleteProgramsMutation,
+  useShareProgramMutation,
 } = lmsApi;

@@ -21,6 +21,7 @@ type Props = {
   mode: "create" | "edit";
   id?: number;
   defaultRoleId?: number;
+  disableStatus?: boolean; // Disable status field (for manager role)
   onClose: () => void;
   onSuccess: () => void;
 };
@@ -31,7 +32,7 @@ type FormState = {
   phone: string;
   password: string;
   password_confirmation: string;
-  status: boolean;
+  status: number;
   is_corporate: boolean;
 };
 
@@ -40,6 +41,7 @@ export default function UsersForm({
   mode,
   id,
   defaultRoleId = 2,
+  disableStatus = false,
   onClose,
   onSuccess,
 }: Props) {
@@ -67,7 +69,7 @@ export default function UsersForm({
       phone: detail?.phone ? detail.phone.replace("+62", "") : "",
       password: "",
       password_confirmation: "",
-      status: true,
+      status: typeof detail?.status === "number" ? detail.status : 1,
       is_corporate: detail?.is_corporate ?? false,
     }),
     [detail]
@@ -152,14 +154,18 @@ export default function UsersForm({
       }
     }
 
-    const payload = {
+    const payload: any = {
       name: form.name,
       email: form.email,
       phone: `+62${form.phone}`, // Gabungkan kembali saat kirim ke API
-      status: form.status ? 1 : 0,
       is_corporate: form.is_corporate ? 1 : 0,
       role_id: selectedRoleId,
     };
+
+    // Only include status if not disabled (for manager role)
+    if (!disableStatus) {
+      payload.status = form.status;
+    }
 
     try {
       if (isEdit && id) {
@@ -276,27 +282,35 @@ export default function UsersForm({
             </div>
           )}
 
-          <div className="flex flex-col gap-3 pt-2">
-            <div className="flex items-center gap-3">
-              <input
-                id="status"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                checked={form.status}
-                onChange={(e) => set("status", e.target.checked)}
-              />
-              <Label htmlFor="status" className="cursor-pointer">User Aktif</Label>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                id="is_corporate"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                checked={form.is_corporate}
-                onChange={(e) => set("is_corporate", e.target.checked)}
-              />
-              <Label htmlFor="is_corporate" className="cursor-pointer">Akun Corporate</Label>
+          <div className={`grid grid-cols-1 ${disableStatus ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-4 pt-2`}>
+            {!disableStatus && (
+              <div className="flex flex-col">
+                <Label htmlFor="status" className="font-medium mb-1">Status User</Label>
+                <select
+                  id="status"
+                  className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  value={form.status}
+                  onChange={(e) => set("status", Number(e.target.value))}
+                >
+                  <option value={1}>Active</option>
+                  <option value={2}>Waiting Approval</option>
+                  <option value={-1}>Rejected</option>
+                  <option value={0}>Inactive</option>
+                </select>
+              </div>
+            )}
+            <div className="flex flex-col">
+              <Label htmlFor="is_corporate" className="font-medium mb-1">Akun Corporate</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="is_corporate"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                  checked={form.is_corporate}
+                  onChange={(e) => set("is_corporate", e.target.checked)}
+                />
+                <span className="text-sm">Centang jika akun corporate</span>
+              </div>
             </div>
           </div>
 

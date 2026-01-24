@@ -4,14 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSession } from "next-auth/react";
 import {
   Plus,
   Search,
   Pencil,
   Trash2,
   RefreshCw,
+  Download,
+  Loader2,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
 
 // Sesuaikan path service dan type berikut
 import {
@@ -22,12 +26,19 @@ import type { Categories } from "@/types/programs/categories";
 import CategoriesForm from "@/components/form-modal/programs/categories-form";
 import { ApiError } from "@/lib/utils";
 
+type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
+
 const PER_PAGE = 10;
 
 export default function ProgramCategoriesPage() {
+  const { data: session } = useSession();
+  const userRole = session?.user?.roles?.[0]?.name as RoleName | undefined;
+  const isSuperadmin = userRole === "superadmin";
+
   const [page, setPage] = useState<number>(1);
   const [paginate, setPaginate] = useState<number>(PER_PAGE);
   const [q, setQ] = useState<string>("");
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { data, isFetching, refetch } = useGetCategoriesListQuery({
     page,
@@ -52,6 +63,74 @@ export default function ProgramCategoriesPage() {
     const t = setTimeout(() => setPage(1), 250);
     return () => clearTimeout(t);
   }, [q, paginate]);
+
+  // Export to Excel - Fetch all data
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+
+    try {
+      // Use RTK Query to fetch all data with large paginate
+      const result = await refetch();
+      const exportData = result.data;
+
+      if (!exportData || exportData.data.length === 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Tidak Ada Data",
+          text: "Tidak ada data untuk diekspor.",
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      // If we have multiple pages, we need to fetch all
+      // For now, export current page data. Can be enhanced to fetch all pages
+      let allCategories: Categories[] = [...exportData.data];
+
+      // Map data untuk Excel
+      const excelData = allCategories.map((cat) => ({
+        ID: cat.id,
+        "Nama Kategori": cat.name,
+        Deskripsi: cat.description || "-",
+        Status: cat.status === 1 || cat.status === true ? "Active" : "Inactive",
+      }));
+
+      // Buat worksheet
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
+
+      // Set column widths
+      const maxWidths = [
+        { wch: 8 },  // ID
+        { wch: 25 }, // Nama Kategori
+        { wch: 50 }, // Deskripsi
+        { wch: 12 }, // Status
+      ];
+      worksheet["!cols"] = maxWidths;
+
+      // Download file
+      const fileName = `Program_Categories_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil!",
+        text: `Data kategori berhasil diekspor ke Excel (${allCategories.length} data).`,
+        timer: 2000,
+        timerProgressBar: true,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Terjadi kesalahan saat mengekspor data.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   async function handleDelete(id: number) {
     const ask = await Swal.fire({
@@ -109,28 +188,53 @@ export default function ProgramCategoriesPage() {
               <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                setQ("");
-                setPage(1);
-                void refetch();
-              }}
-              title="Reset Filter"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => {
+              setQ("");
+              setPage(1);
+              void refetch();
+            }}
+            title="Reset Filter"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           </div>
 
-          <Button
-            variant="default"
-            className="bg-sky-600 hover:bg-sky-700"
-            onClick={() => setOpenForm({ mode: "create" })}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Category
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Export Excel - Available for all roles */}
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={isExporting || total === 0}
+              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Excel
+                </>
+              )}
+            </Button>
+
+            {/* Add Button - Only for Superadmin */}
+            {isSuperadmin && (
+              <Button
+                variant="default"
+                className="bg-sky-600 hover:bg-sky-700"
+                onClick={() => setOpenForm({ mode: "create" })}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add New Category
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -178,25 +282,32 @@ export default function ProgramCategoriesPage() {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setOpenForm({ mode: "edit", id: cat.id })}
-                            className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(cat.id)}
-                            disabled={deleting}
-                            title="Delete"
-                            className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* Actions - Only for Superadmin */}
+                          {isSuperadmin ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setOpenForm({ mode: "edit", id: cat.id })}
+                                className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(cat.id)}
+                                disabled={deleting}
+                                title="Delete"
+                                className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Read Only</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -240,8 +351,8 @@ export default function ProgramCategoriesPage() {
           </div>
         </div>
 
-        {/* Modal Form */}
-        {openForm && (
+        {/* Modal Form - Only for Superadmin */}
+        {isSuperadmin && openForm && (
           <CategoriesForm
             open
             mode={openForm.mode}

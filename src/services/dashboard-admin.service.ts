@@ -1,5 +1,5 @@
 import { apiSlice } from "./base-query";
-import type { DashboardAdmin } from "@/types/dashboard";
+import type { DashboardAdmin, MonthlyUserGrowth, TopProgramsResponse, TopSale } from "@/types/dashboard";
 
 // Tipe response standar untuk endpoint count (angka)
 type DashboardCountResponse = {
@@ -63,6 +63,51 @@ export const dashboardAdminApi = apiSlice.injectEndpoints({
       transformResponse: (response: DashboardCountResponse) => response.data,
       providesTags: ["DashboardAdmin"],
     }),
+
+    // 5. Monthly User Growth
+    getMonthlyUserGrowth: builder.query<MonthlyUserGrowth[], { year: number }>({
+      query: ({ year }) => ({
+        url: "/dashboard/monthly-user-growth",
+        method: "GET",
+        params: { year },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: MonthlyUserGrowth[];
+      }) => response.data,
+      providesTags: ["DashboardAdmin"],
+    }),
+
+    // 6. Top 5 Programs
+    getTop5Programs: builder.query<TopProgramsResponse, { period: string; top: number }>({
+      query: ({ period, top }) => ({
+        url: "/dashboard/top-5-program",
+        method: "GET",
+        params: { period, top },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: TopProgramsResponse;
+      }) => response.data,
+      providesTags: ["DashboardAdmin"],
+    }),
+
+    // 7. Top Sales
+    getTopSales: builder.query<TopSale[], { top: number }>({
+      query: ({ top }) => ({
+        url: "/dashboard/top-sales",
+        method: "GET",
+        params: { top },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: TopSale[];
+      }) => response.data,
+      providesTags: ["DashboardAdmin"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -73,4 +118,7 @@ export const {
   useGetTotalProgramsQuery,
   useGetTotalProgramRegistrationsQuery,
   useGetTotalProgramViewsQuery,
+  useGetMonthlyUserGrowthQuery,
+  useGetTop5ProgramsQuery,
+  useGetTopSalesQuery,
 } = dashboardAdminApi;

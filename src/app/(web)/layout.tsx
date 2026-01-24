@@ -70,12 +70,12 @@ export default function AffiliateLayout({
               </Link>
             </div>
 
-            {/* Main Navigation */}
-            <div className="hidden lg:flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+            {/* Main Navigation - Hidden for now */}
+            {/* <div className="hidden lg:flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               <Link href="/home" className={getLinkClass("/home")}>Feed</Link>
               <Link href="/programs" className={getLinkClass("/programs")}>Marketplace</Link>
               <Link href="/network" className={getLinkClass("/network")}>Network</Link>
-            </div>
+            </div> */}
 
             {/* Action Buttons */}
             <div className="flex items-center gap-4">

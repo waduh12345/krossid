@@ -18,7 +18,7 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password", "/register-owner"];
 const PUBLIC_PATH_PREFIXES = ["/programs/"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
@@ -68,7 +68,7 @@ export async function middleware(req: NextRequest) {
   // }
 
   const isSuperOrOwner =
-    hasRole(token, "superadmin") || hasRole(token, "owner");
+    hasRole(token, "superadmin") || hasRole(token, "owner") || hasRole(token, "director") || hasRole(token, "manager");
   const isUser = hasRole(token, "user");
   const isCmsPath = pathname.startsWith("/cms");
   const isSalesPath = pathname.startsWith("/my-account");

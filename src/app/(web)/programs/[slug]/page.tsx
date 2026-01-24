@@ -45,19 +45,23 @@ import {
 
 import { usePublicRegisterMutation } from "@/services/public/register.service";
 import { useGetMeQuery } from "@/services/auth.service";
+import { useShareProgramMutation } from "@/services/programs/programs.service";
 
+type ParameterField = {
+  name: string;
+  type: "alphanumeric" | "numeric" | "currency";
+};
 
 export default function ProgramDetail() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  console.log("Session Data:", session);
   const slug = params.slug as string;
   const id = parseInt(slug); // Convert slug to number ID
 
   // Get referral from URL param "reff", default to "saleswebsite" if empty
-  const referralCode = searchParams.get("reff") || "salesmen";
+  const referralCode = searchParams.get("reff") || "vFCbt8GF1768230668";
 
   const [showModal, setShowModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -88,6 +92,7 @@ export default function ProgramDetail() {
   });
 
   const [createRegister, { isLoading: isSubmitting }] = usePublicRegisterMutation();
+  const [shareProgram, { isLoading: isSharing }] = useShareProgramMutation();
 
   // Get user data including referral code
   const { data: userData } = useGetMeQuery(undefined, {
@@ -100,10 +105,19 @@ export default function ProgramDetail() {
   );
   const userReferralCode = userData?.referral || '';
 
-  // Parse parameter fields from programData.parameter
-  const parameterFields = programData?.parameter 
-    ? programData.parameter.split("|").filter(Boolean) 
-    : [];
+  const parameterFields: ParameterField[] = programData?.parameter
+  ? programData.parameter
+      .split("|")
+      .filter(Boolean)
+      .map((item) => {
+        const [name, type] = item.split(":");
+        return {
+          name,
+          type: type as ParameterField["type"],
+        };
+      })
+  : [];
+  
 
   // Timer persistence using localStorage
   useEffect(() => {
@@ -209,14 +223,18 @@ export default function ProgramDetail() {
 
   // Initialize parameterValues when parameterFields change
   useEffect(() => {
-    if (parameterFields.length > 0) {
-      const initialValues: Record<string, string> = {};
-      parameterFields.forEach((field) => {
-        initialValues[field] = "";
-      });
-      setParameterValues(initialValues);
-    }
+    const initialValues: Record<string, string> = {};
+    parameterFields.forEach((field) => {
+      initialValues[field.name] = "";
+    });
+    setParameterValues(initialValues);
   }, [programData?.parameter]);
+
+  const formatRupiah = (value: string) => {
+    const number = value.replace(/\D/g, "");
+    if (!number) return "";
+    return new Intl.NumberFormat("id-ID").format(Number(number));
+  };
 
   // Generate referral link with user's referral code
   const referralLink = programData?.id && userReferralCode
@@ -226,8 +244,86 @@ export default function ProgramDetail() {
     : "https://kross.id/programs";
 
   // Share to social media functions
-  const shareToWhatsApp = () => {
-    const text = `🔥 Cek program keren ini: ${program.title}\n\n${program.description}\n\nDaftar sekarang: ${referralLink}`;
+  const shareToWhatsApp = async () => {
+    // Hit API to track share
+    if (programData?.id) {
+      try {
+        await shareProgram({
+          id: programData.id,
+          shared_to: "Whatsapp"
+        }).unwrap();
+      } catch (err) {
+        // Silently fail - don't block user from sharing
+        console.error("Failed to track share:", err);
+      }
+    }
+
+    const text = `🔥 ${program.title}\n\n${program.description}\n\nLihat selengkapnya di: ${referralLink}`;
+    
+    // Get image URL
+    const imageUrl = getImageUrl();
+    
+    // Try to use Web Share API with image if available (works on mobile browsers)
+    if (navigator.share && navigator.canShare) {
+      try {
+        // Fetch image and convert to blob
+        // Use proxy or direct URL depending on CORS
+        let imageBlob: Blob;
+        try {
+          const response = await fetch(imageUrl, { mode: 'cors' });
+          if (!response.ok) throw new Error('Failed to fetch image');
+          imageBlob = await response.blob();
+        } catch (fetchError) {
+          // If CORS fails, try to create image from canvas
+          const img = document.createElement('img') as HTMLImageElement;
+          img.crossOrigin = 'anonymous';
+          
+          await new Promise<Blob>((resolve, reject) => {
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((blob) => {
+                  if (blob) {
+                    imageBlob = blob;
+                    resolve(blob);
+                  } else {
+                    reject(new Error('Failed to convert image to blob'));
+                  }
+                }, 'image/jpeg', 0.9);
+              } else {
+                reject(new Error('Failed to get canvas context'));
+              }
+            };
+            img.onerror = () => reject(new Error('Failed to load image'));
+            img.src = imageUrl;
+          });
+        }
+        
+        const file = new File([imageBlob!], 'program-image.jpg', { type: 'image/jpeg' });
+        
+        // Check if we can share files
+        const shareData: ShareData = {
+          title: program.title,
+          text: text,
+          url: referralLink,
+          files: [file]
+        };
+        
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          return;
+        }
+      } catch (error) {
+        // If Web Share API fails, fallback to WhatsApp link
+        console.log("Web Share API not available or failed, using WhatsApp link:", error);
+      }
+    }
+    
+    // Fallback to WhatsApp link (works everywhere)
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -288,16 +384,38 @@ export default function ProgramDetail() {
   };
 
   // Handle parameter input change
-  const handleParameterChange = (field: string, value: string) => {
-    setParameterValues((prev) => ({ ...prev, [field]: value }));
+  const handleParameterChange = (
+    fieldName: string,
+    fieldType: "alphanumeric" | "numeric" | "currency",
+    value: string
+  ) => {
+    let newValue = value;
+
+    if (fieldType === "alphanumeric") {
+      newValue = value.replace(/[^a-zA-Z0-9 ]/g, "");
+    }
+
+    if (fieldType === "numeric") {
+      newValue = value.replace(/\D/g, "");
+    }
+
+    if (fieldType === "currency") {
+      newValue = formatRupiah(value);
+    }
+
+    setParameterValues((prev) => ({
+      ...prev,
+      [fieldName]: newValue,
+    }));
   };
+
 
   // Reset form
   const resetForm = () => {
     setFormData({ name: "", email: "", phone: "" });
     const resetParams: Record<string, string> = {};
     parameterFields.forEach((field) => {
-      resetParams[field] = "";
+      resetParams[field.name] = "";
     });
     setParameterValues(resetParams);
     setFormStep(1);
@@ -357,10 +475,21 @@ export default function ProgramDetail() {
       return;
     }
 
-    // Combine parameter values with |
-    const parameterValueString = parameterFields.length > 0
-      ? parameterFields.map((field) => parameterValues[field] || "").join("|")
-      : "";
+    const parameterValueString =
+      parameterFields.length > 0
+        ? parameterFields
+            .map((field) => {
+              const rawValue = parameterValues[field.name] || "";
+
+              if (field.type === "currency") {
+                return rawValue.replace(/\D/g, ""); // rupiah → integer
+              }
+
+              return rawValue;
+            })
+            .join("|")
+        : "";
+
 
     try {
       await createRegister({
@@ -369,7 +498,7 @@ export default function ProgramDetail() {
         email: formData.email,
         phone: formData.phone,
         parameter_value: parameterValueString as any,
-        referral: referralCode,
+        referral: referralCode || "vFCbt8GF1768230668",
       }).unwrap();
 
       Swal.fire({
@@ -462,11 +591,12 @@ export default function ProgramDetail() {
     title: programData.title || "Program Title",
     subtitle: programData.sub_title || "",
     owner: programData.owner_name || "Program Owner",
+    email: programData.owner_email || "owner@example.com",
     category: programData.program_category_name || "General",
     parameter: programData.parameter || "",
     rating: 4.8,
     reviews: 124,
-    participants: "1,200+",
+    participants: programData.total_user_register || 0,
     price: formatCurrency(programData.nominal),
     commission: getCommissionDisplay() + " per sale",
     description: programData.description || "No description available",
@@ -486,47 +616,6 @@ export default function ProgramDetail() {
 
   return (
     <div className="relative min-h-screen text-white">
-      {/* --- HEADER NAV (Glassmorphism) --- */}
-      <nav className="sticky top-0 z-[100] bg-white/5 backdrop-blur-xl border-b border-white/10 h-20">
-        <div className="container mx-auto px-6 h-full flex items-center justify-between">
-          <button 
-            onClick={() => router.push('/programs')}
-            className="flex items-center gap-3 text-white/50 hover:text-white font-black text-xs uppercase tracking-widest transition-all group"
-          >
-            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-[#367CC0]">
-                <ChevronLeft className="w-4 h-4" />
-            </div>
-            Back to Marketplace
-          </button>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: program.title,
-                    text: program.description,
-                    url: window.location.href,
-                  });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Link Disalin!',
-                    timer: 2000,
-                    showConfirmButton: false,
-                    toast: true,
-                    position: 'top-end',
-                  });
-                }
-              }}
-              className="w-10 h-10 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/60 hover:text-white"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </nav>
-
       <main className="container mx-auto px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
@@ -563,13 +652,79 @@ export default function ProgramDetail() {
                     {program.subtitle && (
                       <p className="text-white/60 text-base mb-4 italic">{program.subtitle}</p>
                     )}
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-[#DF9B35]">
                         <Star className="w-4 h-4 fill-[#DF9B35]" /> {program.rating} 
                         <span className="text-white/30 font-medium">({program.reviews} reviews)</span>
                       </div>
                       <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
-                        <Users className="w-4 h-4" /> {program.participants} <span className="font-medium">Students Joined</span>
+                        <Users className="w-4 h-4" /> {program.participants} <span className="font-medium">Joined</span>
+                      </div>
+                      </div>
+                      {/* Social Share Buttons */}
+                      <div className="flex items-center gap-3 mt-2">
+                      {/* WhatsApp */}
+                        <button
+                          type="button"
+                          aria-label="Share to WhatsApp"
+                          onClick={shareToWhatsApp}
+                          className="p-2 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 transition-all"
+                        >
+                          <svg className="w-5 h-5 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                          </svg>
+                        </button>
+                        {/* Facebook */}
+                        <button
+                          type="button"
+                          aria-label="Share to Facebook"
+                          onClick={() => {
+                          const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(`🔥 ${program.title}`)}`;
+                          window.open(url, '_blank', 'width=600,height=400');
+                          }}
+                          className="p-2 rounded-full bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border border-[#1877F2]/30 transition-all"
+                        >
+                          <svg className="w-5 h-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                          </svg>
+                        </button>
+                        {/* Instagram */}
+                        <button
+                          type="button"
+                          aria-label="Share to Instagram"
+                          onClick={() => {
+                          // Instagram does not support direct sharing via URL, so copy to clipboard and show instructions
+                          navigator.clipboard.writeText(`${program.title}\n\n${window.location.href}`);
+                          window.alert('Link sudah disalin ke clipboard. Silakan buka Instagram dan paste di bio atau story Anda.');
+                          }}
+                          className="p-2 rounded-full bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500/20 hover:bg-gradient-to-tr hover:from-pink-400 hover:via-red-400 hover:to-yellow-400/30 border border-pink-500/30 transition-all"
+                        >
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                          <radialGradient id="ig" cx="50%" cy="50%" r="80%">
+                            <stop offset="0%" stopColor="#f9ce34"/>
+                            <stop offset="50%" stopColor="#ee2a7b"/>
+                            <stop offset="100%" stopColor="#6228d7"/>
+                          </radialGradient>
+                          <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#ig)" />
+                          <circle cx="12" cy="12" r="5" stroke="#fff" strokeWidth="2" fill="none"/>
+                          <circle cx="17" cy="7" r="1.5" fill="#fff"/>
+                          </svg>
+                        </button>
+                        {/* TikTok */}
+                        <button
+                          type="button"
+                          aria-label="Share to TikTok"
+                          onClick={() => {
+                          navigator.clipboard.writeText(`${program.title}\n\n${window.location.href}`);
+                          window.alert('Link sudah disalin ke clipboard. Silakan buka TikTok dan paste di bio atau caption video Anda.');
+                          }}
+                          className="p-2 rounded-full bg-black/10 hover:bg-black/20 border border-white/20 transition-all"
+                        >
+                          <svg className="w-5 h-5 text-black dark:text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -583,7 +738,9 @@ export default function ProgramDetail() {
                     </div>
                     <div>
                       <p className="text-[9px] text-white/40 font-black uppercase tracking-widest mb-1">Asset Owner</p>
-                      <p className="text-sm font-black text-white uppercase tracking-tighter">{program.owner}</p>
+                      <p className="text-sm font-black text-white tracking-tighter">
+                        {program.email.replace(/^([^@]+)/, "*****")}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -834,31 +991,6 @@ export default function ProgramDetail() {
               </motion.div>
             )}
 
-            {/* Vitality Sidebar */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[40px] shadow-xl">
-               <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-8">Asset Metrics</h4>
-               <div className="space-y-8">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                        <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Payout Cycle</span>
-                        <span className="text-sm font-black text-white uppercase tracking-tighter">24 Hours</span>
-                    </div>
-                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} transition={{ duration: 1.5 }} className="bg-[#7ED321] h-full shadow-[0_0_10px_#7ED321]"></motion.div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                        <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Conversion Rate</span>
-                        <span className="text-sm font-black text-white uppercase tracking-tighter">12.4%</span>
-                    </div>
-                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: "60%" }} transition={{ duration: 1.5 }} className="bg-[#367CC0] h-full shadow-[0_0_10px_#367CC0]"></motion.div>
-                    </div>
-                  </div>
-               </div>
-            </div>
-
           </div>
         </div>
       </main>
@@ -868,9 +1000,10 @@ export default function ProgramDetail() {
         onClose={() => setShowModal(false)} 
         programTitle={program.title}
         programId={programData?.id}
+        email={programData?.owner_email}
       />
 
-      {/* Register Program Modal - Enhanced with Neuroscience */}
+      {/* Register Program Modal - Compact Version */}
       <AnimatePresence>
         {showRegisterModal && (
           <>
@@ -883,105 +1016,85 @@ export default function ProgramDetail() {
               aria-hidden="true"
             />
             
-            {/* Modal container - centered, not clickable to close */}
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none mt-16">
+            {/* Modal container - centered */}
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/10 rounded-[32px] w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl relative pointer-events-auto"
+                className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/10 rounded-[24px] w-full max-w-md overflow-hidden shadow-2xl relative pointer-events-auto"
               >
-              {/* Urgency Timer Bar - Always visible at top */}
-              <div className="bg-gradient-to-r from-red-600 via-orange-500 to-red-600 px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
-                <Flame className="w-5 h-5 text-white animate-bounce" />
-                <span className="text-white font-black text-sm uppercase tracking-wider">
+              {/* Urgency Timer Bar */}
+              <div className="bg-gradient-to-r from-red-600 via-orange-500 to-red-600 px-4 py-2 flex items-center justify-center gap-2">
+                <Flame className="w-4 h-4 text-white" />
+                <span className="text-white font-bold text-xs uppercase tracking-wide">
                   {isTimerExpired ? (
-                    "Penawaran Telah Berakhir!"
+                    "Penawaran Berakhir!"
                   ) : (
-                    <>Penawaran Berakhir Dalam: <span className="text-yellow-300 text-lg ml-2">{formatTime(timeLeft)}</span></>
+                    <>Berakhir: <span className="text-yellow-300 font-black ml-1">{formatTime(timeLeft)}</span></>
                   )}
                 </span>
-                <Clock className="w-5 h-5 text-white" />
               </div>
 
-              {/* Modal Header */}
-              <div className="relative p-6 pb-4 border-b border-white/10">
+              {/* Modal Header - Compact */}
+              <div className="relative px-5 pt-4 pb-3 border-b border-white/10">
                 <button
                   onClick={handleCloseModal}
-                  className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                  className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
                 
-                {/* Progress Steps - Neuroscience: Progress Indicator */}
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  {[1, 2].map((step) => (
-                    <div key={step} className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                        formStep >= step 
-                          ? 'bg-[#7ED321] text-white shadow-lg shadow-[#7ED321]/30' 
-                          : 'bg-white/10 text-white/40'
-                      }`}>
-                        {formStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+                {/* Progress Steps */}
+                {parameterFields.length > 0 && (
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    {[1, 2].map((step) => (
+                      <div key={step} className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                          formStep >= step 
+                            ? 'bg-[#7ED321] text-white' 
+                            : 'bg-white/10 text-white/40'
+                        }`}>
+                          {formStep > step ? <CheckCircle className="w-4 h-4" /> : step}
+                        </div>
+                        {step < totalSteps && (
+                          <div className={`w-8 h-0.5 rounded-full transition-all ${
+                            formStep > step ? 'bg-[#7ED321]' : 'bg-white/10'
+                          }`} />
+                        )}
                       </div>
-                      {step < totalSteps && (
-                        <div className={`w-12 h-1 rounded-full transition-all ${
-                          formStep > step ? 'bg-[#7ED321]' : 'bg-white/10'
-                        }`} />
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#367CC0] to-[#7ED321] flex items-center justify-center shadow-lg">
-                    <Sparkles className="w-7 h-7 text-white" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#367CC0] to-[#7ED321] flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-xl font-black text-white tracking-tight">
+                    <h2 className="text-lg font-black text-white tracking-tight">
                       {formStep === 1 ? "Daftar Sekarang" : "Konfirmasi Data"}
                     </h2>
-                    <p className="text-xs text-white/40 font-medium">{program.title}</p>
-                  </div>
-                </div>
-
-                {/* Social Proof - Live Activity */}
-                <div className="mt-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-green-400 text-[10px] font-bold uppercase">{currentViewers} orang sedang melihat</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-[#DF9B35]/10 px-3 py-1.5 rounded-full border border-[#DF9B35]/20">
-                    <TrendingUp className="w-3 h-3 text-[#DF9B35]" />
-                    <span className="text-[#DF9B35] text-[10px] font-bold uppercase">Trending</span>
+                    <p className="text-[10px] text-white/40 truncate">{program.title}</p>
                   </div>
                 </div>
               </div>
 
               {/* Modal Body - Form */}
-              <form onSubmit={handleRegisterSubmit} className="p-6 space-y-5 max-h-[50vh] overflow-y-auto">
+              <form onSubmit={handleRegisterSubmit} className="p-5 space-y-4">
                 
                 {formStep === 1 && (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="space-y-5"
+                    className="space-y-4"
                   >
-                    {/* Exclusive Offer Banner */}
-                    <div className="bg-gradient-to-r from-[#367CC0]/20 to-[#7ED321]/20 border border-[#367CC0]/30 rounded-2xl p-4 flex items-center gap-3">
-                      <Gift className="w-8 h-8 text-[#7ED321]" />
-                      <div>
-                        <p className="text-white font-bold text-sm">🎁 Bonus Eksklusif!</p>
-                        <p className="text-white/60 text-xs">Daftar dalam 10 menit & dapatkan akses premium gratis</p>
-                      </div>
-                    </div>
-
                     {/* Name Field */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-                        <User className="w-4 h-4" /> Nama Lengkap <span className="text-red-500">*</span>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+                        <User className="w-3 h-3" /> Nama Lengkap <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="text"
@@ -989,22 +1102,17 @@ export default function ProgramDetail() {
                         value={formData.name}
                         onChange={handleInputChange}
                         placeholder="Masukkan nama lengkap"
-                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
                         required
                         readOnly={!!session?.user}
                         disabled={!!session?.user}
                       />
-                      {session?.user && (
-                        <p className="text-[10px] text-[#7ED321] italic flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Data terverifikasi dari akun Anda
-                        </p>
-                      )}
                     </div>
 
                     {/* Email Field */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-                        <Mail className="w-4 h-4" /> Email <span className="text-red-500">*</span>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+                        <Mail className="w-3 h-3" /> Email <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="email"
@@ -1012,22 +1120,17 @@ export default function ProgramDetail() {
                         value={formData.email}
                         onChange={handleInputChange}
                         placeholder="Masukkan email"
-                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
                         required
                         readOnly={!!session?.user}
                         disabled={!!session?.user}
                       />
-                      {session?.user && (
-                        <p className="text-[10px] text-[#7ED321] italic flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Data terverifikasi dari akun Anda
-                        </p>
-                      )}
                     </div>
 
                     {/* Phone Field */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-                        <Phone className="w-4 h-4" /> Nomor Telepon <span className="text-red-500">*</span>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+                        <Phone className="w-3 h-3" /> Nomor Telepon <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="tel"
@@ -1035,28 +1138,39 @@ export default function ProgramDetail() {
                         value={formData.phone}
                         onChange={handleInputChange}
                         placeholder="Masukkan nomor telepon"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
                         required
                       />
                     </div>
 
-                    {/* Continue Button */}
-                    <button
-                      type="button"
-                      onClick={parameterFields.length > 0 ? handleNextStep : undefined}
-                      className="w-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
-                    >
-                      <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-                      {parameterFields.length > 0 ? (
-                        <>
-                          Lanjutkan <ChevronRight className="w-5 h-5" />
-                        </>
-                      ) : (
-                        <>
-                          <Rocket className="w-5 h-5" /> Daftar Sekarang
-                        </>
-                      )}
-                    </button>
+                    {/* Action Button */}
+                    {parameterFields.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        className="w-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                      >
+                        Lanjutkan <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || isTimerExpired}
+                        className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Mendaftar...
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="w-4 h-4" />
+                            Daftar Sekarang
+                          </>
+                        )}
+                      </button>
+                    )}
                   </motion.div>
                 )}
 
@@ -1065,63 +1179,62 @@ export default function ProgramDetail() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="space-y-5"
+                    className="space-y-4"
                   >
                     {/* Back button */}
                     <button
                       type="button"
                       onClick={() => setFormStep(1)}
-                      className="flex items-center gap-2 text-white/50 hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                      className="flex items-center gap-1.5 text-white/50 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
                     >
-                      <ChevronLeft className="w-4 h-4" /> Kembali
+                      <ChevronLeft className="w-3 h-3" /> Kembali
                     </button>
 
-                    {/* Summary Card */}
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Data Anda</p>
-                      <div className="space-y-1 text-sm">
-                        <p className="text-white"><span className="text-white/50">Nama:</span> {formData.name}</p>
-                        <p className="text-white"><span className="text-white/50">Email:</span> {formData.email}</p>
-                        <p className="text-white"><span className="text-white/50">Telepon:</span> {formData.phone}</p>
+                    {/* Summary Card - Compact */}
+                    <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1.5">Data Anda</p>
+                      <div className="grid grid-cols-3 gap-2 text-[11px]">
+                        <p className="text-white truncate"><span className="text-white/50">Nama:</span> {formData.name}</p>
+                        <p className="text-white truncate"><span className="text-white/50">Email:</span> {formData.email}</p>
+                        <p className="text-white truncate"><span className="text-white/50">HP:</span> {formData.phone}</p>
                       </div>
                     </div>
 
                     {/* Dynamic Parameter Fields */}
-                    <div className="space-y-4">
-                      <p className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Sparkles className="w-4 h-4" /> Informasi Tambahan
-                      </p>
-                      {parameterFields.map((field, index) => (
-                        <div key={index} className="space-y-2">
-                          <Label className="text-xs font-black text-white/60 uppercase tracking-widest">
-                            {field}
+                    <div className="space-y-3">
+                      {parameterFields.map((field) => (
+                        <div key={field.name} className="space-y-1.5">
+                          <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
+                            {field.name}
                           </Label>
                           <Input
                             type="text"
-                            value={parameterValues[field] || ""}
-                            onChange={(e) => handleParameterChange(field, e.target.value)}
-                            placeholder={`Masukkan ${field.toLowerCase()}`}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-14 text-base focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
+                            value={parameterValues[field.name] || ""}
+                            onChange={(e) =>
+                              handleParameterChange(field.name, field.type, e.target.value)
+                            }
+                            placeholder={`Masukkan ${field.name.toLowerCase()}`}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321]"
                           />
                         </div>
                       ))}
+
                     </div>
 
                     {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={isSubmitting || isTimerExpired}
-                      className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative overflow-hidden group"
+                      className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                           Mendaftar...
                         </>
                       ) : (
                         <>
-                          <Rocket className="w-5 h-5" />
+                          <Rocket className="w-4 h-4" />
                           Konfirmasi & Daftar
                         </>
                       )}
@@ -1129,55 +1242,12 @@ export default function ProgramDetail() {
                   </motion.div>
                 )}
 
-                {/* If no parameter fields, show submit directly in step 1 */}
-                {formStep === 1 && parameterFields.length === 0 && (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || isTimerExpired}
-                    className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-sm shadow-xl hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 relative overflow-hidden group"
-                  >
-                    <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Mendaftar...
-                      </>
-                    ) : (
-                      <>
-                        <Rocket className="w-5 h-5" />
-                        Daftar Sekarang
-                      </>
-                    )}
-                  </button>
-                )}
-
-                {/* Recent Buyers - Social Proof */}
-                <div className="pt-4 border-t border-white/10">
-                  <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3 text-center">Baru saja mendaftar</p>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {recentBuyers.map((name, i) => (
-                      <motion.div
-                        key={`${name}-${i}`}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white/5 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#367CC0] to-[#7ED321] flex items-center justify-center text-[8px] font-bold text-white">
-                          {name.charAt(0)}
-                        </div>
-                        <span className="text-[10px] text-white/60">{name}</span>
-                        <CheckCircle className="w-3 h-3 text-[#7ED321]" />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Trust Badges */}
-                <div className="flex items-center justify-center gap-4 pt-2">
-                  <div className="flex items-center gap-1 text-[9px] text-white/30">
+                <div className="flex items-center justify-center gap-4 pt-1">
+                  <div className="flex items-center gap-1 text-[8px] text-white/30">
                     <ShieldCheck className="w-3 h-3" /> SSL Secured
                   </div>
-                  <div className="flex items-center gap-1 text-[9px] text-white/30">
+                  <div className="flex items-center gap-1 text-[8px] text-white/30">
                     <Award className="w-3 h-3" /> Verified Partner
                   </div>
                 </div>

@@ -32,6 +32,8 @@ import { ApiError } from "@/lib/utils";
 
 const PER_PAGE = 10;
 
+type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
+
 interface UserRole {
   id: number;
   name: string;
@@ -54,12 +56,19 @@ export default function ProgramSalesPage() {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { data: session } = useSession();
+  
+  const userRole = session?.user?.roles?.[0]?.name as RoleName | undefined;
 
   const isOwner = useMemo(() => {
     const user = session?.user as { roles?: UserRole[] } | undefined;
     const roles = user?.roles || [];
     return roles.some((r) => r.name === "owner");
   }, [session]);
+
+  // Check if user can perform delete operations (superadmin or owner)
+  const canDelete = useMemo(() => {
+    return userRole === "superadmin" || userRole === "owner";
+  }, [userRole]);
 
   useEffect(() => {
     if (programIdFromUrl) {
@@ -331,15 +340,21 @@ export default function ProgramSalesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(item.id)}
-                          disabled={deleting}
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/* Delete Button - Only for Superadmin and Owner */}
+                        {canDelete ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(item.id)}
+                            disabled={deleting}
+                            className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Read Only</span>
+                        )}
                       </td>
                     </tr>
                   ))

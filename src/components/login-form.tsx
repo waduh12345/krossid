@@ -271,7 +271,7 @@ export default function LoginForm() {
                 }`}
                 disabled={isLoading || isRegistering}
               >
-                {isLoading || isRegistering ? "Processing..." : (mode === "login" ? "Authenticate" : "Create Account")}
+                {isLoading || isRegistering ? "Processing..." : (mode === "login" ? "Login" : "Create Account")}
               </Button>
             </div>
 

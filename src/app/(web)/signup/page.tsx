@@ -185,7 +185,7 @@ const RegisterPage = () => {
 
           <form onSubmit={handleRegister} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2 space-y-2">
+              {/* <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
                   Full Name (can be changed later)
                 </label>
@@ -202,8 +202,8 @@ const RegisterPage = () => {
                     required
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
+              </div> */}
+              <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
                   Email (Verification OTP)
                 </label>
@@ -221,7 +221,7 @@ const RegisterPage = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
                   Nomor Handphone
                 </label>
@@ -238,7 +238,7 @@ const RegisterPage = () => {
                     required
                   />
                 </div>
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
                   Password

@@ -5,6 +5,45 @@ import type { Categories } from "@/types/programs/categories";
 export const categoriesApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ✅ Get all (paginated + optional search)
+    getPublicCategoriesList: builder.query<
+      {
+        data: Categories[];
+        last_page: number;
+        current_page: number;
+        total: number;
+        per_page: number;
+      },
+      { page: number; paginate: number; search?: string }
+    >({
+      query: ({ page, paginate, search }) => {
+        const s =
+          search && search.trim()
+            ? `&search=${encodeURIComponent(search.trim())}`
+            : "";
+        return {
+          url: `/public/program-categories?page=${page}&paginate=${paginate}${s}`,
+          method: "GET",
+        };
+      },
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: {
+          current_page: number;
+          data: Categories[];
+          last_page: number;
+          total: number;
+          per_page: number;
+        };
+      }) => ({
+        data: response.data.data,
+        last_page: response.data.last_page,
+        current_page: response.data.current_page,
+        total: response.data.total,
+        per_page: response.data.per_page,
+      }),
+    }),
+
     getCategoriesList: builder.query<
       {
         data: Categories[];
@@ -105,6 +144,7 @@ export const categoriesApi = apiSlice.injectEndpoints({
 });
 
 export const {
+  useGetPublicCategoriesListQuery,
   useGetCategoriesListQuery,
   useGetCategoriesByIdQuery,
   useCreateCategoriesMutation,

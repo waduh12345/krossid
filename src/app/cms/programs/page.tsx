@@ -13,15 +13,20 @@ import {
   RefreshCw,
   ShoppingCart,
   ClipboardList,
+  Download,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link"; 
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
 import {
   useGetProgramsQuery,
   useDeleteProgramsMutation,
 } from "@/services/programs/programs.service"; // Adjusted service path
 import type { Programs } from "@/types/programs/programs"; // Adjusted type path
 import ProgramsForm from "@/components/form-modal/programs/programs-form"; // Adjusted form path
+
+type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
 
 const PER_PAGE = 10;
 
@@ -34,14 +39,22 @@ export default function ProgramsPage() {
   const [page, setPage] = useState<number>(1);
   const [paginate, setPaginate] = useState<number>(PER_PAGE);
   const [q, setQ] = useState<string>("");
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { data: session } = useSession();
+  
+  const userRole = session?.user?.roles?.[0]?.name as RoleName | undefined;
   
   const isOwner = useMemo(() => {
     const user = session?.user as { roles?: UserRole[] } | undefined;
     const roles = user?.roles || [];
     return roles.some((r) => r.name === "owner");
   }, [session]);
+
+  // Check if user can perform CRUD operations (superadmin or owner)
+  const canCRUD = useMemo(() => {
+    return userRole === "superadmin" || userRole === "owner";
+  }, [userRole]);
 
   const { data, isFetching, refetch } = useGetProgramsQuery({
     page,
@@ -68,6 +81,82 @@ export default function ProgramsPage() {
     const t = setTimeout(() => setPage(1), 250);
     return () => clearTimeout(t);
   }, [q, paginate]);
+
+  // Export to Excel
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+
+    try {
+      // Use refetch to get current data
+      const result = await refetch();
+      const exportData = result.data;
+
+      if (!exportData || exportData.data.length === 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Tidak Ada Data",
+          text: "Tidak ada data untuk diekspor.",
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      // Map data untuk Excel
+      const excelData = exportData.data.map((prog) => ({
+        ID: prog.id,
+        Title: prog.title,
+        "Sub Title": prog.sub_title || "-",
+        Slug: prog.slug,
+        Category: prog.program_category_name || "Uncategorized",
+        Owner: prog.owner_name || "-",
+        Description: prog.description || "-",
+        Status: prog.status === 1 || prog.status === true ? "Active" : "Inactive",
+        Commission: prog.commission || 0,
+        Nominal: prog.nominal || 0,
+      }));
+
+      // Buat worksheet
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Programs");
+
+      // Set column widths
+      const maxWidths = [
+        { wch: 8 },  // ID
+        { wch: 30 }, // Title
+        { wch: 30 }, // Sub Title
+        { wch: 25 }, // Slug
+        { wch: 20 }, // Category
+        { wch: 20 }, // Owner
+        { wch: 50 }, // Description
+        { wch: 12 }, // Status
+        { wch: 12 }, // Commission
+        { wch: 12 }, // Nominal
+      ];
+      worksheet["!cols"] = maxWidths;
+
+      // Download file
+      const fileName = `Programs_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil!",
+        text: `Data program berhasil diekspor ke Excel (${exportData.data.length} data).`,
+        timer: 2000,
+        timerProgressBar: true,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: "Terjadi kesalahan saat mengekspor data.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   async function handleDelete(id: number) {
     const ask = await Swal.fire({
@@ -137,14 +226,39 @@ export default function ProgramsPage() {
             </Button>
           </div>
 
-          <Button
-            variant="default"
-            className="bg-sky-600 hover:bg-sky-700"
-            onClick={() => setOpenForm({ mode: "create" })}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Program
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Export Excel - Available for all roles */}
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={isExporting || total === 0}
+              className="border-green-200 text-green-600 hover:bg-green-50 hover:text-green-700"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Excel
+                </>
+              )}
+            </Button>
+
+            {/* Add Button - Only for Superadmin and Owner */}
+            {canCRUD && (
+              <Button
+                variant="default"
+                className="bg-sky-600 hover:bg-sky-700"
+                onClick={() => setOpenForm({ mode: "create" })}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add New Program
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -193,6 +307,7 @@ export default function ProgramsPage() {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center justify-end gap-2">
+                          {/* View Actions - Available for all roles */}
                           <Button
                             size="sm"
                             variant="outline"
@@ -215,25 +330,33 @@ export default function ProgramsPage() {
                               <ClipboardList className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setOpenForm({ mode: "edit", id: u.id })}
-                          className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
-                          title="Edit"
-                          >
-                          <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(u.id)}
-                          disabled={deleting}
-                          title="Delete"
-                          className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
-                          >
-                          <Trash2 className="h-4 w-4" />
-                          </Button>
+
+                          {/* Edit and Delete - Only for Superadmin and Owner */}
+                          {canCRUD ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setOpenForm({ mode: "edit", id: u.id })}
+                                className="h-9 w-9 p-0 border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(u.id)}
+                                disabled={deleting}
+                                title="Delete"
+                                className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 h-9 w-9 p-0 transition-all"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Read Only</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -277,8 +400,8 @@ export default function ProgramsPage() {
           </div>
         </div>
 
-        {/* Modal Form */}
-        {openForm && (
+        {/* Modal Form - Only for Superadmin and Owner */}
+        {canCRUD && openForm && (
           <ProgramsForm
             open
             mode={openForm.mode}

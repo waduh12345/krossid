@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSession } from "next-auth/react";
 import {
   Plus,
   Search,
   Pencil,
   Trash2,
   KeyRound,
+  Loader2,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import {
@@ -26,10 +29,44 @@ const PER_PAGE = 10;
 // kalau mau, kamu bisa hilangkan ini dan jangan kirim ke query
 const DEFAULT_LIST_ROLE_ID = 2;
 
+type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
+
 export default function UsersPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  
+  const userRole = session?.user?.roles?.[0]?.name as RoleName | undefined;
+
   const [page, setPage] = useState<number>(1);
   const [paginate, setPaginate] = useState<number>(PER_PAGE);
   const [q, setQ] = useState<string>("");
+
+  // Check if user is superadmin, redirect if not
+  useEffect(() => {
+    if (status === "loading") return; // Wait for session to load
+    
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
+
+    if (status === "authenticated" && userRole !== "superadmin") {
+      // Redirect immediately, then show notification
+      router.replace("/cms/dashboard");
+      
+      // Show notification after redirect
+      setTimeout(() => {
+        Swal.fire({
+          icon: "warning",
+          title: "Akses Ditolak",
+          text: "Hanya Superadmin yang dapat mengakses halaman Manajemen User.",
+          confirmButtonColor: "#3b82f6",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }, 300);
+    }
+  }, [status, userRole, router]);
 
   const { data, isFetching, refetch } = useGetUsersListQuery({
     page,
@@ -90,6 +127,23 @@ export default function UsersPage() {
     }
   }
 
+  // Show loading while checking session
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-gray-600">Memeriksa akses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render content if user is authenticated and is superadmin
+  if (status !== "authenticated" || userRole !== "superadmin") {
+    return null; // Will be redirected by useEffect
+  }
+
   return (
     <>
       <SiteHeader title="Manajemen User" />
@@ -148,6 +202,7 @@ export default function UsersPage() {
                   <th className="px-4 py-3">Phone</th>
                   <th className="px-4 py-3">Roles</th>
                   <th className="px-4 py-3">Corporate</th>
+                  <th className="px-4 py-3">Status</th>
                   {/* <th className="px-4 py-3">Created At</th> */}
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -179,6 +234,15 @@ export default function UsersPage() {
                       <td className="px-4 py-3 md:text-sm align-middle">
                         {u.is_corporate ? "Yes" : "No"}
                       </td>
+                        <td className="px-4 py-3 md:text-sm align-middle">
+                        {u.status === 1
+                          ? "Active"
+                          : u.status === 2
+                          ? "Waiting Approval"
+                          : u.status === -1
+                          ? "Rejected"
+                          : "Inactive"}
+                        </td>
                       {/* <td className="px-4 py-3 text-xs align-middle">{formatDate(u.created_at)}</td> */}
                       <td className="px-4 py-2 align-middle">
                         <div className="flex items-center justify-end gap-2">
@@ -191,27 +255,31 @@ export default function UsersPage() {
                           >
                             <KeyRound className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setOpenForm({ mode: "edit", id: u.id })
-                            }
-                            className="bg-white hover:bg-[#4A90E2] text-[#4A90E2] hover:text-white border border-[#4A90E2] rounded-xl h-10 w-10 p-0 transition-all"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(u.id)}
-                            disabled={deleting}
-                            title="Hapus"
-                            className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 rounded-xl h-10 w-10 p-0 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {(userRole === "superadmin" || (userRole === "director")) && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setOpenForm({ mode: "edit", id: u.id })
+                                }
+                                className="bg-white hover:bg-[#4A90E2] text-[#4A90E2] hover:text-white border border-[#4A90E2] rounded-xl h-10 w-10 p-0 transition-all"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(u.id)}
+                                disabled={deleting}
+                                title="Hapus"
+                                className="bg-white hover:bg-red-500 text-red-500 hover:text-white border border-red-500 rounded-xl h-10 w-10 p-0 transition-all"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

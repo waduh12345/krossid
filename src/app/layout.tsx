@@ -48,9 +48,9 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <ClientAuthGuard
-              excludedRoutes={["/auth", "/auth/login", "/public", "/"]}
+              excludedRoutes={["/auth", "/login", "/public", "/"]}
               excludedFetchPrefixes={["/api/auth/", "/auth/"]}
-              loginPath="/auth/login"
+              loginPath="/login"
             />
             <ActiveThemeProvider>{children}</ActiveThemeProvider>
           </ThemeProvider>

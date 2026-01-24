@@ -1,5 +1,5 @@
 import { apiSlice } from "../base-query";
-import type { Programs } from "@/types/programs/programs";
+import type { TopPrograms } from "@/types/programs/programs";
 
 interface GetTopParams {
   paginate: number;
@@ -10,7 +10,7 @@ export const publicTopApi = apiSlice.injectEndpoints({
     // ✅ GET top programs from public endpoint
     getTopPrograms: builder.query<
       {
-        data: Programs[];
+        data: TopPrograms[];
         last_page: number;
         current_page: number;
         total: number;
@@ -28,7 +28,7 @@ export const publicTopApi = apiSlice.injectEndpoints({
         message: string;
         data: {
           current_page: number;
-          data: Programs[];
+          data: TopPrograms[];
           last_page: number;
           total: number;
           per_page: number;
