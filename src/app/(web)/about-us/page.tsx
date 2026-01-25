@@ -20,53 +20,56 @@ import {
   Eye,
   BarChart3,
 } from "lucide-react";
+import { useI18n } from "@/contexts/i18n-context";
 
 export default function AboutUsPage() {
+  const { t } = useI18n();
+
   const features = [
     {
       icon: ShieldCheck,
-      title: "Masked Identity System",
-      description: "Protect your privacy while building your affiliate network. Our advanced identity masking ensures your personal information stays secure.",
+      title: t.aboutUs.features.maskedIdentity.title,
+      description: t.aboutUs.features.maskedIdentity.description,
       color: "from-blue-500/20 to-blue-600/20",
       borderColor: "border-blue-400/30",
       iconColor: "text-blue-400",
     },
     {
       icon: Zap,
-      title: "Lightning Fast Performance",
-      description: "Experience seamless program management with our optimized platform. Real-time updates and instant notifications keep you ahead.",
+      title: t.aboutUs.features.lightningFast.title,
+      description: t.aboutUs.features.lightningFast.description,
       color: "from-yellow-500/20 to-yellow-600/20",
       borderColor: "border-yellow-400/30",
       iconColor: "text-yellow-400",
     },
     {
       icon: TrendingUp,
-      title: "Growth Analytics",
-      description: "Track your performance with comprehensive analytics. Monitor registrations, shares, and conversions to optimize your strategy.",
+      title: t.aboutUs.features.growthAnalytics.title,
+      description: t.aboutUs.features.growthAnalytics.description,
       color: "from-green-500/20 to-green-600/20",
       borderColor: "border-green-400/30",
       iconColor: "text-green-400",
     },
     {
       icon: Lock,
-      title: "Enterprise Security",
-      description: "Bank-level encryption and security protocols protect your data. SSL encrypted connections ensure safe transactions.",
+      title: t.aboutUs.features.enterpriseSecurity.title,
+      description: t.aboutUs.features.enterpriseSecurity.description,
       color: "from-purple-500/20 to-purple-600/20",
       borderColor: "border-purple-400/30",
       iconColor: "text-purple-400",
     },
     {
       icon: Globe,
-      title: "Global Reach",
-      description: "Connect with programs and affiliates worldwide. Expand your network beyond borders with our international platform.",
+      title: t.aboutUs.features.globalReach.title,
+      description: t.aboutUs.features.globalReach.description,
       color: "from-cyan-500/20 to-cyan-600/20",
       borderColor: "border-cyan-400/30",
       iconColor: "text-cyan-400",
     },
     {
       icon: Users,
-      title: "Community Driven",
-      description: "Join a thriving community of affiliates, owners, and sales professionals. Collaborate and grow together.",
+      title: t.aboutUs.features.communityDriven.title,
+      description: t.aboutUs.features.communityDriven.description,
       color: "from-pink-500/20 to-pink-600/20",
       borderColor: "border-pink-400/30",
       iconColor: "text-pink-400",
@@ -76,31 +79,31 @@ export default function AboutUsPage() {
   const values = [
     {
       icon: Eye,
-      title: "Transparency",
-      description: "Clear, honest communication and open data sharing.",
+      title: t.aboutUs.values.transparency.title,
+      description: t.aboutUs.values.transparency.description,
     },
     {
       icon: Heart,
-      title: "Trust",
-      description: "Building lasting relationships through reliability and integrity.",
+      title: t.aboutUs.values.trust.title,
+      description: t.aboutUs.values.trust.description,
     },
     {
       icon: Target,
-      title: "Excellence",
-      description: "Delivering exceptional value and continuous improvement.",
+      title: t.aboutUs.values.excellence.title,
+      description: t.aboutUs.values.excellence.description,
     },
     {
       icon: Award,
-      title: "Innovation",
-      description: "Pushing boundaries with cutting-edge technology and solutions.",
+      title: t.aboutUs.values.innovation.title,
+      description: t.aboutUs.values.innovation.description,
     },
   ];
 
   const stats = [
-    { label: "Active Programs", value: "500+", icon: BarChart3 },
-    { label: "Registered Users", value: "10K+", icon: Users },
-    { label: "Total Registrations", value: "50K+", icon: CheckCircle2 },
-    { label: "Success Rate", value: "95%", icon: TrendingUp },
+    { label: t.aboutUs.stats.activePrograms, value: "500+", icon: BarChart3 },
+    { label: t.aboutUs.stats.registeredUsers, value: "10K+", icon: Users },
+    { label: t.aboutUs.stats.totalRegistrations, value: "50K+", icon: CheckCircle2 },
+    { label: t.aboutUs.stats.successRate, value: "95%", icon: TrendingUp },
   ];
 
   return (
@@ -122,21 +125,20 @@ export default function AboutUsPage() {
             <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 mb-6">
               <Sparkles size={14} className="text-[#DF9B35]" />
               <span className="text-xs font-black text-white/80 uppercase tracking-widest">
-                About Kross.id
+                {t.aboutUs.badge}
               </span>
             </div>
 
             <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
-              Professional Affiliate
+              {t.aboutUs.heroTitle}
               <br />
               <span className="bg-gradient-to-r from-[#367CC0] to-[#DF9B35] bg-clip-text text-transparent">
-                Platform
+                {t.aboutUs.heroTitleHighlight}
               </span>
             </h1>
 
             <p className="text-xl md:text-2xl text-white/60 mb-8 leading-relaxed max-w-2xl mx-auto">
-              Empowering affiliates, owners, and sales professionals with a secure, 
-              privacy-focused platform that connects, grows, and succeeds together.
+              {t.aboutUs.heroDescription}
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-4">
@@ -144,14 +146,14 @@ export default function AboutUsPage() {
                 href="/programs"
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-[#367CC0] to-[#DF9B35] hover:from-[#2d6699] hover:to-[#c7892a] text-white font-bold px-8 py-4 rounded-full transition-all shadow-lg shadow-[#367CC0]/20 group"
               >
-                Explore Programs
+                {t.aboutUs.explorePrograms}
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 href="/signup"
                 className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-4 rounded-full transition-all backdrop-blur-md"
               >
-                Join Now
+                {t.aboutUs.joinNow}
                 <Users size={18} />
               </Link>
             </div>
@@ -171,24 +173,17 @@ export default function AboutUsPage() {
             >
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12">
                 <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
-                  Who We Are
+                  {t.aboutUs.whoWeAre}
                 </h2>
                 <div className="space-y-4 text-white/70 leading-relaxed">
                   <p className="text-lg">
-                    <strong className="text-white">Kross.id</strong> is a cutting-edge affiliate 
-                    marketing platform designed for professionals who value privacy, security, and 
-                    performance. We've built a revolutionary system that combines the power of 
-                    affiliate marketing with advanced identity protection.
+                    <strong className="text-white">Kross.id</strong> {t.aboutUs.whoWeAreDesc1}
                   </p>
                   <p>
-                    Our platform serves as a bridge between program owners and affiliate sales 
-                    professionals, creating opportunities for growth while maintaining the highest 
-                    standards of data protection and user privacy.
+                    {t.aboutUs.whoWeAreDesc2}
                   </p>
                   <p>
-                    With our masked identity system, you can build your network and grow your 
-                    business without compromising your personal information. We believe that 
-                    success should come with security.
+                    {t.aboutUs.whoWeAreDesc3}
                   </p>
                 </div>
               </div>
@@ -208,10 +203,9 @@ export default function AboutUsPage() {
                       <Target size={24} className="text-[#367CC0]" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-white mb-2">Our Mission</h3>
+                      <h3 className="text-xl font-black text-white mb-2">{t.aboutUs.ourMission}</h3>
                       <p className="text-white/70">
-                        To empower professionals with a secure, transparent, and efficient 
-                        affiliate marketing platform that drives growth while protecting privacy.
+                        {t.aboutUs.ourMissionDesc}
                       </p>
                     </div>
                   </div>
@@ -221,10 +215,9 @@ export default function AboutUsPage() {
                       <Eye size={24} className="text-[#DF9B35]" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-white mb-2">Our Vision</h3>
+                      <h3 className="text-xl font-black text-white mb-2">{t.aboutUs.ourVision}</h3>
                       <p className="text-white/70">
-                        To become the leading affiliate platform in Indonesia and beyond, 
-                        recognized for innovation, security, and community excellence.
+                        {t.aboutUs.ourVisionDesc}
                       </p>
                     </div>
                   </div>
@@ -315,10 +308,10 @@ export default function AboutUsPage() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-              Our Core <span className="text-[#DF9B35]">Values</span>
+              {t.aboutUs.ourCoreValues} <span className="text-[#DF9B35]">{t.aboutUs.ourCoreValuesHighlight}</span>
             </h2>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              The principles that guide everything we do
+              {t.aboutUs.ourCoreValuesDesc}
             </p>
           </motion.div>
 
@@ -354,25 +347,24 @@ export default function AboutUsPage() {
             className="bg-gradient-to-r from-[#367CC0]/20 via-[#DF9B35]/20 to-[#367CC0]/20 backdrop-blur-xl border border-white/10 rounded-3xl p-12 md:p-16 text-center"
           >
             <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
-              Ready to Get Started?
+              {t.aboutUs.readyToGetStarted}
             </h2>
             <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who trust Kross.id for their affiliate marketing needs. 
-              Start building your network today.
+              {t.aboutUs.readyToGetStartedDesc}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link
                 href="/signup"
                 className="inline-flex items-center gap-2 bg-gradient-to-r from-[#367CC0] to-[#DF9B35] hover:from-[#2d6699] hover:to-[#c7892a] text-white font-bold px-8 py-4 rounded-full transition-all shadow-lg shadow-[#367CC0]/20 group"
               >
-                Create Account
+                {t.aboutUs.createAccount}
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 href="/programs"
                 className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-4 rounded-full transition-all backdrop-blur-md"
               >
-                Browse Programs
+                {t.aboutUs.browsePrograms}
                 <Sparkles size={18} />
               </Link>
             </div>

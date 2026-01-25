@@ -21,7 +21,7 @@ import type { Sales } from "@/types/programs/sales";
 import { useGetCategoriesListQuery } from "@/services/programs/categories.service";
 import { useGetUsersListQuery } from "@/services/users-management.service";
 import Swal from "sweetalert2";
-import { X, Loader2, Image as ImageIcon, Mail, GripVertical, Type, Hash, DollarSign } from "lucide-react";
+import { X, Loader2, Image as ImageIcon, Mail, GripVertical, Type, Hash, DollarSign, Plus, Trash2 } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -38,6 +38,9 @@ type FormState = {
   sub_title: string;
   slug: string;
   description: string;
+  value_description: string;
+  guide_description: string;
+  benefit_description: string;
   parameter: string;
   status: boolean;
 };
@@ -79,6 +82,11 @@ export default function ProgramsForm({
   const [emailInput, setEmailInput] = useState("");
   const [emailRaw, setEmailRaw] = useState("");
   const PUBLIC_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
+  
+  // Multiple input states for Value Description, Benefit, and Guide
+  const [valueDescriptions, setValueDescriptions] = useState<string[]>([""]);
+  const [valueBenefits, setValueBenefits] = useState<string[]>([""]);
+  const [valueGuides, setValueGuides] = useState<string[]>([""]);
 
   const { data: session } = useSession();
 
@@ -131,9 +139,46 @@ export default function ProgramsForm({
       description: detail?.description ?? "",
       parameter: detail?.parameter ?? "",
       status: detail?.status === 1 || detail?.status === true || !isEdit,
+      value_description: detail?.value_description ?? "",
+      guide_description: detail?.guide_description ?? "",
+      benefit_description: detail?.benefit_description ?? "",
     }),
     [detail, isEdit]
   );
+
+  // Initialize multiple inputs from detail data
+  useEffect(() => {
+    if (open) {
+      if (isEdit && detail) {
+        // Parse value_description, benefit_description, guide_description from | separator
+        if (detail.value_description) {
+          const parsed = detail.value_description.split("|").filter(v => v.trim() !== "");
+          setValueDescriptions(parsed.length > 0 ? parsed : [""]);
+        } else {
+          setValueDescriptions([""]);
+        }
+        
+        if (detail.benefit_description) {
+          const parsed = detail.benefit_description.split("|").filter(v => v.trim() !== "");
+          setValueBenefits(parsed.length > 0 ? parsed : [""]);
+        } else {
+          setValueBenefits([""]);
+        }
+        
+        if (detail.guide_description) {
+          const parsed = detail.guide_description.split("|").filter(v => v.trim() !== "");
+          setValueGuides(parsed.length > 0 ? parsed : [""]);
+        } else {
+          setValueGuides([""]);
+        }
+      } else {
+        // Reset to single empty input for create mode
+        setValueDescriptions([""]);
+        setValueBenefits([""]);
+        setValueGuides([""]);
+      }
+    }
+  }, [detail, isEdit, open]);
 
   const [form, setForm] = useState<FormState>(initial);
   const [formSales, setFormSales] = useState<Sales>({
@@ -400,6 +445,9 @@ export default function ProgramsForm({
         setImagePreview(null);
         setImageFile(null);
       }
+      // Reset email inputs
+      setEmailRaw("");
+      setEmailInput("");
     }
   }, [initial, open, isEdit, detail]);
 
@@ -461,6 +509,17 @@ export default function ProgramsForm({
         formData.append(key, String(value ?? ""));
       }
     });
+    
+    // Combine multiple inputs with | separator
+    const valueDescriptionStr = valueDescriptions.filter(v => v.trim() !== "").join("|");
+    const benefitDescriptionStr = valueBenefits.filter(v => v.trim() !== "").join("|");
+    const guideDescriptionStr = valueGuides.filter(v => v.trim() !== "").join("|");
+    
+    // Override form values with combined strings
+    formData.set("value_description", valueDescriptionStr);
+    formData.set("benefit_description", benefitDescriptionStr);
+    formData.set("guide_description", guideDescriptionStr);
+    
     if (imageFile) formData.append("image", imageFile);
     if (isEdit) formData.append("_method", "PUT");
 
@@ -669,6 +728,191 @@ export default function ProgramsForm({
               </div>
             </div>
 
+            {/* Bagian Email Sales - Compact */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <Label className="font-semibold text-gray-700">Email (Sales)</Label>
+                  <p className="text-[10px] text-zinc-500">
+                    {ownerInfo.isCorporate 
+                      ? `Corporate: @${ownerInfo.domain}` 
+                      : "Personal: Semua domain"}
+                  </p>
+                </div>
+                <span className="text-[10px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
+                  {detectedEmails.length} Email
+                </span>
+              </div>
+              
+              <Textarea
+                placeholder="Masukkan banyak email di sini... (Copy-paste dari mana saja)"
+                value={emailRaw}
+                onChange={(e) => setEmailRaw(e.target.value)}
+                className="min-h-[80px] font-mono text-sm resize-y focus-visible:ring-sky-500"
+              />
+              
+              {/* Preview Email yang Lolos Filter */}
+              {detectedEmails.length > 0 && (
+                <div className="rounded-lg border border-dashed p-2 bg-zinc-50">
+                  <div className="flex flex-wrap gap-1.5">
+                    {detectedEmails.map((email, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                      >
+                        <Mail className="h-2.5 w-2.5" />
+                        {email}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {emailRaw && extractEmails(emailRaw).length > detectedEmails.length && (
+                <p className="text-[9px] text-red-500 font-medium">
+                  * Beberapa email diabaikan (domain tidak sesuai)
+                </p>
+              )}
+            </div>
+
+            {/* Value Description - Multiple Inputs */}
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700">Value Description</Label>
+              <p className="text-[10px] text-zinc-500">Tambahkan deskripsi nilai program (opsional)</p>
+              <div className="space-y-2">
+                {valueDescriptions.map((value, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder={`Value description ${index + 1}`}
+                      value={value}
+                      onChange={(e) => {
+                        const newValues = [...valueDescriptions];
+                        newValues[index] = e.target.value;
+                        setValueDescriptions(newValues);
+                      }}
+                      className="flex-1"
+                    />
+                    {valueDescriptions.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const newValues = valueDescriptions.filter((_, i) => i !== index);
+                          setValueDescriptions(newValues.length > 0 ? newValues : [""]);
+                        }}
+                        className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValueDescriptions([...valueDescriptions, ""])}
+                  className="w-full text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Value Description
+                </Button>
+              </div>
+            </div>
+
+            {/* Value Benefit - Multiple Inputs */}
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700">Value Benefit</Label>
+              <p className="text-[10px] text-zinc-500">Tambahkan benefit program (opsional)</p>
+              <div className="space-y-2">
+                {valueBenefits.map((benefit, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder={`Benefit ${index + 1}`}
+                      value={benefit}
+                      onChange={(e) => {
+                        const newBenefits = [...valueBenefits];
+                        newBenefits[index] = e.target.value;
+                        setValueBenefits(newBenefits);
+                      }}
+                      className="flex-1"
+                    />
+                    {valueBenefits.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const newBenefits = valueBenefits.filter((_, i) => i !== index);
+                          setValueBenefits(newBenefits.length > 0 ? newBenefits : [""]);
+                        }}
+                        className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValueBenefits([...valueBenefits, ""])}
+                  className="w-full text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Benefit
+                </Button>
+              </div>
+            </div>
+
+            {/* Value Guide - Multiple Inputs */}
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700">Value Guide</Label>
+              <p className="text-[10px] text-zinc-500">Tambahkan panduan program (opsional)</p>
+              <div className="space-y-2">
+                {valueGuides.map((guide, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder={`Guide ${index + 1}`}
+                      value={guide}
+                      onChange={(e) => {
+                        const newGuides = [...valueGuides];
+                        newGuides[index] = e.target.value;
+                        setValueGuides(newGuides);
+                      }}
+                      className="flex-1"
+                    />
+                    {valueGuides.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const newGuides = valueGuides.filter((_, i) => i !== index);
+                          setValueGuides(newGuides.length > 0 ? newGuides : [""]);
+                        }}
+                        className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValueGuides([...valueGuides, ""])}
+                  className="w-full text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Guide
+                </Button>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <Label className="font-semibold text-gray-700">
                 Required Data from Applicant
@@ -801,53 +1045,6 @@ export default function ProgramsForm({
               <p className="text-[10px] text-zinc-500 italic">
                 Tekan Enter atau klik + untuk menambah. Drag & drop untuk mengubah urutan.
               </p>
-            </div>
-
-            {/* Bagian Email Sales - Compact */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <Label className="font-semibold text-gray-700">Email (Sales)</Label>
-                  <p className="text-[10px] text-zinc-500">
-                    {ownerInfo.isCorporate 
-                      ? `Corporate: @${ownerInfo.domain}` 
-                      : "Personal: Semua domain"}
-                  </p>
-                </div>
-                <span className="text-[10px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
-                  {detectedEmails.length} Email
-                </span>
-              </div>
-              
-              <Textarea
-                placeholder="Masukkan banyak email di sini... (Copy-paste dari mana saja)"
-                value={emailRaw}
-                onChange={(e) => setEmailRaw(e.target.value)}
-                className="min-h-[80px] font-mono text-sm resize-y focus-visible:ring-sky-500"
-              />
-              
-              {/* Preview Email yang Lolos Filter */}
-              {detectedEmails.length > 0 && (
-                <div className="rounded-lg border border-dashed p-2 bg-zinc-50">
-                  <div className="flex flex-wrap gap-1.5">
-                    {detectedEmails.map((email, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      >
-                        <Mail className="h-2.5 w-2.5" />
-                        {email}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {emailRaw && extractEmails(emailRaw).length > detectedEmails.length && (
-                <p className="text-[9px] text-red-500 font-medium">
-                  * Beberapa email diabaikan (domain tidak sesuai)
-                </p>
-              )}
             </div>
 
             <div className="flex items-center gap-3 rounded-lg border bg-zinc-50 p-3">

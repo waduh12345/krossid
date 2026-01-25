@@ -46,7 +46,7 @@ export default function UsersPage() {
     if (status === "loading") return; // Wait for session to load
     
     if (status === "unauthenticated") {
-      router.replace("/login");
+      router.replace("/signin");
       return;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -31,7 +31,8 @@ import {
   TrendingUp,
   Flame,
   Gift,
-  Sparkles
+  Sparkles,
+  Eye
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AffiliateRegisterModal from "@/components/affiliate-register-modal";
@@ -46,6 +47,7 @@ import {
 import { usePublicRegisterMutation } from "@/services/public/register.service";
 import { useGetMeQuery } from "@/services/auth.service";
 import { useShareProgramMutation } from "@/services/programs/programs.service";
+import { useI18n } from "@/contexts/i18n-context";
 
 type ParameterField = {
   name: string;
@@ -57,6 +59,7 @@ export default function ProgramDetail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const { t, language } = useI18n();
   const slug = params.slug as string;
   const id = parseInt(slug); // Convert slug to number ID
 
@@ -230,6 +233,23 @@ export default function ProgramDetail() {
     setParameterValues(initialValues);
   }, [programData?.parameter]);
 
+  // Parse value_description, guide_description, benefit_description from | separator
+  // These must be before any early returns to follow Rules of Hooks
+  const valueDescriptions = useMemo(() => {
+    if (!programData?.value_description) return [];
+    return programData.value_description.split("|").filter(v => v.trim() !== "");
+  }, [programData?.value_description]);
+
+  const guideDescriptions = useMemo(() => {
+    if (!programData?.guide_description) return [];
+    return programData.guide_description.split("|").filter(v => v.trim() !== "");
+  }, [programData?.guide_description]);
+
+  const benefitDescriptions = useMemo(() => {
+    if (!programData?.benefit_description) return [];
+    return programData.benefit_description.split("|").filter(v => v.trim() !== "");
+  }, [programData?.benefit_description]);
+
   const formatRupiah = (value: string) => {
     const number = value.replace(/\D/g, "");
     if (!number) return "";
@@ -338,14 +358,14 @@ export default function ProgramDetail() {
     navigator.clipboard.writeText(referralLink);
     Swal.fire({
       icon: 'info',
-      title: 'Link Disalin!',
+      title: t.programDetail.linkCopied,
       html: `
-        <p>Link sudah disalin ke clipboard.</p>
-        <p class="mt-2 text-sm">Buka TikTok dan paste link di bio atau caption video Anda.</p>
+        <p>${t.programDetail.linkCopiedText}</p>
+        <p class="mt-2 text-sm">${t.programDetail.tiktokInstructions}</p>
       `,
-      confirmButtonText: 'Buka TikTok',
+      confirmButtonText: t.programDetail.openTiktok,
       showCancelButton: true,
-      cancelButtonText: 'Tutup',
+      cancelButtonText: t.programDetail.close,
       background: '#0f172a',
       color: '#fff',
     }).then((result) => {
@@ -365,8 +385,8 @@ export default function ProgramDetail() {
     navigator.clipboard.writeText(referralLink);
     Swal.fire({
       icon: 'success',
-      title: 'Link Disalin!',
-      text: 'Sekarang Anda bisa membagikannya di jaringan Anda.',
+      title: t.programDetail.linkCopied,
+      text: t.programDetail.linkCopiedText,
       timer: 2000,
       showConfirmButton: false,
       toast: true,
@@ -449,8 +469,8 @@ export default function ProgramDetail() {
     if (!formData.name || !formData.email || !formData.phone) {
       Swal.fire({
         icon: 'error',
-        title: 'Form Tidak Lengkap',
-        text: 'Mohon lengkapi semua field yang wajib diisi.',
+        title: t.programDetail.requiredFields,
+        text: t.programDetail.requiredFields,
         background: '#0f172a',
         color: '#fff',
       });
@@ -467,8 +487,8 @@ export default function ProgramDetail() {
     if (!formData.name || !formData.email || !formData.phone) {
       Swal.fire({
         icon: 'error',
-        title: 'Form Tidak Lengkap',
-        text: 'Mohon lengkapi semua field yang wajib diisi.',
+        title: t.programDetail.requiredFields,
+        text: t.programDetail.requiredFields,
         background: '#0f172a',
         color: '#fff',
       });
@@ -503,8 +523,8 @@ export default function ProgramDetail() {
 
       Swal.fire({
         icon: 'success',
-        title: 'Registrasi Berhasil!',
-        text: 'Anda telah berhasil mendaftar program ini.',
+        title: t.programDetail.registrationSuccess,
+        text: t.programDetail.registrationSuccessText,
         timer: 3000,
         showConfirmButton: false,
         background: '#0f172a',
@@ -517,8 +537,8 @@ export default function ProgramDetail() {
     } catch (err: any) {
       Swal.fire({
         icon: 'error',
-        title: 'Registrasi Gagal',
-        text: err?.data?.message || 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.',
+        title: t.programDetail.registrationFailed,
+        text: err?.data?.message || t.programDetail.registrationFailedText,
         background: '#0f172a',
         color: '#fff',
       });
@@ -531,7 +551,7 @@ export default function ProgramDetail() {
       <div className="relative min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#367CC0] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white/60 text-sm font-bold uppercase tracking-widest">Loading Program...</p>
+          <p className="text-white/60 text-sm font-bold uppercase tracking-widest">{t.programDetail.loadingProgram}</p>
         </div>
       </div>
     );
@@ -545,13 +565,13 @@ export default function ProgramDetail() {
           <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <X className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">Program Not Found</h2>
-          <p className="text-white/60 text-sm mb-6">Program yang Anda cari tidak ditemukan atau telah dihapus.</p>
+          <h2 className="text-2xl font-black text-white mb-3 uppercase tracking-tight">{t.programDetail.programNotFound}</h2>
+          <p className="text-white/60 text-sm mb-6">{t.programDetail.programNotFoundDesc}</p>
           <button 
             onClick={() => router.push('/programs')}
             className="bg-[#367CC0] text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-[#367CC0]/80 transition-all"
           >
-            Back to Programs
+            {t.programDetail.backToPrograms}
           </button>
         </div>
       </div>
@@ -560,7 +580,7 @@ export default function ProgramDetail() {
 
   // Format currency
   const formatCurrency = (value: number | null | undefined) => {
-    if (!value) return "Free";
+    if (!value) return t.programDetail.free;
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -576,41 +596,30 @@ export default function ProgramDetail() {
     if (programData.nominal && programData.nominal > 0) {
       return formatCurrency(programData.nominal);
     }
-    return "Contact Owner";
+    return t.programDetail.contactOwner;
   };
 
   // Get display image
   const getImageUrl = () => {
-    if (programData.avif) return programData.avif;
-    if (programData.original) return programData.original;
-    if (typeof programData.image === 'string' && programData.image) return programData.image;
+    if (programData?.avif) return programData.avif;
+    if (programData?.original) return programData.original;
+    if (typeof programData?.image === 'string' && programData.image) return programData.image;
     return "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200";
   };
 
   const program = {
-    title: programData.title || "Program Title",
+    title: programData.title || t.programDetail.programTitle,
     subtitle: programData.sub_title || "",
-    owner: programData.owner_name || "Program Owner",
+    owner: programData.owner_name || t.programDetail.programOwner,
     email: programData.owner_email || "owner@example.com",
     category: programData.program_category_name || "General",
     parameter: programData.parameter || "",
-    rating: 4.8,
-    reviews: 124,
+    visits_count: programData.visits_count || 0,
+    shares_count: programData.shares_count || 0,
     participants: programData.total_user_register || 0,
     price: formatCurrency(programData.nominal),
-    commission: getCommissionDisplay() + " per sale",
-    description: programData.description || "No description available",
-    benefits: [
-      "Sertifikat Kompetensi Internasional",
-      "Akses Lifetime ke Modul Pembelajaran",
-      "Sesi Mentoring 1-on-1",
-      "Akses ke Job Connector"
-    ],
-    affiliateRequirements: [
-      "Memiliki minimal 500 followers di Sosmed",
-      "Aktif di komunitas edukasi/teknologi",
-      "Paham dasar-dasar digital marketing"
-    ],
+    commission: getCommissionDisplay() + " " + t.programDetail.perSale,
+    description: programData.description || t.programDetail.noDescription,
     imageUrl: getImageUrl()
   };
 
@@ -638,7 +647,7 @@ export default function ProgramDetail() {
                 <div className="absolute bottom-6 left-8 bg-white/10 backdrop-blur-md px-5 py-2 rounded-2xl flex items-center gap-3 border border-white/20">
                   <div className="w-2 h-2 bg-[#7ED321] rounded-full animate-pulse shadow-[0_0_10px_#7ED321]"></div>
                   <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">
-                    {programData.status ? "Active Program" : "Inactive"}
+                    {programData.status ? t.programDetail.activeProgram : t.programDetail.inactive}
                   </span>
                 </div>
               </div>
@@ -653,14 +662,22 @@ export default function ProgramDetail() {
                       <p className="text-white/60 text-base mb-4 italic">{program.subtitle}</p>
                     )}
                     <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-[#DF9B35]">
-                        <Star className="w-4 h-4 fill-[#DF9B35]" /> {program.rating} 
-                        <span className="text-white/30 font-medium">({program.reviews} reviews)</span>
-                      </div>
-                      <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
-                        <Users className="w-4 h-4" /> {program.participants} <span className="font-medium">Joined</span>
-                      </div>
+                      <div className="flex items-center gap-6 flex-wrap">
+                        {/* Total Share */}
+                        <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-[#DF9B35]">
+                          <Share2 className="w-4 h-4" /> {program.shares_count || 0} 
+                          <span className="text-white/30 font-medium">{t.programDetail.share}</span>
+                        </div>
+                        {/* Total Join */}
+                        <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
+                          <Users className="w-4 h-4" /> {program.participants || 0} 
+                          <span className="text-white/30 font-medium">{t.programDetail.join}</span>
+                        </div>
+                        {/* Total View */}
+                        <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
+                          <Eye className="w-4 h-4" /> {program.visits_count || 0} 
+                          <span className="text-white/30 font-medium">{t.programDetail.view}</span>
+                        </div>
                       </div>
                       {/* Social Share Buttons */}
                       <div className="flex items-center gap-3 mt-2">
@@ -696,7 +713,7 @@ export default function ProgramDetail() {
                           onClick={() => {
                           // Instagram does not support direct sharing via URL, so copy to clipboard and show instructions
                           navigator.clipboard.writeText(`${program.title}\n\n${window.location.href}`);
-                          window.alert('Link sudah disalin ke clipboard. Silakan buka Instagram dan paste di bio atau story Anda.');
+                          window.alert(t.programDetail.linkCopiedText + (language === "en" ? " Open Instagram and paste the link in your bio or story." : " Silakan buka Instagram dan paste di bio atau story Anda."));
                           }}
                           className="p-2 rounded-full bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500/20 hover:bg-gradient-to-tr hover:from-pink-400 hover:via-red-400 hover:to-yellow-400/30 border border-pink-500/30 transition-all"
                         >
@@ -717,7 +734,7 @@ export default function ProgramDetail() {
                           aria-label="Share to TikTok"
                           onClick={() => {
                           navigator.clipboard.writeText(`${program.title}\n\n${window.location.href}`);
-                          window.alert('Link sudah disalin ke clipboard. Silakan buka TikTok dan paste di bio atau caption video Anda.');
+                          window.alert(t.programDetail.linkCopiedText + " " + t.programDetail.tiktokInstructions);
                           }}
                           className="p-2 rounded-full bg-black/10 hover:bg-black/20 border border-white/20 transition-all"
                         >
@@ -747,38 +764,48 @@ export default function ProgramDetail() {
 
                 {/* About Content */}
                 <div className="space-y-4 mb-12">
-                  <h4 className="text-xs font-black text-[#367CC0] uppercase tracking-[0.2em]">Asset Overview</h4>
+                  <h4 className="text-xs font-black text-[#367CC0] uppercase tracking-[0.2em]">{t.programDetail.assetOverview}</h4>
                   <p className="text-white/60 text-lg leading-relaxed italic font-light">"{program.description}"</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-10">
-                  <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
-                    <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
-                      <Award className="w-4 h-4 text-[#7ED321]" /> Student Value
-                    </h4>
-                    <ul className="space-y-4">
-                      {program.benefits.map((b, i) => (
-                        <li key={i} className="flex items-start gap-4 text-sm text-white/60 group">
-                          <CheckCircle className="w-4 h-4 text-[#7ED321] shrink-0 mt-0.5" /> 
-                          <span className="group-hover:text-white transition-colors">{b}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {/* Value Program & Promotion Guide Grid */}
+                {(valueDescriptions.length > 0 || guideDescriptions.length > 0) && (
+                  <div className={`grid gap-10 ${valueDescriptions.length > 0 && guideDescriptions.length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                    {/* Value Program - from value_description */}
+                    {valueDescriptions.length > 0 && (
+                      <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+                          <Award className="w-4 h-4 text-[#7ED321]" /> {t.programDetail.valueProgram}
+                        </h4>
+                        <ul className="space-y-4">
+                          {valueDescriptions.map((value, i) => (
+                            <li key={i} className="flex items-start gap-4 text-sm text-white/60 group">
+                              <CheckCircle className="w-4 h-4 text-[#7ED321] shrink-0 mt-0.5" /> 
+                              <span className="group-hover:text-white transition-colors">{value.trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* Promotion Guide - from guide_description */}
+                    {guideDescriptions.length > 0 && (
+                      <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+                          <Target className="w-4 h-4 text-[#DF9B35]" /> {t.programDetail.promotionGuide}
+                        </h4>
+                        <ul className="space-y-4">
+                          {guideDescriptions.map((guide, i) => (
+                            <li key={i} className="flex items-start gap-4 text-sm text-white/40 italic">
+                              <Zap className="w-4 h-4 text-[#DF9B35] shrink-0 mt-0.5" /> 
+                              <span>{guide.trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
-                    <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
-                      <Target className="w-4 h-4 text-[#DF9B35]" /> Promotion Guide
-                    </h4>
-                    <ul className="space-y-4">
-                      {program.affiliateRequirements.map((r, i) => (
-                        <li key={i} className="flex items-start gap-4 text-sm text-white/40 italic">
-                          <Zap className="w-4 h-4 text-[#DF9B35] shrink-0 mt-0.5" /> 
-                          <span>{r}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -797,7 +824,7 @@ export default function ProgramDetail() {
                 <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-orange-500 py-2 px-4 flex items-center justify-center gap-2">
                   <Flame className="w-4 h-4 text-white animate-pulse" />
                   <span className="text-white text-[10px] font-black uppercase tracking-wider">
-                    Promo berakhir: {formatTime(timeLeft)}
+                    {t.programDetail.promoEnds} {formatTime(timeLeft)}
                   </span>
                 </div>
               )}
@@ -806,28 +833,27 @@ export default function ProgramDetail() {
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex items-center gap-1.5 bg-green-100 px-2.5 py-1 rounded-full">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-green-700 text-[9px] font-bold">{currentViewers} sedang melihat</span>
+                  <span className="text-green-700 text-[9px] font-bold">{currentViewers} {t.programDetail.viewing}</span>
                 </div>
               </div>
 
               <h3 className="text-[10px] font-black text-black/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
-                <Globe className="w-4 h-4 text-[#367CC0]" /> Public Enrollment
+                <Globe className="w-4 h-4 text-[#367CC0]" /> {t.programDetail.publicEnrollment}
               </h3>
               <div className="mb-8">
                 <span className="text-4xl font-black text-black tracking-tighter">{program.price}</span>
-                <p className="text-[11px] text-black/40 font-bold uppercase tracking-widest mt-2">Full Access Authorization</p>
+                <p className="text-[11px] text-black/40 font-bold uppercase tracking-widest mt-2">{t.programDetail.fullAccessAuthorization}</p>
               </div>
-              <ul className="space-y-4 mb-10">
-                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
-                   <ShieldCheck className="w-5 h-5 text-[#7ED321]" /> Secure Transaction
-                </li>
-                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
-                   <Award className="w-5 h-5 text-[#367CC0]" /> Lifetime Verification
-                </li>
-                <li className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
-                   <Gift className="w-5 h-5 text-[#DF9B35]" /> Bonus Eksklusif
-                </li>
-              </ul>
+              {/* Free Full Access Authorization - from benefit_description */}
+              {benefitDescriptions.length > 0 && (
+                <ul className="space-y-4 mb-10">
+                  {benefitDescriptions.map((benefit, i) => (
+                    <li key={i} className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
+                      <Gift className="w-5 h-5 text-[#DF9B35]" /> {benefit.trim()}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button 
                 onClick={() => setShowRegisterModal(true)}
                 disabled={isTimerExpired}
@@ -841,13 +867,13 @@ export default function ProgramDetail() {
                   <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12" />
                 )}
                 <CreditCard className="w-5 h-5" /> 
-                {isTimerExpired ? 'Promo Berakhir' : 'Buy Program'}
+                {isTimerExpired ? t.programDetail.promoEnded : t.programDetail.buyProgram}
               </button>
               
               {/* Scarcity text */}
               {!isTimerExpired && (
                 <p className="text-center text-[9px] text-red-500 font-bold mt-3 animate-pulse">
-                  ⚡ Kuota terbatas! Segera daftar sekarang
+                  {t.programDetail.limitedQuota}
                 </p>
               )}
             </motion.div>
@@ -861,25 +887,25 @@ export default function ProgramDetail() {
                 <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8">
                     <h3 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.3em] flex items-center gap-3">
-                        <Zap className="w-4 h-4 fill-[#DF9B35]" /> Earnings Hub
+                        <Zap className="w-4 h-4 fill-[#DF9B35]" /> {t.programDetail.earningsHub}
                     </h3>
-                    <div className="bg-[#DF9B35]/10 text-[#DF9B35] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[#DF9B35]/20">High Potential</div>
+                    <div className="bg-[#DF9B35]/10 text-[#DF9B35] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[#DF9B35]/20">{t.programDetail.highPotential}</div>
                     </div>
                     
                     <div className="mb-8">
-                    <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.2em] mb-2">Commission Rate</p>
+                    <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.2em] mb-2">{t.programDetail.commissionRate}</p>
                     <span className="text-3xl font-black text-white tracking-tighter">{program.commission}</span>
                     </div>
 
-                    <p className="text-xs text-white/40 leading-relaxed italic mb-10">"Authorized agents receive 24/7 tracking support and marketing assets instantly."</p>
+                    <p className="text-xs text-white/40 leading-relaxed italic mb-10">"{t.programDetail.authorizedAgents}"</p>
 
                     <button 
                         onClick={() => setShowModal(true)}
                         className="w-full bg-[#DF9B35] text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-lg shadow-[#DF9B35]/20 hover:brightness-110 transition-all flex items-center justify-center gap-3"
                     >
-                        Register Access
+                        {t.programDetail.registerAccess}
                     </button>
-                    <p className="text-center text-[9px] text-white/20 font-black mt-5 uppercase tracking-[0.2em]">Verified Agents Only</p>
+                    <p className="text-center text-[9px] text-white/20 font-black mt-5 uppercase tracking-[0.2em]">{t.programDetail.verifiedAgentsOnly}</p>
                 </div>
                 {/* Background Decoration */}
                 <Rocket className="absolute right-[-20px] bottom-[-20px] w-40 h-40 text-white/[0.02] -rotate-12 pointer-events-none" />
@@ -893,19 +919,19 @@ export default function ProgramDetail() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="bg-[#7ED321]/10 text-[#7ED321] px-4 py-1.5 rounded-full text-[9px] font-black uppercase border border-[#7ED321]/20 tracking-widest flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#7ED321] animate-pulse"></div>
-                    Active Sales
+                    {t.programDetail.activeSales}
                   </div>
                   <BarChart3 className="w-5 h-5 text-white/20" />
                 </div>
 
                 {/* User Referral Code Display */}
                 <div className="bg-gradient-to-r from-[#DF9B35]/20 to-[#7ED321]/20 border border-[#DF9B35]/30 rounded-2xl p-4 mb-6">
-                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Kode Referral Anda</p>
+                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{t.programDetail.yourReferralCode}</p>
                   <p className="text-2xl font-black text-[#DF9B35] tracking-tighter">{userReferralCode || 'N/A'}</p>
                 </div>
 
                 <div className="mb-6">
-                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-3 block">Link Referral Anda</span>
+                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-3 block">{t.programDetail.yourReferralLink}</span>
                   <div className="flex gap-2 p-1.5 bg-black/40 border border-white/5 rounded-2xl">
                     <div className="flex-1 px-3 py-2 text-[10px] font-bold text-white/60 truncate italic leading-loose">
                       {referralLink}
@@ -921,7 +947,7 @@ export default function ProgramDetail() {
 
                 {/* Share to Social Media Buttons */}
                 <div className="mb-8">
-                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-4 block">Bagikan ke Sosial Media</span>
+                  <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-4 block">{t.programDetail.shareToSocialMedia}</span>
                   <div className="grid grid-cols-4 gap-3">
                     {/* WhatsApp */}
                     <button 
@@ -971,21 +997,21 @@ export default function ProgramDetail() {
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
                    <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Total Clicks</p>
+                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">{t.programDetail.totalClicks}</p>
                       <p className="text-2xl font-black text-white tracking-tighter">142</p>
                    </div>
                    <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
-                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">Total Earned</p>
+                      <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2">{t.programDetail.totalEarned}</p>
                       <p className="text-2xl font-black text-[#7ED321] tracking-tighter">450k</p>
                    </div>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-white/5">
                   <button className="w-full flex items-center justify-center gap-3 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#367CC0] hover:text-white transition-all shadow-xl">
-                    <Download className="w-4 h-4" /> Marketing Kit
+                    <Download className="w-4 h-4" /> {t.programDetail.marketingKit}
                   </button>
                   <button className="w-full flex items-center justify-center gap-3 py-4 text-[#367CC0] font-black text-[10px] uppercase tracking-widest hover:bg-white/5 rounded-2xl transition-all">
-                    Full Performance <ChevronRight className="w-4 h-4" />
+                    {t.programDetail.fullPerformance} <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
@@ -1030,9 +1056,9 @@ export default function ProgramDetail() {
                 <Flame className="w-4 h-4 text-white" />
                 <span className="text-white font-bold text-xs uppercase tracking-wide">
                   {isTimerExpired ? (
-                    "Penawaran Berakhir!"
+                    t.programDetail.offerEnded
                   ) : (
-                    <>Berakhir: <span className="text-yellow-300 font-black ml-1">{formatTime(timeLeft)}</span></>
+                    <>{t.programDetail.endsIn} <span className="text-yellow-300 font-black ml-1">{formatTime(timeLeft)}</span></>
                   )}
                 </span>
               </div>
@@ -1074,7 +1100,7 @@ export default function ProgramDetail() {
                   </div>
                   <div className="flex-1">
                     <h2 className="text-lg font-black text-white tracking-tight">
-                      {formStep === 1 ? "Daftar Sekarang" : "Konfirmasi Data"}
+                      {formStep === 1 ? t.programDetail.registerNow : t.programDetail.confirmData}
                     </h2>
                     <p className="text-[10px] text-white/40 truncate">{program.title}</p>
                   </div>
@@ -1094,14 +1120,14 @@ export default function ProgramDetail() {
                     {/* Name Field */}
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
-                        <User className="w-3 h-3" /> Nama Lengkap <span className="text-red-500">*</span>
+                        <User className="w-3 h-3" /> {t.programDetail.fullName} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="text"
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        placeholder="Masukkan nama lengkap"
+                        placeholder={t.programDetail.fullNamePlaceholder}
                         className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
                         required
                         readOnly={!!session?.user}
@@ -1112,14 +1138,14 @@ export default function ProgramDetail() {
                     {/* Email Field */}
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
-                        <Mail className="w-3 h-3" /> Email <span className="text-red-500">*</span>
+                        <Mail className="w-3 h-3" /> {t.programDetail.email} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        placeholder="Masukkan email"
+                        placeholder={t.programDetail.emailPlaceholder}
                         className={`bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all ${session?.user ? 'opacity-70 cursor-not-allowed' : ''}`}
                         required
                         readOnly={!!session?.user}
@@ -1130,14 +1156,14 @@ export default function ProgramDetail() {
                     {/* Phone Field */}
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
-                        <Phone className="w-3 h-3" /> Nomor Telepon <span className="text-red-500">*</span>
+                        <Phone className="w-3 h-3" /> {t.programDetail.phone} <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        placeholder="Masukkan nomor telepon"
+                        placeholder={t.programDetail.phonePlaceholder}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321] focus:ring-[#7ED321]/20 transition-all"
                         required
                       />
@@ -1150,7 +1176,7 @@ export default function ProgramDetail() {
                         onClick={handleNextStep}
                         className="w-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                       >
-                        Lanjutkan <ChevronRight className="w-4 h-4" />
+                        {t.programDetail.continue} <ChevronRight className="w-4 h-4" />
                       </button>
                     ) : (
                       <button
@@ -1161,12 +1187,12 @@ export default function ProgramDetail() {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Mendaftar...
+                            {t.programDetail.submitting}
                           </>
                         ) : (
                           <>
                             <Rocket className="w-4 h-4" />
-                            Daftar Sekarang
+                            {t.programDetail.registerNow}
                           </>
                         )}
                       </button>
@@ -1187,16 +1213,16 @@ export default function ProgramDetail() {
                       onClick={() => setFormStep(1)}
                       className="flex items-center gap-1.5 text-white/50 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all"
                     >
-                      <ChevronLeft className="w-3 h-3" /> Kembali
+                      <ChevronLeft className="w-3 h-3" /> {t.programDetail.back}
                     </button>
 
                     {/* Summary Card - Compact */}
                     <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1.5">Data Anda</p>
+                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1.5">{language === "en" ? "Your Data" : "Data Anda"}</p>
                       <div className="grid grid-cols-3 gap-2 text-[11px]">
-                        <p className="text-white truncate"><span className="text-white/50">Nama:</span> {formData.name}</p>
+                        <p className="text-white truncate"><span className="text-white/50">{language === "en" ? "Name:" : "Nama:"}</span> {formData.name}</p>
                         <p className="text-white truncate"><span className="text-white/50">Email:</span> {formData.email}</p>
-                        <p className="text-white truncate"><span className="text-white/50">HP:</span> {formData.phone}</p>
+                        <p className="text-white truncate"><span className="text-white/50">{language === "en" ? "Phone:" : "HP:"}</span> {formData.phone}</p>
                       </div>
                     </div>
 
@@ -1213,7 +1239,7 @@ export default function ProgramDetail() {
                             onChange={(e) =>
                               handleParameterChange(field.name, field.type, e.target.value)
                             }
-                            placeholder={`Masukkan ${field.name.toLowerCase()}`}
+                            placeholder={language === "en" ? `Enter ${field.name.toLowerCase()}` : `Masukkan ${field.name.toLowerCase()}`}
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-lg h-11 text-sm focus:border-[#7ED321]"
                           />
                         </div>
@@ -1230,12 +1256,12 @@ export default function ProgramDetail() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Mendaftar...
+                          {t.programDetail.submitting}
                         </>
                       ) : (
                         <>
                           <Rocket className="w-4 h-4" />
-                          Konfirmasi & Daftar
+                          {language === "en" ? "Confirm & Register" : "Konfirmasi & Daftar"}
                         </>
                       )}
                     </button>

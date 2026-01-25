@@ -3,94 +3,46 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Lock, Eye, FileText, Users, Database, AlertCircle } from "lucide-react";
+import { useI18n } from "@/contexts/i18n-context";
 
 export default function PrivacyPolicyPage() {
+  const { t } = useI18n();
+
   const sections = [
     {
       icon: FileText,
-      title: "Information We Collect",
-      content: [
-        "We collect information that you provide directly to us, including:",
-        "• Personal identification information (name, email, phone number)",
-        "• Account credentials and authentication data",
-        "• Profile information and preferences",
-        "• Program registration and participation data",
-        "• Communication records and support interactions",
-      ],
+      title: t.privacyPolicy.sections.informationWeCollect.title,
+      content: t.privacyPolicy.sections.informationWeCollect.content,
     },
     {
       icon: Database,
-      title: "How We Use Your Information",
-      content: [
-        "Your information is used to:",
-        "• Provide and maintain our affiliate platform services",
-        "• Process program registrations and manage your account",
-        "• Enable communication between users and program owners",
-        "• Improve our services and develop new features",
-        "• Send important updates and notifications",
-        "• Ensure platform security and prevent fraud",
-      ],
+      title: t.privacyPolicy.sections.howWeUse.title,
+      content: t.privacyPolicy.sections.howWeUse.content,
     },
     {
       icon: ShieldCheck,
-      title: "Masked Identity System",
-      content: [
-        "Kross.id employs advanced identity masking technology to protect your privacy:",
-        "• Personal information is encrypted and stored securely",
-        "• Identity masking prevents direct exposure of sensitive data",
-        "• Program owners see only necessary information for verification",
-        "• Your real identity remains protected throughout transactions",
-        "• We never share your personal data with third parties without consent",
-      ],
+      title: t.privacyPolicy.sections.maskedIdentity.title,
+      content: t.privacyPolicy.sections.maskedIdentity.content,
     },
     {
       icon: Lock,
-      title: "Data Security",
-      content: [
-        "We implement industry-standard security measures:",
-        "• SSL/TLS encryption for all data transmissions",
-        "• Secure server infrastructure with regular security audits",
-        "• Access controls and authentication protocols",
-        "• Regular backups and disaster recovery procedures",
-        "• Compliance with data protection regulations",
-      ],
+      title: t.privacyPolicy.sections.dataSecurity.title,
+      content: t.privacyPolicy.sections.dataSecurity.content,
     },
     {
       icon: Users,
-      title: "Data Sharing",
-      content: [
-        "We respect your privacy and limit data sharing:",
-        "• We do not sell your personal information",
-        "• Data is shared only with program owners for verification purposes",
-        "• Third-party services are used only for essential platform functions",
-        "• We may share data if required by law or to protect our rights",
-        "• Aggregated, anonymized data may be used for analytics",
-      ],
+      title: t.privacyPolicy.sections.dataSharing.title,
+      content: t.privacyPolicy.sections.dataSharing.content,
     },
     {
       icon: Eye,
-      title: "Your Rights",
-      content: [
-        "You have the right to:",
-        "• Access and review your personal information",
-        "• Request corrections to inaccurate data",
-        "• Request deletion of your account and data",
-        "• Opt-out of marketing communications",
-        "• Export your data in a portable format",
-        "• Withdraw consent for data processing",
-      ],
+      title: t.privacyPolicy.sections.yourRights.title,
+      content: t.privacyPolicy.sections.yourRights.content,
     },
     {
       icon: AlertCircle,
-      title: "Cookies and Tracking",
-      content: [
-        "We use cookies and similar technologies to:",
-        "• Maintain your session and authentication state",
-        "• Remember your preferences and settings",
-        "• Analyze platform usage and performance",
-        "• Provide personalized content and recommendations",
-        "• You can manage cookie preferences in your browser settings",
-      ],
+      title: t.privacyPolicy.sections.cookies.title,
+      content: t.privacyPolicy.sections.cookies.content,
     },
   ];
 
@@ -108,25 +60,23 @@ export default function PrivacyPolicyPage() {
             <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 mb-6">
               <ShieldCheck size={14} className="text-[#367CC0]" />
               <span className="text-xs font-black text-white/80 uppercase tracking-widest">
-                Privacy Policy
+                {t.privacyPolicy.badge}
               </span>
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black text-white mb-6">
-              Your Privacy is Our
+              {t.privacyPolicy.heroTitle}
               <br />
               <span className="bg-gradient-to-r from-[#367CC0] to-[#DF9B35] bg-clip-text text-transparent">
-                Priority
+                {t.privacyPolicy.heroTitleHighlight}
               </span>
             </h1>
 
             <p className="text-xl text-white/60 mb-4">
-              Last Updated: January 23, 2026
+              {t.privacyPolicy.lastUpdated}
             </p>
             <p className="text-lg text-white/70 leading-relaxed max-w-2xl mx-auto">
-              At Kross.id, we are committed to protecting your privacy and ensuring the security 
-              of your personal information. This policy explains how we collect, use, and safeguard 
-              your data when you use our platform.
+              {t.privacyPolicy.heroDescription}
             </p>
           </motion.div>
         </div>
@@ -174,24 +124,23 @@ export default function PrivacyPolicyPage() {
             transition={{ duration: 0.6 }}
             className="max-w-4xl mx-auto bg-gradient-to-br from-[#367CC0]/10 to-[#DF9B35]/10 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center"
           >
-            <h2 className="text-3xl font-black text-white mb-4">Questions About Privacy?</h2>
+            <h2 className="text-3xl font-black text-white mb-4">{t.privacyPolicy.contact.title}</h2>
             <p className="text-white/70 mb-6">
-              If you have any questions or concerns about this Privacy Policy or our data practices, 
-              please contact us at:
+              {t.privacyPolicy.contact.description}
             </p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <a
-                href="mailto:privacy@kross.id"
+                href={`mailto:${t.privacyPolicy.contact.email}`}
                 className="text-[#367CC0] hover:text-[#DF9B35] font-bold transition-colors"
               >
-                privacy@kross.id
+                {t.privacyPolicy.contact.email}
               </a>
               <span className="text-white/30">•</span>
               <a
                 href="/contact-us"
                 className="text-[#367CC0] hover:text-[#DF9B35] font-bold transition-colors"
               >
-                Contact Us
+                {t.privacyPolicy.contact.contactUs}
               </a>
             </div>
           </motion.div>

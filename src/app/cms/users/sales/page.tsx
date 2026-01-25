@@ -59,7 +59,7 @@ export default function SalesUsersPage() {
     if (status === "loading") return;
     
     if (status === "unauthenticated") {
-      router.replace("/login");
+      router.replace("/signin");
       return;
     }
 

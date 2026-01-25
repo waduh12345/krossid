@@ -7,9 +7,12 @@ import { Search, User, LogOut, Mail, Send, Facebook, Twitter, Instagram, Linkedi
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import Swal from "sweetalert2";
+import { useI18n } from "@/contexts/i18n-context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 // Footer Component with Subscribe
 function FooterComponent() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -18,8 +21,8 @@ function FooterComponent() {
     if (!email || !email.includes("@")) {
       Swal.fire({
         icon: "error",
-        title: "Invalid Email",
-        text: "Please enter a valid email address",
+        title: t.alerts.invalidEmail,
+        text: t.alerts.invalidEmailText,
         background: "#1e293b",
         color: "#fff",
         timer: 2000,
@@ -35,8 +38,8 @@ function FooterComponent() {
       setEmail("");
       Swal.fire({
         icon: "success",
-        title: "Subscribed!",
-        text: "Thank you for subscribing. You'll receive updates about new programs.",
+        title: t.alerts.subscribed,
+        text: t.alerts.subscribedText,
         background: "#1e293b",
         color: "#fff",
         timer: 3000,
@@ -60,7 +63,7 @@ function FooterComponent() {
               </span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
-              Professional affiliate platform with masked identity system. Connect, grow, and succeed.
+              {t.footer.companyDescription}
             </p>
             
             {/* Social Media */}
@@ -105,13 +108,13 @@ function FooterComponent() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">Quick Links</h4>
+            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">{t.footer.quickLinks}</h4>
             <ul className="space-y-3">
               {[
-                { label: "Home", href: "/home" },
-                { label: "Programs", href: "/programs" },
-                { label: "My Account", href: "/my-account" },
-                { label: "About Us", href: "/about-us" },
+                { label: t.nav.home, href: "/home" },
+                { label: t.nav.programs, href: "/programs" },
+                { label: t.nav.myAccount, href: "/my-account" },
+                { label: t.nav.aboutUs, href: "/about-us" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link 
@@ -128,7 +131,7 @@ function FooterComponent() {
 
           {/* Support */}
           <div>
-            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">Support</h4>
+            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">{t.footer.support}</h4>
             <ul className="space-y-3">
               {[
                 { label: "Privacy Policy", href: "/privacy-policy" },
@@ -151,9 +154,9 @@ function FooterComponent() {
 
           {/* Subscribe Section */}
           <div>
-            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">Subscribe</h4>
+            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">{t.footer.subscribe}</h4>
             <p className="text-sm text-white/60 mb-4">
-              Get notified about new programs and exclusive opportunities.
+              {t.footer.subscribeDescription}
             </p>
             <form onSubmit={handleSubscribe} className="space-y-3">
               <div className="relative">
@@ -162,7 +165,7 @@ function FooterComponent() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder={t.footer.enterEmail}
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
                   required
                 />
@@ -175,19 +178,19 @@ function FooterComponent() {
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Subscribing...</span>
+                    <span>{t.footer.subscribing}</span>
                   </>
                 ) : (
                   <>
                     <Send size={16} />
-                    <span>Subscribe</span>
+                    <span>{t.footer.subscribeButton}</span>
                   </>
                 )}
               </button>
             </form>
             <div className="mt-4 flex items-start gap-2 text-xs text-white/40">
               <CheckCircle2 size={14} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-              <span>We respect your privacy. Unsubscribe anytime.</span>
+              <span>{t.footer.privacyNote}</span>
             </div>
           </div>
         </div>
@@ -199,7 +202,7 @@ function FooterComponent() {
               <Mail size={18} className="text-[#367CC0]" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">Email</p>
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.email}</p>
               <p className="text-white/80">support@kross.id</p>
             </div>
           </div>
@@ -208,7 +211,7 @@ function FooterComponent() {
               <Phone size={18} className="text-[#DF9B35]" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">Phone</p>
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.phone}</p>
               <p className="text-white/80">+62 21 000 000</p>
             </div>
           </div>
@@ -217,7 +220,7 @@ function FooterComponent() {
               <MapPin size={18} className="text-[#7ED321]" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">Location</p>
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.location}</p>
               <p className="text-white/80">Niaga Tower, Jakarta</p>
             </div>
           </div>
@@ -226,16 +229,16 @@ function FooterComponent() {
         {/* Copyright */}
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-[9px] text-white/30 uppercase tracking-[0.3em] font-black">
-            © 2026 KROSS ID TECHNOLOGY. ALL RIGHTS RESERVED.
+            {t.footer.copyright}
           </p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-xs text-white/40">
               <div className="w-1.5 h-1.5 rounded-full bg-[#7ED321] animate-pulse"></div>
-              <span>System: Secure</span>
+              <span>{t.footer.systemSecure}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/40">
               <div className="w-1.5 h-1.5 rounded-full bg-[#367CC0]"></div>
-              <span>SSL Encrypted</span>
+              <span>{t.footer.sslEncrypted}</span>
             </div>
           </div>
         </div>
@@ -251,6 +254,7 @@ export default function AffiliateLayout({
 }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { t } = useI18n();
 
   // 1. Tentukan route auth (tanpa Header & Footer)
   const authRoutes = [
@@ -324,7 +328,7 @@ export default function AffiliateLayout({
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
                   <input 
                     type="text" 
-                    placeholder="Search program..." 
+                    placeholder={t.nav.searchPlaceholder} 
                     className="bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 transition-all w-48 lg:w-64"
                   />
                </div>
@@ -338,22 +342,25 @@ export default function AffiliateLayout({
                      className="flex items-center gap-2 text-[10px] font-black text-white/70 hover:text-white transition-colors uppercase tracking-widest bg-white/5 px-4 py-2.5 rounded-full border border-white/10"
                    >
                      <User className="w-3.5 h-3.5" />
-                     Account
+                     {t.nav.account}
                    </Link>
                    <button
                      onClick={() => signOut({ callbackUrl: "/signin" })}
                      className="p-2.5 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all border border-red-600/20"
-                     title="Sign Out"
+                     title={t.nav.signOut}
                    >
                      <LogOut className="w-4 h-4" />
                    </button>
                  </div>
                ) : (
                  <div className="flex items-center gap-3">
-                   <Link href="/signin" className="text-[10px] font-black text-white/70 uppercase tracking-widest hover:text-white">Sign In</Link>
-                   <Link href="/signup" className="text-[10px] font-black bg-[#367CC0] text-white px-5 py-2.5 rounded-full hover:bg-[#2d6699] transition-all uppercase tracking-widest shadow-lg shadow-[#367CC0]/20">Join Now</Link>
+                   <Link href="/signin" className="text-[10px] font-black text-white/70 uppercase tracking-widest hover:text-white">{t.nav.signIn}</Link>
+                   <Link href="/signup" className="text-[10px] font-black bg-[#367CC0] text-white px-5 py-2.5 rounded-full hover:bg-[#2d6699] transition-all uppercase tracking-widest shadow-lg shadow-[#367CC0]/20">{t.nav.joinNow}</Link>
                  </div>
                )}
+               
+               {/* Language Switcher - Paling Kanan */}
+               <LanguageSwitcher />
             </div>
           </div>
         </nav>

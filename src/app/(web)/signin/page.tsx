@@ -7,6 +7,8 @@ import Link from "next/link";
 // Import tambahan untuk fungsionalitas login
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/contexts/i18n-context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const testimonials = [
   {
@@ -34,6 +36,7 @@ const LoginPage = () => {
 
   // State baru untuk Logic Login
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -106,18 +109,23 @@ const LoginPage = () => {
         // Start checking session
         setTimeout(checkSessionAndRedirect, 100);
       } else {
-        setError("Email atau password salah.");
+        setError(t.signin.errorInvalidCredentials);
         setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
-      setError("Terjadi kesalahan sistem.");
+      setError(t.signin.errorSystemError);
       setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#367CC0] relative overflow-hidden font-sans">
+      {/* Language Switcher - Top Right */}
+      <div className="absolute top-6 right-6 z-50">
+        <LanguageSwitcher />
+      </div>
+
       {/* Background Gradient & Grid */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#367CC0] via-[#5da2e6] to-[#DF9B35] opacity-90"></div>
       <div
@@ -146,10 +154,10 @@ const LoginPage = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-bold tracking-tight">
-                  Welcome back
+                  {t.signin.welcomeBack}
                 </h1>
                 <p className="text-white/70 text-sm italic">
-                  Please Enter your Account details
+                  {t.signin.enterAccountDetails}
                 </p>
               </div>
             </div>
@@ -158,11 +166,11 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs text-white/50 ml-4 font-bold uppercase tracking-widest">
-                Email
+                {t.signin.email}
               </label>
               <input
                 type="email"
-                placeholder="Johndoe@gmail.com"
+                placeholder={t.signin.emailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -171,11 +179,11 @@ const LoginPage = () => {
             </div>
             <div className="space-y-2">
               <label className="text-xs text-white/50 ml-4 font-bold uppercase tracking-widest">
-                Password
+                {t.signin.password}
               </label>
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder={t.signin.passwordPlaceholder}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -189,13 +197,13 @@ const LoginPage = () => {
                   type="checkbox"
                   className="rounded bg-black/40 border-white/10 text-[#367CC0]"
                 />
-                <span>Keep me logged in</span>
+                <span>{t.signin.keepMeLoggedIn}</span>
               </label>
               <Link
                 href="/forgot-password"
                 className="text-white/70 hover:text-[#DF9B35] transition-colors underline underline-offset-4 font-medium"
               >
-                Forgot Password
+                {t.signin.forgotPassword}
               </Link>
             </div>
 
@@ -211,19 +219,19 @@ const LoginPage = () => {
               disabled={isLoading}
               className="w-full py-4 bg-[#DF9B35] hover:bg-[#c78a2e] disabled:bg-[#DF9B35]/70 disabled:cursor-not-allowed rounded-full font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] text-white"
             >
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? t.signin.signingIn : t.signin.signIn}
             </button>
           </form>
 
           {/* Social Icons */}
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-300">
-              {`Don't have an account?`}
+              {t.signin.dontHaveAccount}{" "}
               <Link
                 href="/signup"
                 className="text-white font-bold underline underline-offset-4"
               >
-                Sign Up
+                {t.signin.signUp}
               </Link>
             </p>
           </div>

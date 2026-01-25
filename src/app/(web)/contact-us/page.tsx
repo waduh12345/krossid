@@ -13,8 +13,10 @@ import {
   Loader2
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { useI18n } from "@/contexts/i18n-context";
 
 export default function ContactUsPage() {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -47,8 +49,8 @@ export default function ContactUsPage() {
       });
       Swal.fire({
         icon: "success",
-        title: "Message Sent!",
-        text: "Thank you for contacting us. We'll get back to you within 24 hours.",
+        title: t.contactUs.messages.messageSent,
+        text: t.contactUs.messages.messageSentText,
         background: "#1e293b",
         color: "#fff",
         confirmButtonColor: "#367CC0",
@@ -59,7 +61,7 @@ export default function ContactUsPage() {
   const contactInfo = [
     {
       icon: Mail,
-      label: "Email",
+      label: t.contactUs.contactInfo.email,
       value: "support@kross.id",
       href: "mailto:support@kross.id",
       color: "from-blue-500/20 to-blue-600/20",
@@ -67,7 +69,7 @@ export default function ContactUsPage() {
     },
     {
       icon: Phone,
-      label: "Phone",
+      label: t.contactUs.contactInfo.phone,
       value: "+62 21 000 000",
       href: "tel:+6221000000",
       color: "from-yellow-500/20 to-yellow-600/20",
@@ -75,7 +77,7 @@ export default function ContactUsPage() {
     },
     {
       icon: MapPin,
-      label: "Address",
+      label: t.contactUs.contactInfo.address,
       value: "Niaga Tower, Jakarta, Indonesia",
       href: "#",
       color: "from-green-500/20 to-green-600/20",
@@ -83,7 +85,7 @@ export default function ContactUsPage() {
     },
     {
       icon: Clock,
-      label: "Business Hours",
+      label: t.contactUs.contactInfo.businessHours,
       value: "Monday - Friday: 9:00 AM - 6:00 PM WIB",
       href: "#",
       color: "from-purple-500/20 to-purple-600/20",
@@ -92,14 +94,14 @@ export default function ContactUsPage() {
   ];
 
   const subjects = [
-    "General Inquiry",
-    "Technical Support",
-    "Account Issues",
-    "Program Questions",
-    "Billing & Payments",
-    "Privacy & Security",
-    "Partnership Opportunities",
-    "Other",
+    t.contactUs.form.subjects.generalInquiry,
+    t.contactUs.form.subjects.technicalSupport,
+    t.contactUs.form.subjects.accountIssues,
+    t.contactUs.form.subjects.programQuestions,
+    t.contactUs.form.subjects.billingPayments,
+    t.contactUs.form.subjects.privacySecurity,
+    t.contactUs.form.subjects.partnershipOpportunities,
+    t.contactUs.form.subjects.other,
   ];
 
   return (
@@ -116,21 +118,20 @@ export default function ContactUsPage() {
             <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 mb-6">
               <MessageCircle size={14} className="text-[#367CC0]" />
               <span className="text-xs font-black text-white/80 uppercase tracking-widest">
-                Contact Us
+                {t.contactUs.badge}
               </span>
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black text-white mb-6">
-              Get in
+              {t.contactUs.heroTitle}
               <br />
               <span className="bg-gradient-to-r from-[#367CC0] to-[#DF9B35] bg-clip-text text-transparent">
-                Touch
+                {t.contactUs.heroTitleHighlight}
               </span>
             </h1>
 
             <p className="text-lg text-white/70 leading-relaxed max-w-2xl mx-auto">
-              Have a question or need assistance? We're here to help. Reach out to us through 
-              any of the channels below, or fill out the contact form.
+              {t.contactUs.heroDescription}
             </p>
           </motion.div>
         </div>
@@ -179,14 +180,14 @@ export default function ContactUsPage() {
                 >
                   <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
                     <Send size={24} className="text-[#367CC0]" />
-                    Send Us a Message
+                    {t.contactUs.form.title}
                   </h2>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-xs font-black text-white/60 uppercase tracking-wider mb-2">
-                          Full Name *
+                          {t.contactUs.form.fullName}
                         </label>
                         <input
                           type="text"
@@ -195,12 +196,12 @@ export default function ContactUsPage() {
                           onChange={handleChange}
                           required
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
-                          placeholder="John Doe"
+                          placeholder={t.contactUs.form.fullNamePlaceholder}
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-black text-white/60 uppercase tracking-wider mb-2">
-                          Email Address *
+                          {t.contactUs.form.email}
                         </label>
                         <input
                           type="email"
@@ -209,7 +210,7 @@ export default function ContactUsPage() {
                           onChange={handleChange}
                           required
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
-                          placeholder="john@example.com"
+                          placeholder={t.contactUs.form.emailPlaceholder}
                         />
                       </div>
                     </div>
@@ -217,7 +218,7 @@ export default function ContactUsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-xs font-black text-white/60 uppercase tracking-wider mb-2">
-                          Phone Number
+                          {t.contactUs.form.phone}
                         </label>
                         <input
                           type="tel"
@@ -225,12 +226,12 @@ export default function ContactUsPage() {
                           value={formData.phone}
                           onChange={handleChange}
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
-                          placeholder="+62 812 3456 7890"
+                          placeholder={t.contactUs.form.phonePlaceholder}
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-black text-white/60 uppercase tracking-wider mb-2">
-                          Subject *
+                          {t.contactUs.form.subject}
                         </label>
                         <select
                           name="subject"
@@ -239,7 +240,7 @@ export default function ContactUsPage() {
                           required
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
                         >
-                          <option value="" className="bg-[#0f172a]">Select a subject</option>
+                          <option value="" className="bg-[#0f172a]">{t.contactUs.form.subjectPlaceholder}</option>
                           {subjects.map((subject) => (
                             <option key={subject} value={subject} className="bg-[#0f172a]">
                               {subject}
@@ -251,7 +252,7 @@ export default function ContactUsPage() {
 
                     <div>
                       <label className="block text-xs font-black text-white/60 uppercase tracking-wider mb-2">
-                        Message *
+                        {t.contactUs.form.message}
                       </label>
                       <textarea
                         name="message"
@@ -260,7 +261,7 @@ export default function ContactUsPage() {
                         required
                         rows={6}
                         className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all resize-none"
-                        placeholder="Tell us how we can help you..."
+                        placeholder={t.contactUs.form.messagePlaceholder}
                       />
                     </div>
 
@@ -272,12 +273,12 @@ export default function ContactUsPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 size={20} className="animate-spin" />
-                          <span>Sending...</span>
+                          <span>{t.contactUs.form.sending}</span>
                         </>
                       ) : (
                         <>
                           <Send size={20} />
-                          <span>Send Message</span>
+                          <span>{t.contactUs.form.sendMessage}</span>
                         </>
                       )}
                     </button>
@@ -295,35 +296,34 @@ export default function ContactUsPage() {
                   className="bg-gradient-to-br from-[#367CC0]/10 to-[#DF9B35]/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-6 sticky top-24"
                 >
                   <div>
-                    <h3 className="text-lg font-black text-white mb-4">Why Contact Us?</h3>
+                    <h3 className="text-lg font-black text-white mb-4">{t.contactUs.sidebar.whyContactUs}</h3>
                     <ul className="space-y-3 text-sm text-white/70">
                       <li className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-                        <span>Get help with account issues</span>
+                        <span>{t.contactUs.sidebar.reason1}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-                        <span>Report bugs or technical problems</span>
+                        <span>{t.contactUs.sidebar.reason2}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-                        <span>Ask questions about programs</span>
+                        <span>{t.contactUs.sidebar.reason3}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-                        <span>Request feature suggestions</span>
+                        <span>{t.contactUs.sidebar.reason4}</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle2 size={16} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-                        <span>Explore partnership opportunities</span>
+                        <span>{t.contactUs.sidebar.reason5}</span>
                       </li>
                     </ul>
                   </div>
 
                   <div className="pt-6 border-t border-white/10">
                     <p className="text-xs text-white/50 leading-relaxed">
-                      We typically respond within 24 hours during business days. 
-                      For urgent matters, please call us directly.
+                      {t.contactUs.sidebar.responseTime}
                     </p>
                   </div>
                 </motion.div>

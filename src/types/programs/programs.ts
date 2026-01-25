@@ -17,6 +17,11 @@ export interface Programs {
   avif?: string; // URL avif image
   commission?: number; // Commission percentage
   nominal?: number; // Fixed commission amount
+  value_description?: string;
+  guide_description?: string;
+  benefit_description?: string;
+  visits_count?: number;
+  shares_count?: number;
 }
 
 export interface TopPrograms {

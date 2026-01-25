@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 
 import { useRegisterMutation } from "@/services/auth.service";
 import type { RegisterPayload } from "@/types/user";
+import { useI18n } from "@/contexts/i18n-context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 // Pastikan file error-handle.ts ada atau sesuaikan path import interface ini
 export interface ApiErrorResponse {
@@ -30,25 +32,24 @@ export interface ApiErrorResponse {
   status?: number | string;
 }
 
-const registerBenefits = [
-  {
-    id: 1,
-    title: "Join the Elite\nAffiliate Network.",
-    quote:
-      "Dapatkan akses ke produk digital eksklusif dan mulai bangun passive income Anda hari ini.",
-    tag: "Network Advantage",
-  },
-  {
-    id: 2,
-    title: "Scale your\nBusiness Assets.",
-    quote:
-      "Kelola agen, pantau performa real-time, dan distribusikan program Anda secara masif.",
-    tag: "Owner Power",
-  },
-];
-
 const RegisterPage = () => {
   const router = useRouter();
+  const { t } = useI18n();
+
+  const registerBenefits = [
+    {
+      id: 1,
+      title: t.signup.benefits.network.title,
+      quote: t.signup.benefits.network.quote,
+      tag: t.signup.benefits.network.tag,
+    },
+    {
+      id: 2,
+      title: t.signup.benefits.scale.title,
+      quote: t.signup.benefits.scale.quote,
+      tag: t.signup.benefits.scale.tag,
+    },
+  ];
 
   // Hooks API (Hanya Register di sini)
   const [register, { isLoading: isRegisterLoading }] = useRegisterMutation();
@@ -92,8 +93,8 @@ const RegisterPage = () => {
     if (formData.password !== formData.confirmPassword) {
       return Swal.fire({
         icon: "error",
-        title: "Password Mismatch",
-        text: "Konfirmasi password tidak cocok.",
+        title: t.signup.passwordMismatch,
+        text: t.signup.passwordMismatchText,
         background: "#fff",
         confirmButtonColor: "#d33",
       });
@@ -122,8 +123,8 @@ const RegisterPage = () => {
 
       Swal.fire({
         icon: "success",
-        title: "Registration Success",
-        text: "Silakan verifikasi email Anda.",
+        title: t.signup.registrationSuccess,
+        text: t.signup.registrationSuccessText,
         timer: 1500,
         showConfirmButton: false,
       }).then(() => {
@@ -135,11 +136,11 @@ const RegisterPage = () => {
 
       Swal.fire({
         icon: "error",
-        title: "Registration Failed",
+        title: t.signup.registrationFailed,
         text:
           error.data?.message ||
           error.message ||
-          "Terjadi kesalahan saat mendaftar.",
+          t.signup.registrationFailedText,
       });
     }
   };
@@ -156,6 +157,11 @@ const RegisterPage = () => {
           backgroundSize: "40px 40px",
         }}
       ></div>
+
+      {/* Language Switcher - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <LanguageSwitcher />
+      </div>
 
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-6xl bg-white/10 backdrop-blur-2xl rounded-[48px] border border-white/20 shadow-2xl flex flex-col md:flex-row p-6 m-4">
@@ -174,10 +180,10 @@ const RegisterPage = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-bold tracking-tight">
-                  Create Account
+                  {t.signup.createAccount}
                 </h1>
                 <p className="text-white/70 text-sm italic">
-                  Join our professional network today.
+                  {t.signup.joinNetwork}
                 </p>
               </div>
             </div>
@@ -205,7 +211,7 @@ const RegisterPage = () => {
               </div> */}
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
-                  Email (Verification OTP)
+                  {t.signup.emailLabel}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -215,7 +221,7 @@ const RegisterPage = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    placeholder="john@example.com"
+                    placeholder={t.signup.emailPlaceholder}
                     className="w-full bg-black/40 border border-white/10 rounded-full py-4 px-14 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                     required
                   />
@@ -241,7 +247,7 @@ const RegisterPage = () => {
               </div> */}
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
-                  Password
+                  {t.signup.passwordLabel}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -251,7 +257,7 @@ const RegisterPage = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
-                    placeholder="••••••••"
+                    placeholder={t.signup.passwordPlaceholder}
                     className="w-full bg-black/40 border border-white/10 rounded-full py-4 px-14 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                     required
                   />
@@ -259,7 +265,7 @@ const RegisterPage = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-white/50 ml-4 tracking-widest">
-                  Confirm Password
+                  {t.signup.confirmPasswordLabel}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
@@ -272,7 +278,7 @@ const RegisterPage = () => {
                         confirmPassword: e.target.value,
                       })
                     }
-                    placeholder="••••••••"
+                    placeholder={t.signup.confirmPasswordPlaceholder}
                     className="w-full bg-black/40 border border-white/10 rounded-full py-4 px-14 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                     required
                   />
@@ -287,18 +293,18 @@ const RegisterPage = () => {
                 role === 'owner' ? "bg-[#DF9B35]" : "bg-[#367CC0]"
               } disabled:opacity-70 disabled:cursor-not-allowed`}
             >
-              {isRegisterLoading ? "Processing..." : "Register Now"}
+              {isRegisterLoading ? t.signup.processing : t.signup.registerNow}
             </button>
           </form>
 
           <div className="mt-8 text-center">
             <p className="text-sm text-white/60">
-              Already a member?{" "}
+              {t.signup.alreadyMember}{" "}
               <Link
                 href="/signin"
                 className="text-white font-bold underline underline-offset-4 hover:text-[#DF9B35] transition-colors"
               >
-                Sign In Securely
+                {t.signup.signInSecurely}
               </Link>
             </p>
           </div>
