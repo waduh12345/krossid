@@ -81,7 +81,7 @@ export const authApi = apiSlice.injectEndpoints({
       }),
     }),
 
-    // PUT /register (Validate OTP Register)
+    // PUT /register (Validate OTP Register - with token header)
     validateOtp: builder.mutation<
       ApiEnvelope<string>,
       ValidateOtpPayload & { token: string }
@@ -93,6 +93,19 @@ export const authApi = apiSlice.injectEndpoints({
         headers: {
           Authorization: `Bearer ${token}`,
         },
+      }),
+      invalidatesTags: [{ type: "User", id: "ME" }],
+    }),
+
+    // PUT /register (Validate Email OTP - with email in body)
+    validateEmailOtp: builder.mutation<
+      ApiEnvelope<string>,
+      { email: string; otp: string }
+    >({
+      query: (payload) => ({
+        url: "/register",
+        method: "PUT",
+        body: payload,
       }),
       invalidatesTags: [{ type: "User", id: "ME" }],
     }),
@@ -177,6 +190,7 @@ export const {
   useRegisterMutation,
   useResendOtpMutation,
   useValidateOtpMutation,
+  useValidateEmailOtpMutation,
   useForgotPasswordMutation,
   useResendForgotPasswordOtpMutation,
   useResetPasswordMutation,

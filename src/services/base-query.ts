@@ -24,6 +24,7 @@ export const apiSlice = createApi({
     "Role",
     "DashboardAdmin",
     "Programs",
+    "PackagePayment",
   ],
   endpoints: () => ({}),
 });

@@ -146,7 +146,7 @@ export const salesApi = apiSlice.injectEndpoints({
       }) => response,
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const {

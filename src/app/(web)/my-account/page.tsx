@@ -4,8 +4,10 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   LayoutDashboard, User, Lock, Briefcase, TrendingUp, 
   Wallet, Camera, Eye, EyeOff, Loader2, 
-  Save, ShieldCheck, ExternalLink, ArrowRight, Users, Copy, Share2, Trophy, UserPlus
+  Save, ShieldCheck, ExternalLink, ArrowRight, Users, Copy, Share2, Trophy, UserPlus,
+  BookOpen, ChevronDown, ChevronRight, ChevronLeft, Award, X, CheckCircle2, Clock, AlertTriangle
 } from "lucide-react";
+import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetMeQuery, useUpdateProfileMutation } from "@/services/auth.service";
 import { useGetRegisterListQuery } from "@/services/programs/register.service";
@@ -13,7 +15,7 @@ import Swal from "sweetalert2";
 import Link from "next/link";
 import Image from "next/image";
 import { useGetSalesListQuery } from "@/services/programs/sales.service";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/contexts/i18n-context";
 import {
   useGetTotalProgramsQuery,
@@ -23,6 +25,21 @@ import {
   useGetTopSalesQuery,
 } from "@/services/dashboard-admin.service";
 import { useGetProgramsQuery } from "@/services/programs/programs.service";
+import { useGetProgramLearningsQuery, useGetProgramLearningByIdQuery } from "@/services/programs/learning.service";
+import {
+  useGetProgramLearningSalesQuery,
+  useCreateProgramLearningSaleMutation,
+  useUpdateProgramLearningSaleMutation,
+} from "@/services/programs/learning-sales.service";
+import { useGetProgramLearningQuizzesQuery } from "@/services/programs/learning-quiz.service";
+import {
+  useGetProgramLearningQuizSalesQuery,
+  useSubmitProgramLearningQuizMutation,
+} from "@/services/programs/learning-quiz-sales.service";
+import type { ProgramLearning } from "@/types/programs/learning";
+import type { ProgramLearningSale } from "@/types/programs/learning-sales";
+import type { ProgramLearningQuiz } from "@/types/programs/learning-quiz";
+import type { SubmitQuizAnswer } from "@/types/programs/learning-quiz-sales";
 import { 
   XAxis, 
   YAxis,
@@ -35,6 +52,25 @@ import {
 } from 'recharts';
 
 // --- UTILS (Tetap di luar) ---
+/** Strip HTML tags from rich text (e.g. from SunRichText) and return plain text for display */
+const stripHtml = (html: string | null | undefined): string => {
+  if (!html || typeof html !== "string") return "";
+  const withNewlines = html
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n");
+  return withNewlines
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/\n{2,}/g, "\n\n")
+    .trim();
+};
+
 const formatPhoneNumber = (value: string) => {
   const phoneNumber = value.replace(/\D/g, '');
   if (phoneNumber.length <= 4) return phoneNumber;
@@ -74,10 +110,11 @@ const DashboardView = ({ userData, myProgramsData, userRole, userId }: any) => {
     { skip: userRole !== 'sales' }
   );
 
-  // Transform top sales data for ranking
+  // Transform top sales data for ranking (guard: API may return non-array)
   const SALES_RANKING = useMemo(() => {
     if (!topSalesData || userRole !== 'sales') return [];
-    return topSalesData.map((sale: any, index: number) => ({
+    const list = Array.isArray(topSalesData) ? topSalesData : [];
+    return list.map((sale: any, index: number) => ({
       rank: index + 1,
       name: sale.name,
       registrations: sale.program_registrations_count,
@@ -512,6 +549,822 @@ const MyProgramsView = ({ myProgramsData, isLoadingPrograms }: any) => {
   );
 };
 
+// Learning by Program View - For Sales Role
+const LearningByProgramView = ({ mySalesData, isLoadingSales, userId }: any) => {
+  const { t } = useI18n();
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [readModalLearningId, setReadModalLearningId] = useState<number | null>(null);
+  const [quizModalLearningId, setQuizModalLearningId] = useState<number | null>(null);
+  const [quizResult, setQuizResult] = useState<{ score: number; total: number; passed: boolean } | null>(null);
+
+  const selectedProgram = useMemo(
+    () => (mySalesData?.data || []).find((p: any) => p.program_id === selectedProgramId),
+    [mySalesData, selectedProgramId]
+  );
+  // Use logged-in user id from session as sales_id for learning/quiz APIs
+  const selectedSalesId = userId ?? null;
+
+  const { data: learningsData } = useGetProgramLearningsQuery(
+    { page: 1, paginate: 50, program_id: selectedProgramId ?? undefined },
+    { skip: !selectedProgramId }
+  );
+  const learnings = useMemo(() => learningsData?.data ?? [], [learningsData]);
+
+  const { data: learningSalesData, refetch: refetchLearningSales } = useGetProgramLearningSalesQuery(
+    { page: 1, paginate: 100, sales_id: selectedSalesId ?? undefined },
+    { skip: !selectedSalesId }
+  );
+  const learningSalesMap = useMemo(() => {
+    const map: Record<number, ProgramLearningSale> = {};
+    (learningSalesData?.data ?? []).forEach((s: ProgramLearningSale) => {
+      map[s.program_learning_id] = s;
+    });
+    return map;
+  }, [learningSalesData]);
+
+  const { data: quizSalesData, refetch: refetchQuizSales } = useGetProgramLearningQuizSalesQuery(
+    { page: 1, paginate: 100, sales_id: selectedSalesId ?? undefined },
+    { skip: !selectedSalesId }
+  );
+  const quizSalesMap = useMemo(() => {
+    const map: Record<number, { score: number; total_questions: number; passed: boolean }> = {};
+    (quizSalesData?.data ?? []).forEach((q: any) => {
+      map[q.program_learning_id] = {
+        score: q.score,
+        total_questions: q.total_questions,
+        passed: q.passed,
+      };
+    });
+    return map;
+  }, [quizSalesData]);
+
+  const [createLearningSale, { isLoading: creatingLearningSale }] = useCreateProgramLearningSaleMutation();
+  const [updateLearningSale, { isLoading: updatingLearningSale }] = useUpdateProgramLearningSaleMutation();
+  const [submitQuiz, { isLoading: submittingQuiz }] = useSubmitProgramLearningQuizMutation();
+
+  const programs = useMemo(() => mySalesData?.data ?? [], [mySalesData]);
+
+  const handleMarkComplete = async (programLearningId: number) => {
+    if (!selectedSalesId) return;
+    const existing = learningSalesMap[programLearningId];
+    try {
+      if (existing) {
+        await updateLearningSale({
+          id: existing.id,
+          payload: { completed_at: new Date().toISOString(), status: 1 },
+        }).unwrap();
+      } else {
+        await createLearningSale({
+          program_learning_id: programLearningId,
+          sales_id: selectedSalesId,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+        }).unwrap();
+      }
+      refetchLearningSales();
+      setReadModalLearningId(null);
+      await Swal.fire({
+        icon: "success",
+        title: t.myAccount.learning.completed,
+        timer: 1500,
+        showConfirmButton: false,
+        toast: true,
+        position: "top-end",
+        background: "#0f172a",
+        color: "#fff",
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: t.myAccount.messages.updateFailed,
+        text: err?.data?.message || "Failed",
+        background: "#1e293b",
+        color: "#fff",
+      });
+    }
+  };
+
+  const handleSubmitQuizAnswers = async (programLearningId: number, answers: SubmitQuizAnswer[]) => {
+    if (!selectedSalesId) return;
+    try {
+      const result = await submitQuiz({
+        program_learning_id: programLearningId,
+        sales_id: selectedSalesId,
+        answers,
+      }).unwrap();
+      setQuizResult({
+        score: result.score,
+        total: result.total_questions,
+        passed: result.passed,
+      });
+      refetchQuizSales();
+      await Swal.fire({
+        icon: "success",
+        title: t.myAccount.learning.quizSubmitted,
+        text: t.myAccount.learning.quizSubmittedText,
+        timer: 2000,
+        showConfirmButton: false,
+        toast: true,
+        position: "top-end",
+        background: "#0f172a",
+        color: "#fff",
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: t.myAccount.messages.updateFailed,
+        text: err?.data?.message || "Failed",
+        background: "#1e293b",
+        color: "#fff",
+      });
+    }
+  };
+
+  if (isLoadingSales) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 text-center text-white/60">
+          {t.myAccount.messages.loading}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (!programs.length) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div className="flex items-center gap-3 mb-4">
+          <BookOpen className="text-[#367CC0]" size={24} />
+          <h3 className="text-xl font-bold text-white">{t.myAccount.learning.title}</h3>
+        </div>
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-12 text-center">
+          <BookOpen size={48} className="text-white/20 mx-auto mb-4" />
+          <h3 className="text-xl font-black text-white mb-2">{t.myAccount.learning.noPrograms}</h3>
+          <p className="text-white/40 text-sm">{t.myAccount.learning.noProgramsDesc}</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div className="flex items-center gap-3 mb-4">
+        <BookOpen className="text-[#367CC0]" size={24} />
+        <div>
+          <h3 className="text-xl font-bold text-white">{t.myAccount.learning.title}</h3>
+          <p className="text-white/50 text-sm">{t.myAccount.learning.description}</p>
+        </div>
+      </div>
+
+      {/* Program selector */}
+      <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4">
+        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">{t.myAccount.learning.byProgram}</p>
+        <div className="flex flex-wrap gap-2">
+          {programs.map((program: any) => (
+            <button
+              key={program.id}
+              onClick={() => {
+                setSelectedProgramId(program.program_id);
+                setQuizResult(null);
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                selectedProgramId === program.program_id
+                  ? "bg-[#367CC0] text-white"
+                  : "bg-white/10 text-white/80 hover:bg-white/20"
+              }`}
+            >
+              {program.program_name || `Program #${program.program_id}`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Learnings list */}
+      {selectedProgramId && (
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+          {!learnings.length ? (
+            <div className="py-8 text-center text-white/50">
+              <p>{t.myAccount.learning.noLearnings}</p>
+              <p className="text-sm mt-1">{t.myAccount.learning.noLearningsDesc}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {learnings.map((learning: ProgramLearning) => {
+                const learningSale = learningSalesMap[learning.id];
+                const quizResultForLearning = quizSalesMap[learning.id];
+                const completedRead = !!(learningSale?.completed_at);
+                const canTakeQuiz = completedRead;
+
+                return (
+                  <div
+                    key={learning.id}
+                    className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white/5 rounded-xl border border-white/10"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold truncate">{learning.title}</p>
+                      {learning.description && (
+                        <p className="text-white/50 text-xs mt-1 line-clamp-2">{stripHtml(learning.description)}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {!learningSale && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+                            {t.myAccount.learning.notStarted}
+                          </span>
+                        )}
+                        {learningSale && !completedRead && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                            {t.myAccount.learning.inProgress}
+                          </span>
+                        )}
+                        {completedRead && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 flex items-center gap-1">
+                            <CheckCircle2 size={12} /> {t.myAccount.learning.completed}
+                          </span>
+                        )}
+                        {quizResultForLearning && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 ${quizResultForLearning.passed ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                            <Award size={12} /> {t.myAccount.learning.yourScore}: {quizResultForLearning.score}/{quizResultForLearning.total_questions} ({quizResultForLearning.passed ? t.myAccount.learning.passed : t.myAccount.learning.failed})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReadModalLearningId(learning.id)}
+                        className="px-3 py-1.5 rounded-lg bg-[#367CC0]/20 text-[#367CC0] text-xs font-bold hover:bg-[#367CC0]/30 transition-all flex items-center gap-1"
+                      >
+                        <BookOpen size={14} /> {t.myAccount.learning.read}
+                      </button>
+                      {canTakeQuiz && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuizModalLearningId(learning.id);
+                            setQuizResult(null);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-[#7ED321]/20 text-[#7ED321] text-xs font-bold hover:bg-[#7ED321]/30 transition-all flex items-center gap-1"
+                        >
+                          <Award size={14} /> {t.myAccount.learning.takeQuiz}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Read Learning Modal */}
+      {readModalLearningId != null && (
+        <ReadLearningModal
+          learningId={readModalLearningId}
+          selectedSalesId={selectedSalesId}
+          learningSale={learningSalesMap[readModalLearningId] ?? null}
+          onClose={() => setReadModalLearningId(null)}
+          onMarkComplete={() => handleMarkComplete(readModalLearningId)}
+          isUpdating={creatingLearningSale || updatingLearningSale}
+        />
+      )}
+
+      {/* Quiz Modal */}
+      {quizModalLearningId != null && (
+        <QuizModal
+          learningId={quizModalLearningId}
+          salesId={selectedSalesId}
+          quizResult={quizResult}
+          timeLimitMinutes={
+            learnings.find((l: ProgramLearning) => l.id === quizModalLearningId)
+              ?.quiz_time_limit_minutes ?? null
+          }
+          onSubmit={handleSubmitQuizAnswers}
+          onClose={() => {
+            setQuizModalLearningId(null);
+            setQuizResult(null);
+          }}
+          isSubmitting={submittingQuiz}
+        />
+      )}
+    </motion.div>
+  );
+};
+
+// Read Learning Modal
+const ReadLearningModal = ({
+  learningId,
+  selectedSalesId,
+  learningSale,
+  onClose,
+  onMarkComplete,
+  isUpdating,
+}: {
+  learningId: number | null;
+  selectedSalesId: number | null;
+  learningSale: ProgramLearningSale | null;
+  onClose: () => void;
+  onMarkComplete: () => void;
+  isUpdating: boolean;
+}) => {
+  const { t } = useI18n();
+  const { data: learning, isFetching } = useGetProgramLearningByIdQuery(learningId ?? 0, {
+    skip: !learningId,
+  });
+
+  if (!learningId) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="relative bg-[#1e293b] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <h3 className="text-lg font-bold text-white">{learning?.title ?? "—"}</h3>
+            <button type="button" onClick={onClose} className="p-2 text-white/60 hover:text-white rounded-lg">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto flex-1">
+            {isFetching ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="animate-spin text-white/60" />
+              </div>
+            ) : learning ? (
+              <div className="space-y-4 text-white/90 text-sm">
+                {learning.description && (
+                  <div className="whitespace-pre-wrap">{stripHtml(learning.description)}</div>
+                )}
+                {learning.file_pdf && (
+                  <a
+                    href={learning.file_pdf}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[#367CC0] hover:underline"
+                  >
+                    <ExternalLink size={14} /> PDF
+                  </a>
+                )}
+                {learning.link_youtube && (
+                  <a
+                    href={learning.link_youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[#367CC0] hover:underline"
+                  >
+                    <ExternalLink size={14} /> YouTube
+                  </a>
+                )}
+              </div>
+            ) : null}
+          </div>
+          <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-white/80 hover:bg-white/10 text-sm font-bold"
+            >
+              {t.myAccount.learning.close}
+            </button>
+            {selectedSalesId && (
+              <button
+                type="button"
+                onClick={onMarkComplete}
+                disabled={isUpdating}
+                className="px-4 py-2 rounded-xl bg-[#367CC0] text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                {t.myAccount.learning.markComplete}
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+// Quiz Modal – full-screen, timer, next/prev, numbered navigation
+const quizTimerStore: Record<string, number> = {}; // persists remaining seconds across open/close
+
+const QuizModal = ({
+  learningId,
+  salesId,
+  quizResult,
+  timeLimitMinutes,
+  onSubmit,
+  onClose,
+  isSubmitting,
+}: {
+  learningId: number | null;
+  salesId: number | null;
+  quizResult: { score: number; total: number; passed: boolean } | null;
+  timeLimitMinutes?: number | null;
+  onSubmit: (programLearningId: number, answers: SubmitQuizAnswer[]) => void;
+  onClose: () => void;
+  isSubmitting: boolean;
+}) => {
+  const { t } = useI18n();
+  const { data: quizzesData } = useGetProgramLearningQuizzesQuery(
+    { page: 1, paginate: 50, program_learning_id: learningId ?? undefined },
+    { skip: !learningId }
+  );
+  const quizzes: ProgramLearningQuiz[] = useMemo(() => quizzesData?.data ?? [], [quizzesData]);
+  const [answers, setAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // --- Timer ---
+  const timerKey = `quiz-${learningId}-${salesId}`;
+  const hasTimeLimit = timeLimitMinutes != null && timeLimitMinutes > 0;
+  const initialSeconds = hasTimeLimit
+    ? (quizTimerStore[timerKey] ?? timeLimitMinutes! * 60)
+    : 0;
+  const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSubmittedRef = useRef(false);
+
+  // Start / resume timer
+  useEffect(() => {
+    if (!hasTimeLimit || submitted) return;
+    timerRef.current = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        const next = prev - 1;
+        quizTimerStore[timerKey] = next;
+        return next;
+      });
+    }, 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [hasTimeLimit, submitted, timerKey]);
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (hasTimeLimit && remainingSeconds <= 0 && !submitted && !autoSubmittedRef.current && quizzes.length > 0) {
+      autoSubmittedRef.current = true;
+      if (timerRef.current) clearInterval(timerRef.current);
+      doSubmit(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingSeconds, hasTimeLimit, submitted, quizzes.length]);
+
+  const formatTime = (sec: number) => {
+    const m = Math.max(0, Math.floor(sec / 60));
+    const s = Math.max(0, sec % 60);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  const answeredCount = useMemo(
+    () => quizzes.filter((q) => answers[q.id] != null).length,
+    [quizzes, answers]
+  );
+
+  const doSubmit = useCallback(
+    async (isAutoSubmit = false) => {
+      if (!learningId || !salesId) return;
+      const answerList: SubmitQuizAnswer[] = quizzes.map((q) => ({
+        quiz_id: q.id,
+        selected_option: answers[q.id] ?? "A", // fallback for unanswered on auto-submit
+      }));
+
+      if (!isAutoSubmit && answeredCount < quizzes.length) {
+        const unanswered = quizzes.length - answeredCount;
+        const result = await Swal.fire({
+          icon: "warning",
+          title: t.myAccount.learning.confirmSubmit,
+          text: t.myAccount.learning.confirmSubmitUnanswered
+            .replace("{unanswered}", String(unanswered)),
+          showCancelButton: true,
+          confirmButtonText: t.myAccount.learning.submitQuiz,
+          cancelButtonText: t.myAccount.learning.close,
+          background: "#1e293b",
+          color: "#fff",
+          confirmButtonColor: "#7ED321",
+        });
+        if (!result.isConfirmed) return;
+      }
+
+      setSubmitted(true);
+      if (timerRef.current) clearInterval(timerRef.current);
+      delete quizTimerStore[timerKey];
+      onSubmit(learningId, answerList);
+
+      if (isAutoSubmit) {
+        Swal.fire({
+          icon: "info",
+          title: t.myAccount.learning.timeUp,
+          text: t.myAccount.learning.timeUpText,
+          background: "#1e293b",
+          color: "#fff",
+          confirmButtonColor: "#367CC0",
+        });
+      }
+    },
+    [learningId, salesId, quizzes, answers, answeredCount, timerKey, onSubmit, t]
+  );
+
+  const handleClose = () => {
+    if (!submitted && hasTimeLimit) {
+      quizTimerStore[timerKey] = remainingSeconds;
+    }
+    if (submitted) {
+      delete quizTimerStore[timerKey];
+    }
+    setAnswers({});
+    setSubmitted(false);
+    setActiveIdx(0);
+    autoSubmittedRef.current = false;
+    onClose();
+  };
+
+  if (!learningId) return null;
+
+  const showResult = quizResult !== null && submitted;
+  const currentQuiz = quizzes[activeIdx];
+  const timerDanger = hasTimeLimit && remainingSeconds <= 60;
+  const timerWarning = hasTimeLimit && remainingSeconds <= 180 && !timerDanger;
+  const progressPercent = quizzes.length > 0 ? Math.round((answeredCount / quizzes.length) * 100) : 0;
+
+  return (
+    <div className="fixed inset-0 z-[10000000000000]">
+      {/* Backdrop – NOT clickable to close */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+
+      {/* Modal container – 90% of viewport */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 30 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="absolute inset-0 flex items-center justify-center p-3 sm:p-6"
+      >
+        <div className="relative bg-gradient-to-b from-[#1e293b] to-[#0f172a] border border-white/10 rounded-2xl w-[70vw] h-[70vh] flex flex-col overflow-hidden shadow-2xl shadow-black/50">
+
+          {/* ============ HEADER ============ */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/10 bg-white/[0.03]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#367CC0]/20">
+                <Award size={18} className="text-[#367CC0]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-white truncate">
+                  {showResult ? t.myAccount.learning.quizResult : t.myAccount.learning.takeQuiz}
+                </h3>
+                {!showResult && quizzes.length > 0 && (
+                  <p className="text-[10px] text-white/40">
+                    {answeredCount} {t.myAccount.learning.answered} / {quizzes.length} {t.myAccount.learning.totalQuestions}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Timer badge */}
+              {hasTimeLimit && !showResult && (
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-mono font-bold transition-all ${
+                  timerDanger
+                    ? "bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse"
+                    : timerWarning
+                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                    : "bg-white/10 text-white/80 border border-white/10"
+                }`}>
+                  <Clock size={14} />
+                  {formatTime(remainingSeconds)}
+                </div>
+              )}
+              {!hasTimeLimit && !showResult && quizzes.length > 0 && (
+                <span className="text-xs text-white/30 hidden sm:inline">{t.myAccount.learning.noTimeLimit}</span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleClose}
+                className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* ============ BODY ============ */}
+          <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
+
+            {/* === LEFT SIDEBAR: question navigator === */}
+            {!showResult && quizzes.length > 0 && (
+              <div className="sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-white/10 bg-white/[0.02]">
+                <div className="p-3 sm:p-4">
+                  <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2">{t.myAccount.learning.quizOverview}</p>
+                  {/* Progress bar */}
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mb-3">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2 max-h-24 sm:max-h-none overflow-y-auto pb-1">
+                    {quizzes.map((q, idx) => {
+                      const isActive = idx === activeIdx;
+                      const isAnswered = answers[q.id] != null;
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => setActiveIdx(idx)}
+                          className={`
+                            w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xs font-bold transition-all relative
+                            ${isActive
+                              ? "bg-[#367CC0] text-white shadow-lg shadow-[#367CC0]/30 scale-110"
+                              : isAnswered
+                              ? "bg-[#7ED321]/20 text-[#7ED321] border border-[#7ED321]/30 hover:bg-[#7ED321]/30"
+                              : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 hover:text-white/80"
+                            }
+                          `}
+                        >
+                          {idx + 1}
+                          {isAnswered && !isActive && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#7ED321] rounded-full border border-[#0f172a]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* === MAIN CONTENT AREA === */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                {showResult && quizResult ? (
+                  /* ---- RESULT SCREEN ---- */
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center space-y-6 max-w-sm">
+                      <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${quizResult.passed ? "bg-green-500/20" : "bg-red-500/20"}`}>
+                        {quizResult.passed ? (
+                          <CheckCircle2 size={48} className="text-green-400" />
+                        ) : (
+                          <AlertTriangle size={48} className="text-red-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-4xl font-black text-white mb-1">
+                          {quizResult.score} / {quizResult.total}
+                        </p>
+                        <p className="text-white/50 text-sm">{t.myAccount.learning.yourScore}</p>
+                      </div>
+                      <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold ${
+                        quizResult.passed
+                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                          : "bg-red-500/20 text-red-400 border border-red-500/30"
+                      }`}>
+                        {quizResult.passed ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                        {quizResult.passed ? t.myAccount.learning.passed : t.myAccount.learning.failed}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClose}
+                        className="block mx-auto px-8 py-3 rounded-xl bg-[#367CC0] hover:bg-[#367CC0]/90 text-white text-sm font-bold transition-all"
+                      >
+                        {t.myAccount.learning.close}
+                      </button>
+                    </div>
+                  </div>
+                ) : quizzes.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center space-y-3">
+                      <BookOpen size={48} className="text-white/20 mx-auto" />
+                      <p className="text-white/50">No questions for this learning.</p>
+                    </div>
+                  </div>
+                ) : currentQuiz ? (
+                  /* ---- SINGLE QUESTION VIEW ---- */
+                  <div className="max-w-2xl mx-auto">
+                    {/* Question header */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#367CC0]/20 text-[#367CC0] font-black text-sm">
+                        {activeIdx + 1}
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+                          {t.myAccount.learning.question} {activeIdx + 1} {t.myAccount.learning.of} {quizzes.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Question text */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 mb-6">
+                      <p className="text-white text-base sm:text-lg font-medium leading-relaxed">
+                        {stripHtml(currentQuiz.question)}
+                      </p>
+                    </div>
+
+                    {/* Options */}
+                    <div className="space-y-3">
+                      {(["A", "B", "C", "D"] as const).map((opt) => {
+                        const label = currentQuiz[`option_${opt.toLowerCase()}` as keyof ProgramLearningQuiz];
+                        if (label == null || label === "") return null;
+                        const isSelected = answers[currentQuiz.id] === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() =>
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [currentQuiz.id]: opt,
+                              }))
+                            }
+                            className={`
+                              w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all group
+                              ${isSelected
+                                ? "bg-[#367CC0]/15 border-[#367CC0]/50 shadow-lg shadow-[#367CC0]/10"
+                                : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
+                              }
+                            `}
+                          >
+                            <span className={`
+                              flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold shrink-0 transition-all
+                              ${isSelected
+                                ? "bg-[#367CC0] text-white"
+                                : "bg-white/10 text-white/50 group-hover:bg-white/15 group-hover:text-white/70"
+                              }
+                            `}>
+                              {opt}
+                            </span>
+                            <span className={`text-sm ${isSelected ? "text-white font-medium" : "text-white/70"}`}>
+                              {stripHtml(String(label))}
+                            </span>
+                            {isSelected && (
+                              <CheckCircle2 size={18} className="text-[#367CC0] ml-auto shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* ============ FOOTER NAV ============ */}
+              {!showResult && quizzes.length > 0 && (
+                <div className="border-t border-white/10 bg-white/[0.03] px-4 sm:px-6 py-3">
+                  <div className="flex items-center justify-between max-w-2xl mx-auto">
+                    {/* Prev */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveIdx((i) => Math.max(0, i - 1))}
+                      disabled={activeIdx === 0}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft size={16} /> {t.myAccount.learning.prev}
+                    </button>
+
+                    {/* Submit or Next */}
+                    <div className="flex items-center gap-2">
+                      {activeIdx === quizzes.length - 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => doSubmit(false)}
+                          disabled={isSubmitting}
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#7ED321] to-[#5BB318] hover:brightness-110 text-white text-sm font-bold disabled:opacity-50 transition-all shadow-lg shadow-[#7ED321]/20"
+                        >
+                          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Award size={16} />}
+                          {t.myAccount.learning.submitQuiz}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveIdx((i) => Math.min(quizzes.length - 1, i + 1))}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#367CC0] hover:bg-[#367CC0]/90 text-white text-sm font-bold transition-all"
+                        >
+                          {t.myAccount.learning.next} <ChevronRight size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // Affiliate View Component - For Sales Role
 const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
   const { t } = useI18n();
@@ -556,7 +1409,7 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">{t.myAccount.affiliate.yourReferralCode}</p>
-              <p className="text-3xl font-black text-[#DF9B35] tracking-tighter">{userReferralCode}</p>
+              <p className="text-xl md:text-3xl font-black text-[#DF9B35] tracking-tighter">{userReferralCode}</p>
             </div>
             <button 
               onClick={() => {
@@ -610,12 +1463,38 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
         // Affiliate Program Cards
         <div className="space-y-4">
           {mySalesData.data.map((program: any) => (
-            <motion.div 
-              key={program.id} 
+            <motion.div
+              key={program.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] overflow-hidden group hover:bg-white/[0.08] transition-all shadow-xl"
             >
+              {/* Program Image Banner - Full Width */}
+              <div className="relative w-full h-48 overflow-hidden">
+                {program.avif || program.original ? (
+                  <Image
+                    src={program.avif || program.original}
+                    alt={program.program_name || "Program"}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#DF9B35]/20 to-[#367CC0]/20 flex items-center justify-center">
+                    <Briefcase size={48} className="text-white/20" />
+                  </div>
+                )}
+                {/* Status Badge Overlay */}
+                <div className="absolute top-4 right-4">
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${
+                    program.status
+                      ? 'bg-[#7ED321]/80 text-white border border-[#7ED321]'
+                      : 'bg-red-500/80 text-white border border-red-500'
+                  }`}>
+                    {program.status ? t.myAccount.dashboard.active : t.myAccount.dashboard.inactive}
+                  </div>
+                </div>
+              </div>
+
               {/* Header with gradient */}
               <div className="bg-gradient-to-r from-[#DF9B35]/20 to-[#367CC0]/20 p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
@@ -626,15 +1505,6 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
                     {program.program_sub_title && (
                       <p className="text-xs text-white/40">{program.program_sub_title}</p>
                     )}
-                  </div>
-                  
-                  {/* Status Badge */}
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    program.status 
-                      ? 'bg-[#7ED321]/20 text-[#7ED321] border border-[#7ED321]/30' 
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  }`}>
-                    {program.status ? t.myAccount.dashboard.active : t.myAccount.dashboard.inactive}
                   </div>
                 </div>
               </div>
@@ -655,6 +1525,25 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
                   )}
                 </div>
 
+                {/* Statistics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-3 text-center">
+                    <Eye size={16} className="text-blue-400 mx-auto mb-1" />
+                    <p className="text-lg font-black text-white">{program.total_views ?? 0}</p>
+                    <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Views</p>
+                  </div>
+                  <div className="bg-green-500/10 border border-green-400/20 rounded-xl p-3 text-center">
+                    <Share2 size={16} className="text-green-400 mx-auto mb-1" />
+                    <p className="text-lg font-black text-white">{program.total_shares ?? 0}</p>
+                    <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Shares</p>
+                  </div>
+                  <div className="bg-orange-500/10 border border-orange-400/20 rounded-xl p-3 text-center">
+                    <UserPlus size={16} className="text-orange-400 mx-auto mb-1" />
+                    <p className="text-lg font-black text-white">{program.total_registrations ?? 0}</p>
+                    <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Registrations</p>
+                  </div>
+                </div>
+
                 {/* Referral Link */}
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.affiliate.linkReferral}</p>
@@ -672,24 +1561,29 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
                 </div>
 
                 {/* Share Buttons */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.affiliate.share}</span>
-                  <button 
-                    onClick={() => shareToWhatsApp(program.program_id, program.program_name)}
-                    className="flex items-center gap-2 bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/30 text-[#25D366] px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                    {t.myAccount.affiliate.whatsapp}
-                  </button>
-                  <Link 
-                    href={`/programs/${program.program_id}`}
-                    className="flex items-center gap-2 bg-[#367CC0]/20 hover:bg-[#367CC0]/30 border border-[#367CC0]/30 text-[#367CC0] px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  >
-                    <ExternalLink size={14} />
-                    {t.myAccount.affiliate.view}
-                  </Link>
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.affiliate.share}</p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {/* WhatsApp Share Button - Enlarged and Prominent */}
+                    <button
+                      onClick={() => shareToWhatsApp(program.program_id, program.program_name)}
+                      className="flex-1 flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#20ba5a] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-105 shadow-lg shadow-[#25D366]/20"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      <span className="text-base">{t.myAccount.affiliate.whatsapp}</span>
+                    </button>
+
+                    {/* View Program Link */}
+                    <Link
+                      href={`/programs/${program.program_id}`}
+                      className="flex items-center justify-center gap-2 bg-[#367CC0]/20 hover:bg-[#367CC0]/30 border border-[#367CC0]/30 text-[#367CC0] px-6 py-4 rounded-xl font-bold transition-all hover:scale-105"
+                    >
+                      <ExternalLink size={18} />
+                      <span className="text-base">{t.myAccount.affiliate.view}</span>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Footer */}
@@ -709,7 +1603,9 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
 // --- MAIN COMPONENT ---
 const MyAccountLinkedInUI = () => {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "dashboard");
   const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useGetMeQuery();
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
   const { data: myProgramsData, isLoading: isLoadingPrograms } = useGetRegisterListQuery(
@@ -918,6 +1814,7 @@ const MyAccountLinkedInUI = () => {
                { id: "dashboard", label: t.myAccount.tabs.dashboard, icon: LayoutDashboard },
                { id: "myPrograms", label: t.myAccount.tabs.myPrograms, icon: Briefcase },
                ...(isSalesRole ? [{ id: "affiliate", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
+               ...(isSalesRole ? [{ id: "learning", label: t.myAccount.tabs.learning, icon: BookOpen }] : []),
                { id: "profile", label: t.myAccount.tabs.editProfile, icon: User },
                { id: "security", label: t.myAccount.tabs.security, icon: Lock },
                ...(isOwnerRole ? [{ id: "ownerDashboard", label: t.myAccount.tabs.ownerDashboard, icon: LayoutDashboard, external: true, href: "/cms/dashboard" }] : [])
@@ -969,6 +1866,14 @@ const MyAccountLinkedInUI = () => {
                   mySalesData={mySalesData}
                   isLoadingSales={isLoadingSales}
                   userData={userData}
+                />
+              )}
+              {activeTab === "learning" && isSalesRole && (
+                <LearningByProgramView
+                  key="learning"
+                  mySalesData={mySalesData}
+                  isLoadingSales={isLoadingSales}
+                  userId={userId}
                 />
               )}
               {activeTab === "profile" && (

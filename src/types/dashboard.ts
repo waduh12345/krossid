@@ -63,3 +63,112 @@ export interface TopSale {
   program_registrations_count: number;
   program_shares_count: number;
 }
+
+// List Program Views
+export interface ProgramViewItem {
+  id: number;
+  program_id: number;
+  program_title: string;
+  program_slug: string;
+  views: number;
+  ip: string;
+  user_agent: string;
+  country: string;
+  country_code: string;
+  region: string;
+  city: string;
+  latitude: string | null;
+  longitude: string | null;
+  created_at: string;
+}
+
+export interface ProgramViewsListParams {
+  program_id?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+  paginate?: number;
+  page?: number;
+  orderBy?: string;
+  order?: "asc" | "desc";
+}
+
+export interface ProgramViewsListResponse {
+  data: ProgramViewItem[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+// List Program Shares
+export interface ProgramShareItem {
+  id: number;
+  program_id: number;
+  program_title: string;
+  program_slug: string;
+  shared_by: number;
+  shared_by_name: string;
+  shared_by_email: string;
+  shared_to: string;
+  share_count: number;
+  ip: string;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface ProgramSharesListParams {
+  program_id?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+  paginate?: number;
+  page?: number;
+  orderBy?: string;
+  order?: "asc" | "desc";
+}
+
+export interface ProgramSharesListResponse {
+  data: ProgramShareItem[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+// List Program Registrations
+export interface ProgramRegistrationItem {
+  id: number;
+  program_id: number;
+  program_title: string;
+  program_slug: string;
+  sales_id: number | null;
+  sales_name: string | null;
+  sales_email: string | null;
+  name: string;
+  email: string;
+  phone: string;
+  parameter_value: string | null;
+  status: number;
+  created_at: string;
+}
+
+export interface ProgramRegistrationsListParams {
+  program_id?: number;
+  sales_id?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+  paginate?: number;
+  page?: number;
+  orderBy?: string;
+  order?: "asc" | "desc";
+}
+
+export interface ProgramRegistrationsListResponse {
+  data: ProgramRegistrationItem[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}

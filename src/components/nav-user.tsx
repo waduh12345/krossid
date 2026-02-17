@@ -57,7 +57,7 @@ export function NavUser({
     if (result.isConfirmed) {
       try {
         await logout().unwrap();
-        await signOut({ callbackUrl: "/login" });
+        await signOut({ callbackUrl: "/signin" });
       } catch (error) {
         console.error("Gagal logout:", error);
         Swal.fire("Gagal", "Terjadi kesalahan saat logout.", "error");

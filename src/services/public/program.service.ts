@@ -4,6 +4,7 @@ import type { Programs } from "@/types/programs/programs";
 interface GetProgramsParams {
   page: number;
   paginate: number;
+  search?: string;
 }
 
 interface GetProgramSalesParams {
@@ -25,10 +26,10 @@ export const publicProgramApi = apiSlice.injectEndpoints({
       },
       GetProgramsParams
     >({
-      query: ({ page, paginate }) => ({
+      query: ({ page, paginate, search }) => ({
         url: "/public/programs",
         method: "GET",
-        params: { page, paginate },
+        params: { page, paginate, ...(search && { search }) },
       }),
       transformResponse: (response: {
         code: number;

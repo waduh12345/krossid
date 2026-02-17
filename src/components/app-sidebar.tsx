@@ -13,6 +13,7 @@ import {
   IconWorld,
   type Icon as TablerIcon,
   IconSettings,
+  IconPackage,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -73,12 +74,23 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
         ],
       },
       {
-        title: "Configuration",
+        title: "Pricing",
         url: "#",
+        icon: IconPackage,
+        children: [
+          { title: "Packages", url: "/cms/package" },
+          { title: "Payments", url: "/cms/package/payment" },
+          { title: "Registrations", url: "/cms/package/registration" },
+          { title: "Registration Logs", url: "/cms/package/registration-log" },
+        ],
+      },
+      { 
+        title: "Settings",
+        url: "/cms/settings",
         icon: IconSettings,
         children: [
-          { title: "Top Program", url: "/cms/programs/top" },
-          { title: "Top Sales", url: "/cms/programs/top-sales" },
+          { title: "Users", url: "/cms/settings/users" },
+          { title: "Roles", url: "/cms/settings/roles" },
         ],
       },
     ],

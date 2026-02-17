@@ -27,6 +27,10 @@ export interface RegisterPayload {
   program_id?: string | null;
   sales?: boolean;
   role?: string;
+  /** Paket dari halaman pricing: starter | business | enterprise | freeTrial */
+  plan?: string | null;
+  /** Nama perusahaan (untuk paket business/enterprise) */
+  company_name?: string | null;
 }
 
 export interface ValidateOtpPayload {

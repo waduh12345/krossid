@@ -11,7 +11,7 @@ import {
 } from "@/services/users-management.service";
 import { useGetRolesQuery } from "@/services/users.service";
 import Swal from "sweetalert2";
-import { X } from "lucide-react";
+import { X, UserPlus, UserCog, Mail, Phone, Lock, Shield, Building2, Loader2, CheckCircle2, Clock, XCircle, Ban } from "lucide-react";
 import { Combobox } from "@/components/ui/combo-box";
 import type { Role } from "@/types/user";
 import { ApiError } from "@/lib/utils";
@@ -284,19 +284,58 @@ export default function UsersForm({
 
           <div className={`grid grid-cols-1 ${disableStatus ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-4 pt-2`}>
             {!disableStatus && (
-              <div className="flex flex-col">
-                <Label htmlFor="status" className="font-medium mb-1">Status User</Label>
-                <select
-                  id="status"
-                  className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={form.status}
-                  onChange={(e) => set("status", Number(e.target.value))}
-                >
-                  <option value={1}>Active</option>
-                  <option value={2}>Waiting Approval</option>
-                  <option value={-1}>Rejected</option>
-                  <option value={0}>Inactive</option>
-                </select>
+              <div className="flex flex-col space-y-2.5">
+                <Label className="text-sm font-semibold text-gray-700 mb-1">Status User</Label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => set("status", 1)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      form.status === 1
+                        ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:border-emerald-300 border-2 border-gray-200"
+                    }`}
+                  >
+                    <CheckCircle2 size={18} className={form.status === 1 ? "text-white" : "text-emerald-500"} />
+                    <span>Active</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("status", 2)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      form.status === 2
+                        ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:border-amber-300 border-2 border-gray-200"
+                    }`}
+                  >
+                    <Clock size={18} className={form.status === 2 ? "text-white" : "text-amber-500"} />
+                    <span>Waiting</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("status", -1)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      form.status === -1
+                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30 scale-105"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:border-red-300 border-2 border-gray-200"
+                    }`}
+                  >
+                    <XCircle size={18} className={form.status === -1 ? "text-white" : "text-red-500"} />
+                    <span>Rejected</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("status", 0)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      form.status === 0
+                        ? "bg-gray-500 text-white shadow-lg shadow-gray-500/30 scale-105"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:border-gray-400 border-2 border-gray-200"
+                    }`}
+                  >
+                    <Ban size={18} className={form.status === 0 ? "text-white" : "text-gray-500"} />
+                    <span>Inactive</span>
+                  </button>
+                </div>
               </div>
             )}
             <div className="flex flex-col">

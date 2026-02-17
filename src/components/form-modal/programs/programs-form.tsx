@@ -31,6 +31,8 @@ type Props = {
   onSuccess: () => void;
 };
 
+type ProgramVisibility = "member_only" | "public";
+
 type FormState = {
   program_category_id: number | null;
   owner_id: number | null;
@@ -42,7 +44,7 @@ type FormState = {
   guide_description: string;
   benefit_description: string;
   parameter: string;
-  status: boolean;
+  status: ProgramVisibility;
 };
 
 interface UserRole {
@@ -138,7 +140,7 @@ export default function ProgramsForm({
       slug: detail?.slug ?? "",
       description: detail?.description ?? "",
       parameter: detail?.parameter ?? "",
-      status: detail?.status === 1 || detail?.status === true || !isEdit,
+      status: detail?.status === 1 || detail?.status === true || !isEdit ? "public" : "member_only",
       value_description: detail?.value_description ?? "",
       guide_description: detail?.guide_description ?? "",
       benefit_description: detail?.benefit_description ?? "",
@@ -504,7 +506,7 @@ export default function ProgramsForm({
       if (key === "owner_id") {
         formData.append("owner_id", String(ownerId));
       } else if (key === "status") {
-        formData.append(key, value ? "1" : "0");
+        formData.append(key, value === "public" ? "1" : "0");
       } else {
         formData.append(key, String(value ?? ""));
       }
@@ -777,13 +779,13 @@ export default function ProgramsForm({
 
             {/* Value Description - Multiple Inputs */}
             <div className="space-y-2">
-              <Label className="font-semibold text-gray-700">Value Description</Label>
-              <p className="text-[10px] text-zinc-500">Tambahkan deskripsi nilai program (opsional)</p>
+              <Label className="font-semibold text-gray-700">Product / Program Spesifications</Label>
+              <p className="text-[10px] text-zinc-500">Add product / program spesifications (optional)</p>
               <div className="space-y-2">
                 {valueDescriptions.map((value, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
-                      placeholder={`Value description ${index + 1}`}
+                      placeholder={`Product / Program Spesifications ${index + 1}`}
                       value={value}
                       onChange={(e) => {
                         const newValues = [...valueDescriptions];
@@ -816,13 +818,13 @@ export default function ProgramsForm({
                   className="w-full text-xs"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  Add Value Description
+                  Add Product / Program Spesifications
                 </Button>
               </div>
             </div>
 
             {/* Value Benefit - Multiple Inputs */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label className="font-semibold text-gray-700">Value Benefit</Label>
               <p className="text-[10px] text-zinc-500">Tambahkan benefit program (opsional)</p>
               <div className="space-y-2">
@@ -865,17 +867,17 @@ export default function ProgramsForm({
                   Add Benefit
                 </Button>
               </div>
-            </div>
+            </div> */}
 
             {/* Value Guide - Multiple Inputs */}
             <div className="space-y-2">
-              <Label className="font-semibold text-gray-700">Value Guide</Label>
-              <p className="text-[10px] text-zinc-500">Tambahkan panduan program (opsional)</p>
+              <Label className="font-semibold text-gray-700">Benefit</Label>
+              <p className="text-[10px] text-zinc-500">Add benefit (optional)</p>
               <div className="space-y-2">
                 {valueGuides.map((guide, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
-                      placeholder={`Guide ${index + 1}`}
+                      placeholder={`Benefit ${index + 1}`}
                       value={guide}
                       onChange={(e) => {
                         const newGuides = [...valueGuides];
@@ -908,7 +910,7 @@ export default function ProgramsForm({
                   className="w-full text-xs"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  Add Guide
+                  Add Benefit
                 </Button>
               </div>
             </div>
@@ -1047,17 +1049,32 @@ export default function ProgramsForm({
               </p>
             </div>
 
-            <div className="flex items-center gap-3 rounded-lg border bg-zinc-50 p-3">
-              <input
-                id="p-status"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                checked={form.status}
-                onChange={(e) => set("status", e.target.checked)}
-              />
-              <Label htmlFor="p-status" className="font-bold cursor-pointer text-sm">
-                Published / Active
-              </Label>
+            <div className="rounded-lg border bg-zinc-50 p-3 space-y-2">
+              <Label className="font-bold text-sm">Visibility</Label>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="p-status"
+                    value="member_only"
+                    className="h-4 w-4 border-gray-300 text-sky-600 focus:ring-sky-500"
+                    checked={form.status === "member_only"}
+                    onChange={() => set("status", "member_only")}
+                  />
+                  <span className="text-sm font-medium">View Member Only</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="p-status"
+                    value="public"
+                    className="h-4 w-4 border-gray-300 text-sky-600 focus:ring-sky-500"
+                    checked={form.status === "public"}
+                    onChange={() => set("status", "public")}
+                  />
+                  <span className="text-sm font-medium">Public</span>
+                </label>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-4">

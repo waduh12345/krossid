@@ -68,6 +68,7 @@ export default function ProgramDetail() {
 
   const [showModal, setShowModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [isSharingToWhatsApp, setIsSharingToWhatsApp] = useState(false);
 
   // Timer state for urgency (10 minutes = 600 seconds)
   const TIMER_DURATION = 600; // 10 minutes in seconds
@@ -263,89 +264,99 @@ export default function ProgramDetail() {
     ? `https://kross.id/programs/${programData.id}`
     : "https://kross.id/programs";
 
-  // Share to social media functions
-  const shareToWhatsApp = async () => {
-    // Hit API to track share
-    if (programData?.id) {
-      try {
-        await shareProgram({
-          id: programData.id,
-          shared_to: "Whatsapp"
-        }).unwrap();
-      } catch (err) {
-        // Silently fail - don't block user from sharing
-        console.error("Failed to track share:", err);
-      }
-    }
+  /**
+   * Helper: fetch gambar lewat /api/image-proxy (bypass CORS),
+   * lalu konversi ke PNG lewat canvas agar kompatibel dengan WhatsApp.
+   */
+  const fetchImageAsFile = async (url: string): Promise<File | null> => {
+    try {
+      // 1. Fetch lewat proxy supaya tidak kena CORS
+      const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) return null;
+      const originalBlob = await res.blob();
 
-    const text = `🔥 ${program.title}\n\n${program.description}\n\nLihat selengkapnya di: ${referralLink}`;
-    
-    // Get image URL
-    const imageUrl = getImageUrl();
-    
-    // Try to use Web Share API with image if available (works on mobile browsers)
-    if (navigator.share && navigator.canShare) {
-      try {
-        // Fetch image and convert to blob
-        // Use proxy or direct URL depending on CORS
-        let imageBlob: Blob;
-        try {
-          const response = await fetch(imageUrl, { mode: 'cors' });
-          if (!response.ok) throw new Error('Failed to fetch image');
-          imageBlob = await response.blob();
-        } catch (fetchError) {
-          // If CORS fails, try to create image from canvas
-          const img = document.createElement('img') as HTMLImageElement;
-          img.crossOrigin = 'anonymous';
-          
-          await new Promise<Blob>((resolve, reject) => {
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob((blob) => {
-                  if (blob) {
-                    imageBlob = blob;
-                    resolve(blob);
-                  } else {
-                    reject(new Error('Failed to convert image to blob'));
-                  }
-                }, 'image/jpeg', 0.9);
-              } else {
-                reject(new Error('Failed to get canvas context'));
-              }
-            };
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = imageUrl;
-          });
-        }
-        
-        const file = new File([imageBlob!], 'program-image.jpg', { type: 'image/jpeg' });
-        
-        // Check if we can share files
-        const shareData: ShareData = {
-          title: program.title,
-          text: text,
-          url: referralLink,
-          files: [file]
+      // 2. Render ke <canvas> lalu export ke PNG (universal, didukung WhatsApp)
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        const img = document.createElement("img");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob((blob) => resolve(blob), "image/png");
+          } else {
+            resolve(null);
+          }
+          URL.revokeObjectURL(img.src);
         };
-        
-        if (navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          return;
-        }
-      } catch (error) {
-        // If Web Share API fails, fallback to WhatsApp link
-        console.log("Web Share API not available or failed, using WhatsApp link:", error);
-      }
+        img.onerror = () => {
+          URL.revokeObjectURL(img.src);
+          resolve(null);
+        };
+        img.src = URL.createObjectURL(originalBlob);
+      });
+
+      if (!pngBlob) return null;
+      return new File([pngBlob], "program-image.png", { type: "image/png" });
+    } catch (err) {
+      console.error("fetchImageAsFile error:", err);
+      return null;
     }
-    
-    // Fallback to WhatsApp link (works everywhere)
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+  };
+
+  // Share to WhatsApp — konsep: update status dengan gambar + caption (judul)
+  const shareToWhatsApp = async () => {
+    setIsSharingToWhatsApp(true);
+    try {
+      // Track share via API
+      if (programData?.id) {
+        try {
+          await shareProgram({
+            id: programData.id,
+            shared_to: "Whatsapp"
+          }).unwrap();
+        } catch (err) {
+          console.error("Failed to track share:", err);
+        }
+      }
+
+      // Caption = judul program + link referral
+      const statusText = `${program.title}\n\n${referralLink}`;
+
+      // Dapatkan URL gambar (absolut)
+      const rawImageUrl = getImageUrl();
+      const imageUrl =
+        typeof window !== "undefined" && rawImageUrl && !rawImageUrl.startsWith("http")
+          ? `${window.location.origin}${rawImageUrl.startsWith("/") ? "" : "/"}${rawImageUrl}`
+          : rawImageUrl;
+
+      // Coba Web Share API dengan gambar (PNG) — user bisa pilih WhatsApp > Status
+      if (typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+        const file = await fetchImageAsFile(imageUrl);
+
+        if (file) {
+          const shareData: ShareData = {
+            title: program.title,
+            text: statusText,
+            files: [file],
+          };
+
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            return;
+          }
+        }
+      }
+
+      // Fallback: buka wa.me dengan teks (judul + link)
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(statusText)}`;
+      window.open(waUrl, "_blank");
+    } finally {
+      setIsSharingToWhatsApp(false);
+    }
   };
 
   const shareToFacebook = () => {
@@ -601,8 +612,8 @@ export default function ProgramDetail() {
 
   // Get display image
   const getImageUrl = () => {
-    if (programData?.avif) return programData.avif;
     if (programData?.original) return programData.original;
+    if (programData?.avif) return programData.avif;
     if (typeof programData?.image === 'string' && programData.image) return programData.image;
     return "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200";
   };
@@ -679,18 +690,24 @@ export default function ProgramDetail() {
                           <span className="text-white/30 font-medium">{t.programDetail.view}</span>
                         </div>
                       </div>
-                      {/* Social Share Buttons */}
-                      <div className="flex items-center gap-3 mt-2">
-                      {/* WhatsApp */}
+                      {/* Social Share Buttons & Register */}
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        
+                        {/* WhatsApp — share gambar + caption (judul) untuk update status */}
                         <button
                           type="button"
-                          aria-label="Share to WhatsApp"
+                          aria-label="Share to WhatsApp (gambar + caption untuk Status)"
                           onClick={shareToWhatsApp}
-                          className="p-2 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 transition-all"
+                          disabled={isSharingToWhatsApp}
+                          className="p-2 rounded-full bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <svg className="w-5 h-5 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                          </svg>
+                          {isSharingToWhatsApp ? (
+                            <Loader2 className="w-5 h-5 text-[#25D366] animate-spin" />
+                          ) : (
+                            <svg className="w-5 h-5 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          )}
                         </button>
                         {/* Facebook */}
                         <button
@@ -742,6 +759,19 @@ export default function ProgramDetail() {
                           <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
                           </svg>
                         </button>
+
+                        <div className="w-px h-6 bg-white/20" />
+                        
+                        {/* Register Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShowRegisterModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#367CC0] to-[#7ED321] hover:from-[#2d6ba8] hover:to-[#6bb81a] text-white font-bold text-xs uppercase tracking-wider rounded-full transition-all hover:scale-105 shadow-lg shadow-[#367CC0]/30"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          {t.programDetail.registerNow}
+                        </button>
+                        
                       </div>
                     </div>
                   </div>
@@ -769,7 +799,7 @@ export default function ProgramDetail() {
                 </div>
 
                 {/* Value Program & Promotion Guide Grid */}
-                {(valueDescriptions.length > 0 || guideDescriptions.length > 0) && (
+                {(valueDescriptions.length > 0 || benefitDescriptions.length > 0) && (
                   <div className={`grid gap-10 ${valueDescriptions.length > 0 && guideDescriptions.length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
                     {/* Value Program - from value_description */}
                     {valueDescriptions.length > 0 && (
@@ -789,16 +819,16 @@ export default function ProgramDetail() {
                     )}
                     
                     {/* Promotion Guide - from guide_description */}
-                    {guideDescriptions.length > 0 && (
+                    {benefitDescriptions.length > 0 && (
                       <div className="bg-black/20 p-8 rounded-[32px] border border-white/5">
                         <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
                           <Target className="w-4 h-4 text-[#DF9B35]" /> {t.programDetail.promotionGuide}
                         </h4>
                         <ul className="space-y-4">
-                          {guideDescriptions.map((guide, i) => (
+                          {benefitDescriptions.map((benefit, i) => (
                             <li key={i} className="flex items-start gap-4 text-sm text-white/40 italic">
                               <Zap className="w-4 h-4 text-[#DF9B35] shrink-0 mt-0.5" /> 
-                              <span>{guide.trim()}</span>
+                              <span>{benefit.trim()}</span>
                             </li>
                           ))}
                         </ul>
@@ -844,16 +874,7 @@ export default function ProgramDetail() {
                 <span className="text-4xl font-black text-black tracking-tighter">{program.price}</span>
                 <p className="text-[11px] text-black/40 font-bold uppercase tracking-widest mt-2">{t.programDetail.fullAccessAuthorization}</p>
               </div>
-              {/* Free Full Access Authorization - from benefit_description */}
-              {benefitDescriptions.length > 0 && (
-                <ul className="space-y-4 mb-10">
-                  {benefitDescriptions.map((benefit, i) => (
-                    <li key={i} className="flex items-center gap-3 text-xs font-black uppercase text-black/60 tracking-tighter">
-                      <Gift className="w-5 h-5 text-[#DF9B35]" /> {benefit.trim()}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              
               <button 
                 onClick={() => setShowRegisterModal(true)}
                 disabled={isTimerExpired}
@@ -949,14 +970,19 @@ export default function ProgramDetail() {
                 <div className="mb-8">
                   <span className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-4 block">{t.programDetail.shareToSocialMedia}</span>
                   <div className="grid grid-cols-4 gap-3">
-                    {/* WhatsApp */}
+                    {/* WhatsApp — gambar + caption (judul) untuk Status */}
                     <button 
                       onClick={shareToWhatsApp}
-                      className="flex flex-col items-center gap-2 p-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-2xl transition-all group"
+                      disabled={isSharingToWhatsApp}
+                      className="flex flex-col items-center gap-2 p-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-2xl transition-all group disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <svg className="w-6 h-6 text-[#25D366] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
+                      {isSharingToWhatsApp ? (
+                        <Loader2 className="w-6 h-6 text-[#25D366] animate-spin" />
+                      ) : (
+                        <svg className="w-6 h-6 text-[#25D366] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                      )}
                       <span className="text-[8px] font-bold text-white/60 uppercase">WhatsApp</span>
                     </button>
 

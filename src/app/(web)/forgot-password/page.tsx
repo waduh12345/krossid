@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
-
+import Image from "next/image";
 // Import Service
 import { useForgotPasswordMutation } from "@/services/auth.service";
 import { ApiErrorResponse } from "@/lib/error-handle"; // Pastikan path sesuai
@@ -97,6 +97,17 @@ const ForgotPasswordPage = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#367CC0] relative overflow-hidden font-sans p-4">
+      <div className="absolute top-6 left-6 z-50">
+        <Link href="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Image
+            src="/kross-id.png"
+            alt="Kross ID Logo"
+            width={40}
+            height={40}
+          />
+          <span className="font-black text-white text-xl">KROSS<span className="text-[#DF9B35]">.ID</span></span>
+        </Link>
+      </div>
       {/* Background Gradient & Grid */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#367CC0] via-[#5da2e6] to-[#DF9B35] opacity-90"></div>
       <div

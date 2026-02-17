@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 // Import tambahan untuk fungsionalitas login
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -121,6 +122,19 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#367CC0] relative overflow-hidden font-sans">
+      {/* Back to Home - Top Left */}
+      <div className="absolute top-6 left-6 z-50">
+        <Link href="/home" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Image
+            src="/kross-id.png"
+            alt="Kross ID Logo"
+            width={40}
+            height={40}
+          />
+          <span className="font-black text-white text-xl">KROSS<span className="text-[#DF9B35]">.ID</span></span>
+        </Link>
+      </div>
+
       {/* Language Switcher - Top Right */}
       <div className="absolute top-6 right-6 z-50">
         <LanguageSwitcher />

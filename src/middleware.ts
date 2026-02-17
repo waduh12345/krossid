@@ -18,13 +18,13 @@ type TokenLike = {
 };
 
 // --- Helper
-const PUBLIC_PATHS = ["/login", "/home", "/programs", "/api-ready", "/forgot-password", "/register-owner", "/my-account", "/about-us", "/privacy-policy", "/terms-of-service", "/faq", "/contact-us"];
-const PUBLIC_PATH_PREFIXES = ["/programs/"];
+const PUBLIC_PATHS = ["/login", "/home", "/programs", "/pricing", "/api-ready", "/forgot-password", "/register-owner", "/my-account", "/about-us", "/privacy-policy", "/terms-of-service", "/faq", "/contact-us"];
+const PUBLIC_PATH_PREFIXES = ["/programs/", "/pricing/"];
 const ALWAYS_ALLOW_PREFIX = ["/api/auth", "/_next", "/static", "/images"];
 const ALWAYS_ALLOW_EXACT = ["/favicon.ico", "/robots.txt", "/sitemap.xml"];
 
 const isPublic = (pathname: string) =>
-  PUBLIC_PATHS.includes(pathname) || 
+  PUBLIC_PATHS.includes(pathname) ||
   PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p)) ||
   pathname.startsWith("/api/auth");
 

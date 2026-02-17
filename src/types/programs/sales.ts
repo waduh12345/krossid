@@ -6,4 +6,12 @@ export interface Sales {
   email: string;
   is_corporate: boolean | number;
   status: boolean | number;
+  avif?: string | null;
+  original?: string | null;
+  parameter_value?: string | null;
+  total_views?: number;
+  total_shares?: number;
+  total_registrations?: number;
+  created_at?: string;
+  updated_at?: string;
 }
