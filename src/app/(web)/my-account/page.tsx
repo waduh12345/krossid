@@ -1371,7 +1371,7 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
   const userReferralCode = userData?.referral || '';
 
   const handleCopyLink = (programId: number) => {
-    const link = `https://kross.id/programs/${programId}?reff=${userReferralCode}`;
+    const link = `https://krossid.vercel.app/programs/${programId}?reff=${userReferralCode}`;
     navigator.clipboard.writeText(link);
     Swal.fire({
       icon: 'success',
@@ -1388,7 +1388,7 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
   };
 
   const shareToWhatsApp = (programId: number, programName: string) => {
-    const link = `https://kross.id/programs/${programId}?reff=${userReferralCode}`;
+    const link = `https://krossid.vercel.app/programs/${programId}?reff=${userReferralCode}`;
     const text = `🔥 Cek program keren ini: ${programName}\n\nDaftar sekarang: ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -1549,7 +1549,7 @@ const AffiliateView = ({ mySalesData, isLoadingSales, userData }: any) => {
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.affiliate.linkReferral}</p>
                   <div className="flex gap-2 p-1.5 bg-black/40 border border-white/5 rounded-xl">
                     <div className="flex-1 px-3 py-2 text-[10px] font-mono text-white/60 truncate">
-                      https://kross.id/programs/{program.program_id}?reff={userReferralCode}
+                      https://krossid.vercel.app/programs/{program.program_id}?reff={userReferralCode}
                     </div>
                     <button 
                       onClick={() => handleCopyLink(program.program_id)}

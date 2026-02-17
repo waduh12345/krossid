@@ -14,6 +14,7 @@ export interface Package {
   price_discount_month: number | null;
   price_discount_year: number | null;
   status: boolean | number;
+  status_populer: "yes" | "no";
   max_users: number | null;
   max_campaigns: number | null;
   features?: PackageFeature[];

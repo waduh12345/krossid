@@ -44,6 +44,7 @@ type FormState = {
   price_discount_month: string;
   price_discount_year: string;
   status: number;
+  status_populer: "yes" | "no";
   max_users: string;
   max_campaigns: string;
 };
@@ -86,6 +87,7 @@ export default function PackageForm({
           : "",
       status:
         detail?.status === 1 || detail?.status === true ? 1 : 0,
+      status_populer: detail?.status_populer ?? "no",
       max_users:
         detail?.max_users != null ? String(detail.max_users) : "",
       max_campaigns:
@@ -144,6 +146,7 @@ export default function PackageForm({
         ? Number(form.price_discount_year)
         : null,
       status: form.status,
+      status_populer: form.status_populer,
       max_users: form.max_users ? Number(form.max_users) : null,
       max_campaigns: form.max_campaigns ? Number(form.max_campaigns) : null,
       image: imageFile ?? undefined,
@@ -278,6 +281,18 @@ export default function PackageForm({
                 >
                   <option value={1}>Active</option>
                   <option value={0}>Inactive</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status_populer">Popular</Label>
+                <select
+                  id="status_populer"
+                  value={form.status_populer}
+                  onChange={(e) => set("status_populer", e.target.value as "yes" | "no")}
+                  className="h-9 w-full rounded-xl border bg-background px-3 text-sm"
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
                 </select>
               </div>
               <div className="space-y-2">

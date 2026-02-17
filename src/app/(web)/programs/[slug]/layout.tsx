@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-const SITE_URL = process.env.NEXTAUTH_URL || "https://kross.id";
+const SITE_URL = process.env.NEXTAUTH_URL || "https://krossid.vercel.app";
 
 type ProgramData = {
   id: number;

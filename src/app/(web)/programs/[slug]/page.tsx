@@ -259,10 +259,10 @@ export default function ProgramDetail() {
 
   // Generate referral link with user's referral code
   const referralLink = programData?.id && userReferralCode
-    ? `https://kross.id/programs/${programData.id}?reff=${userReferralCode}`
+    ? `https://krossid.vercel.app/programs/${programData.id}?reff=${userReferralCode}`
     : programData?.id
-    ? `https://kross.id/programs/${programData.id}`
-    : "https://kross.id/programs";
+    ? `https://krossid.vercel.app/programs/${programData.id}`
+    : "https://krossid.vercel.app/programs";
 
   /**
    * Helper: fetch gambar lewat /api/image-proxy (bypass CORS),

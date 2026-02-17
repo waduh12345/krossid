@@ -492,6 +492,7 @@ export default function PackagePage() {
                   <th className="px-4 py-4">Name</th>
                   <th className="px-4 py-4">Price (Month / Year)</th>
                   <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Popular</th>
                   <th className="px-4 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -543,6 +544,17 @@ export default function PackagePage() {
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
                             Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.status_populer === "yes" ? (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                            No
                           </span>
                         )}
                       </td>

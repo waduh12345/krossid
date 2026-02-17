@@ -12,6 +12,7 @@ export interface Sales {
   total_views?: number;
   total_shares?: number;
   total_registrations?: number;
+  status_populer?: "yes" | "no";
   created_at?: string;
   updated_at?: string;
 }

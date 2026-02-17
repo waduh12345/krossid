@@ -266,7 +266,7 @@ export default function PricingPage() {
                   package={pkg}
                   index={index}
                   billingPeriod={billingPeriod}
-                  isPopular={index === 1}
+                  isPopular={pkg.status_populer === "yes"}
                   onRegister={handleRegister(pkg)}
                 />
               ))}

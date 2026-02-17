@@ -461,7 +461,7 @@ export const en = {
     getStarted: "Get Started",
     startFreeTrial: "Start Free Trial",
     contactSales: "Contact Sales",
-    mostPopular: "Most Popular",
+    mostPopular: "Sweet Spot",
     plans: {
       starter: {
         name: "Starter",
