@@ -145,6 +145,26 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: response.message,
       }),
     }),
+
+    // ✅ PUBLIC SHARE
+    publicShareProgram: builder.mutation<
+      { code: number; message: string },
+      { id: number; shared_to: string }
+    >({
+      query: ({ id, shared_to }) => ({
+        url: `/public/programs/${id}/share`,
+        method: "POST",
+        body: { shared_to },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data?: unknown;
+      }) => ({
+        code: response.code,
+        message: response.message,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -156,4 +176,5 @@ export const {
   useUpdateProgramsMutation,
   useDeleteProgramsMutation,
   useShareProgramMutation,
+  usePublicShareProgramMutation,
 } = lmsApi;

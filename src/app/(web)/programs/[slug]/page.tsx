@@ -46,7 +46,7 @@ import {
 
 import { usePublicRegisterMutation } from "@/services/public/register.service";
 import { useGetMeQuery } from "@/services/auth.service";
-import { useShareProgramMutation } from "@/services/programs/programs.service";
+import { useShareProgramMutation, usePublicShareProgramMutation } from "@/services/programs/programs.service";
 import { useI18n } from "@/contexts/i18n-context";
 
 type ParameterField = {
@@ -96,7 +96,10 @@ export default function ProgramDetail() {
   });
 
   const [createRegister, { isLoading: isSubmitting }] = usePublicRegisterMutation();
-  const [shareProgram, { isLoading: isSharing }] = useShareProgramMutation();
+  const [shareProgramAuth, { isLoading: isSharingAuth }] = useShareProgramMutation();
+  const [shareProgramPublic, { isLoading: isSharingPublic }] = usePublicShareProgramMutation();
+  const shareProgram = session ? shareProgramAuth : shareProgramPublic;
+  const isSharing = session ? isSharingAuth : isSharingPublic;
 
   // Get user data including referral code
   const { data: userData } = useGetMeQuery(undefined, {
@@ -310,21 +313,22 @@ export default function ProgramDetail() {
   // Share to WhatsApp — konsep: update status dengan gambar + caption (judul)
   const shareToWhatsApp = async () => {
     setIsSharingToWhatsApp(true);
-    try {
-      // Track share via API
-      if (programData?.id) {
-        try {
-          await shareProgram({
-            id: programData.id,
-            shared_to: "Whatsapp"
-          }).unwrap();
-        } catch (err) {
-          console.error("Failed to track share:", err);
-        }
-      }
 
-      // Caption = judul program + link referral
-      const statusText = `${program.title}\n\n${referralLink}`;
+    // Siapkan data (sinkron — sebelum await agar popup tidak diblokir)
+    const statusText = `${program.title}\n\n${referralLink}`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(statusText)}`;
+
+    // Buka wa.me SEBELUM await — mencegah popup blocker (terutama saat user belum login)
+    const fallbackWindow = window.open(waUrl, "_blank");
+
+    try {
+      // Track share via API (fire-and-forget)
+      if (programData?.id) {
+        shareProgram({
+          id: programData.id,
+          shared_to: "Whatsapp"
+        }).unwrap().catch((err) => console.error("Failed to track share:", err));
+      }
 
       // Dapatkan URL gambar (absolut)
       const rawImageUrl = getImageUrl();
@@ -346,14 +350,13 @@ export default function ProgramDetail() {
 
           if (navigator.canShare(shareData)) {
             await navigator.share(shareData);
+            // Berhasil share via native sheet — tutup tab wa.me yang tadi dibuka
+            if (fallbackWindow) fallbackWindow.close();
             return;
           }
         }
       }
-
-      // Fallback: buka wa.me dengan teks (judul + link)
-      const waUrl = `https://wa.me/?text=${encodeURIComponent(statusText)}`;
-      window.open(waUrl, "_blank");
+      // Jika sampai sini: fallback sudah dibuka di awal, tidak perlu apa-apa
     } finally {
       setIsSharingToWhatsApp(false);
     }
