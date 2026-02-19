@@ -1606,6 +1606,7 @@ const MyAccountLinkedInUI = () => {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabParam || "dashboard");
+  const [showMobileNav, setShowMobileNav] = useState(false);
   const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useGetMeQuery();
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileMutation();
   const { data: myProgramsData, isLoading: isLoadingPrograms } = useGetRegisterListQuery(
@@ -1809,7 +1810,66 @@ const MyAccountLinkedInUI = () => {
         
         {/* SIDEBAR */}
         <aside className="lg:col-span-3 space-y-4">
-           <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-2">
+           {/* Mobile toggle header */}
+           <button
+             onClick={() => setShowMobileNav((v) => !v)}
+             className="lg:hidden w-full flex items-center justify-between bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl px-4 py-3"
+           >
+             <span className="text-sm font-bold text-white">Navigation</span>
+             <ChevronDown
+               size={18}
+               className={`text-white/60 transition-transform duration-200 ${showMobileNav ? "rotate-180" : ""}`}
+             />
+           </button>
+
+           {/* Nav items: toggle on mobile */}
+           <div className="lg:hidden">
+           <AnimatePresence initial={false}>
+             {showMobileNav && (
+               <motion.div
+                 initial={{ height: 0, opacity: 0 }}
+                 animate={{ height: "auto", opacity: 1 }}
+                 exit={{ height: 0, opacity: 0 }}
+                 transition={{ duration: 0.2, ease: "easeInOut" }}
+                 className="overflow-hidden"
+               >
+                 <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-2">
+                   {[
+                     { id: "dashboard", label: t.myAccount.tabs.dashboard, icon: LayoutDashboard },
+                     { id: "myPrograms", label: t.myAccount.tabs.myPrograms, icon: Briefcase },
+                     ...(isSalesRole ? [{ id: "affiliate", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
+                     ...(isSalesRole ? [{ id: "learning", label: t.myAccount.tabs.learning, icon: BookOpen }] : []),
+                     { id: "profile", label: t.myAccount.tabs.editProfile, icon: User },
+                     { id: "security", label: t.myAccount.tabs.security, icon: Lock },
+                     ...(isOwnerRole ? [{ id: "ownerDashboard", label: t.myAccount.tabs.ownerDashboard, icon: LayoutDashboard, external: true, href: "/cms/dashboard" }] : [])
+                   ].map((tab) => (
+                     tab.external ? (
+                       <Link
+                         key={tab.id}
+                         href={tab.href || "#"}
+                         className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all hover:bg-white/5 text-white"
+                       >
+                         <tab.icon size={16} /> {tab.label}
+                         <ExternalLink size={14} className="ml-auto" />
+                       </Link>
+                     ) : (
+                       <button
+                         key={tab.id}
+                         onClick={() => { setActiveTab(tab.id); setShowMobileNav(false); }}
+                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${activeTab === tab.id ? "bg-[#367CC0]" : "hover:bg-white/5"}`}
+                       >
+                         <tab.icon size={16} /> {tab.label}
+                       </button>
+                     )
+                   ))}
+                 </div>
+               </motion.div>
+             )}
+           </AnimatePresence>
+           </div>
+
+           {/* Desktop nav: always visible */}
+           <div className="hidden lg:block bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-2">
              {[
                { id: "dashboard", label: t.myAccount.tabs.dashboard, icon: LayoutDashboard },
                { id: "myPrograms", label: t.myAccount.tabs.myPrograms, icon: Briefcase },
@@ -1838,7 +1898,7 @@ const MyAccountLinkedInUI = () => {
                  </button>
                )
              ))}
-          </div>
+           </div>
         </aside>
 
         {/* MAIN CONTENT */}

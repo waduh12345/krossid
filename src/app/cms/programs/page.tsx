@@ -267,7 +267,7 @@ export default function ProgramsPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-zinc-50 text-left font-semibold text-zinc-700 border-b">
                 <tr>
-                  <th className="px-4 py-4">Title & Slug</th>
+                  <th className="px-4 py-4 min-w-[200px] md:min-w-0">Title & Slug</th>
                   <th className="px-4 py-4">Category</th>
                   <th className="px-4 py-4">Owner</th>
                   <th className="px-4 py-4">Status</th>
@@ -284,9 +284,9 @@ export default function ProgramsPage() {
                 ) : items.length ? (
                   items.map((u) => (
                     <tr key={u.id} className="hover:bg-zinc-50/60 transition-colors">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 min-w-[200px] md:min-w-0">
                         <div className="font-bold text-gray-900">{u.title}</div>
-                        <div className="text-[10px] text-zinc-400 font-mono">{u.slug}</div>
+                        <div className="md:block hidden text-[10px] text-zinc-400 font-mono break-all">{u.slug}</div>
                       </td>
                       <td className="px-4 py-3 text-zinc-600">
                         {u.program_category_name || "Uncategorized"}

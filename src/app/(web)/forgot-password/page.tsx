@@ -122,22 +122,29 @@ const ForgotPasswordPage = () => {
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-5xl bg-white/10 backdrop-blur-2xl rounded-[48px] border border-white/20 shadow-2xl flex flex-col md:flex-row p-6 m-4">
         {/* Left Section: Forgot Password Form */}
-        <div className="flex-1 p-8 lg:p-12 text-white">
-          <div className="mb-10">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-10 border border-white/10">
-              <div className="w-6 h-6 border-2 border-white rounded-sm rotate-45 flex items-center justify-center">
-                <div className="w-2 h-2 bg-[#DF9B35] rounded-full"></div>
+        <div className="flex-1 p-2 lg:p-12 text-white">
+        <div className="mb-8">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 border-2 border-white rounded-sm flex items-center justify-center">
+                  <img
+                    src="/kross-id.png"
+                    alt="Kross.id Logo"
+                    className="w-12 h-12 object-contain"
+                  />
+                </div>
+              </div>
+              <div>
+                <h1 className="md:text-4xl text-2xl font-bold tracking-tight">
+                  Forgot Password
+                </h1>
+                <p className="text-white/70 text-sm italic">
+                  {isSubmitted
+                  ? "Please check your inbox for instructions."
+                  : "No worries, we'll send you reset instructions."}
+                </p>
               </div>
             </div>
-
-            <h1 className="text-4xl font-bold mb-2 tracking-tight">
-              Forgot Password?
-            </h1>
-            <p className="text-white/70 text-sm italic">
-              {isSubmitted
-                ? "Please check your inbox for instructions."
-                : "No worries, we'll send you reset instructions."}
-            </p>
           </div>
 
           {!isSubmitted ? (

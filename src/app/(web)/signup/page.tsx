@@ -306,7 +306,7 @@ const RegisterPage = () => {
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-5xl bg-white/10 backdrop-blur-2xl rounded-[48px] border border-white/20 flex flex-col md:flex-row p-6 m-4 shadow-2xl">
         {/* Left Section: Form */}
-        <div className="flex-1 p-8 lg:p-12 text-white overflow-y-auto max-h-[90vh] md:max-h-none">
+        <div className="flex-1 p-2 lg:p-12 text-white overflow-y-auto max-h-[90vh] md:max-h-none">
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -319,7 +319,7 @@ const RegisterPage = () => {
                 </div>
               </div>
               <div>
-                <h1 className="text-4xl font-bold tracking-tight">
+                <h1 className="md:text-4xl text-2xl font-bold tracking-tight">
                   {step === 2 ? t.home.registerModal.otpTitle : t.signup.createAccount}
                 </h1>
                 <p className="text-white/70 text-sm italic">

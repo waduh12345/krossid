@@ -32,6 +32,7 @@ import {
   Star,
   X,
   Search,
+  SlidersHorizontal,
   Mail,
   RefreshCw,
   KeyRound,
@@ -107,7 +108,7 @@ const SidebarRight = ({
   const { t } = useI18n();
   return (
     <aside className="hidden lg:block lg:col-span-3 sticky top-24 h-fit space-y-6">
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
+      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-lg md:rounded-3xl p-6">
         <h4 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 mb-6">
           <Crown size={14} className="text-yellow-400" /> {t.home.topPrograms}
         </h4>
@@ -246,7 +247,7 @@ const DUMMY_CATEGORIES = [
 
 /* ================== MAIN PAGE ================== */
 export default function AffiliateHome() {
-  // const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -268,6 +269,7 @@ export default function AffiliateHome() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [liked, setLiked] = useState<Set<number>>(new Set());
+  const [showMobileFilter, setShowMobileFilter] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Get search from URL params
@@ -455,6 +457,69 @@ export default function AffiliateHome() {
   return (
     <div className="min-h-screen bg-slate-900">
       <div className="container mx-auto px-4 py-8">
+        {/* ===== MOBILE TOOLBAR ===== */}
+        <div className="lg:hidden flex items-center gap-3 mb-4">
+          <button
+            onClick={() => setShowMobileFilter((v) => !v)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              showMobileFilter
+                ? "bg-blue-600 text-white"
+                : "bg-white/10 text-white/70 hover:bg-white/20"
+            }`}
+          >
+            <SlidersHorizontal size={16} />
+            {t.home.filter}
+          </button>
+
+          {status === "authenticated" && !!session?.user && (
+            <Link
+              href="/my-account?tab=affiliate"
+              className="ml-auto flex items-center gap-2 bg-white text-blue-600 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest hover:scale-105 transition"
+            >
+              My Programs
+            </Link>
+          )}
+        </div>
+
+        {/* ===== MOBILE FILTER PANEL ===== */}
+        <AnimatePresence>
+          {showMobileFilter && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="lg:hidden overflow-hidden mb-4"
+            >
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
+                <div className="flex flex-wrap gap-2">
+                  {(useDummyData
+                    ? [t.home.all, ...DUMMY_CATEGORIES.filter((c) => c !== "All")]
+                    : categories?.data
+                    ? [t.home.all, ...categories.data.map((c: any) => c.name)]
+                    : [t.home.all]
+                  ).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setActiveCategory(cat);
+                        setShowMobileFilter(false);
+                      }}
+                      className={`px-4 py-2 rounded-full text-xs font-bold transition ${
+                        activeCategory === cat
+                          ? "bg-blue-600 text-white"
+                          : "bg-white/10 text-white/60 hover:bg-white/20"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <SidebarLeft
             categories={
