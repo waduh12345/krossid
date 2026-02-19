@@ -1310,7 +1310,7 @@ export default function ProgramDetail() {
                     {/* Summary Card - Compact */}
                     <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1.5">{language === "en" ? "Your Data" : "Data Anda"}</p>
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-2 text-[11px]">
                         <p className="text-white truncate"><span className="text-white/50">{language === "en" ? "Name:" : "Nama:"}</span> {formData.name}</p>
                         <p className="text-white truncate"><span className="text-white/50">Email:</span> {formData.email}</p>
                         <p className="text-white truncate"><span className="text-white/50">{language === "en" ? "Phone:" : "HP:"}</span> {formData.phone}</p>
