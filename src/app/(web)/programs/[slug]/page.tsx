@@ -689,7 +689,7 @@ export default function ProgramDetail() {
               <div className="p-6 md:p-10">
                 <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-10 border-b border-white/5 pb-10">
                   <div className="flex-1">
-                    <span className="text-[#367CC0] font-black text-[10px] uppercase tracking-[0.3em] block mb-3">{program.email.replace(/^([^@]+)/, "*****")}</span>
+                    <span className="text-[#367CC0] font-black text-[10px] uppercase tracking-[0.3em] block mb-3">{language === "en" ? "By" : "Oleh"}: {program.email.replace(/^([^@]+)/, "*****")}</span>
                     <h1 className="text-4xl font-black text-white leading-tight mb-4 tracking-tighter">{program.title}</h1>
                     {program.subtitle && (
                       <p className="text-white/60 text-base mb-4 italic">{program.subtitle}</p>
