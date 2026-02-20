@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -30,7 +30,6 @@ import {
   Phone,
   Clock,
   TrendingUp,
-  Flame,
   Gift,
   Sparkles,
   Eye
@@ -89,11 +88,6 @@ export default function ProgramDetail() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showShareDropdown]);
 
-  // Timer state for urgency (10 minutes = 600 seconds)
-  const TIMER_DURATION = 600; // 10 minutes in seconds
-  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
-  const [isTimerExpired, setIsTimerExpired] = useState(false);
-
   // Progress step for form (neuroscience: progress indicator)
   const [formStep, setFormStep] = useState(1);
   const totalSteps = 2;
@@ -144,62 +138,6 @@ export default function ProgramDetail() {
       })
   : [];
   
-
-  // Timer persistence using localStorage
-  useEffect(() => {
-    if (!id || isNaN(id)) return;
-    
-    const timerKey = `program_timer_${id}`;
-    const storedTimer = localStorage.getItem(timerKey);
-    
-    if (storedTimer) {
-      const { startTime, duration } = JSON.parse(storedTimer);
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = duration - elapsed;
-      
-      if (remaining > 0) {
-        setTimeLeft(remaining);
-        setIsTimerExpired(false);
-      } else {
-        setTimeLeft(0);
-        setIsTimerExpired(true);
-      }
-    } else {
-      // First visit - start fresh timer
-      localStorage.setItem(timerKey, JSON.stringify({
-        startTime: Date.now(),
-        duration: TIMER_DURATION
-      }));
-      setTimeLeft(TIMER_DURATION);
-    }
-  }, [id]);
-
-  // Timer countdown effect
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      setIsTimerExpired(true);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setIsTimerExpired(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [timeLeft]);
-
-  // Format timer display
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, []);
 
   // Social proof: simulate recent buyers
   useEffect(() => {
@@ -1015,16 +953,6 @@ export default function ProgramDetail() {
                 className="bg-white p-8 pt-12 rounded-lg md:rounded-[40px] shadow-2xl relative border border-white group overflow-hidden"
                 style={{ WebkitMaskImage: 'radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)' }}
             >
-              {/* Timer Badge - Urgency */}
-              {!isTimerExpired && (
-                <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-orange-500 py-2 px-4 flex items-center justify-center gap-2">
-                  <Flame className="w-4 h-4 text-white animate-pulse" />
-                  <span className="text-white text-[10px] font-black uppercase tracking-wider">
-                    {t.programDetail.promoEnds} {formatTime(timeLeft)}
-                  </span>
-                </div>
-              )}
-              
               {/* Live viewers indicator */}
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex items-center gap-1.5 bg-green-100 px-2.5 py-1 rounded-full">
@@ -1043,26 +971,13 @@ export default function ProgramDetail() {
               
               <button 
                 onClick={() => setShowRegisterModal(true)}
-                disabled={isTimerExpired}
-                className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl transition-all flex items-center justify-center gap-3 relative overflow-hidden group ${
-                  isTimerExpired 
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                    : 'bg-[#0f172a] text-white hover:bg-gradient-to-r hover:from-[#367CC0] hover:to-[#7ED321]'
-                }`}
+                className="w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl transition-all flex items-center justify-center gap-3 relative overflow-hidden group bg-[#0f172a] text-white hover:bg-gradient-to-r hover:from-[#367CC0] hover:to-[#7ED321]"
               >
-                {!isTimerExpired && (
-                  <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12" />
-                )}
-                <CreditCard className="w-5 h-5" /> 
-                {isTimerExpired ? t.programDetail.promoEnded : t.programDetail.buyProgram}
+                <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12" />
+                <CreditCard className="w-5 h-5" />
+                {t.programDetail.buyProgram}
               </button>
               
-              {/* Scarcity text */}
-              {!isTimerExpired && (
-                <p className="text-center text-[9px] text-red-500 font-bold mt-3 animate-pulse">
-                  {t.programDetail.limitedQuota}
-                </p>
-              )}
             </motion.div>
 
             {/* CARD 2: Affiliate Dashboard (Dark Glass Notch) */}
@@ -1243,18 +1158,6 @@ export default function ProgramDetail() {
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/10 rounded-[24px] w-full max-w-md overflow-hidden shadow-2xl relative pointer-events-auto"
               >
-              {/* Urgency Timer Bar */}
-              <div className="bg-gradient-to-r from-red-600 via-orange-500 to-red-600 px-4 py-2 flex items-center justify-center gap-2">
-                <Flame className="w-4 h-4 text-white" />
-                <span className="text-white font-bold text-xs uppercase tracking-wide">
-                  {isTimerExpired ? (
-                    t.programDetail.offerEnded
-                  ) : (
-                    <>{t.programDetail.endsIn} <span className="text-yellow-300 font-black ml-1">{formatTime(timeLeft)}</span></>
-                  )}
-                </span>
-              </div>
-
               {/* Modal Header - Compact */}
               <div className="relative px-5 pt-4 pb-3 border-b border-white/10">
                 <button
@@ -1373,7 +1276,7 @@ export default function ProgramDetail() {
                     ) : (
                       <button
                         type="submit"
-                        disabled={isSubmitting || isTimerExpired}
+                        disabled={isSubmitting}
                         className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? (
@@ -1442,7 +1345,7 @@ export default function ProgramDetail() {
                     {/* Submit Button */}
                     <button
                       type="submit"
-                      disabled={isSubmitting || isTimerExpired}
+                      disabled={isSubmitting}
                       className="w-full bg-gradient-to-r from-[#7ED321] to-[#367CC0] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg hover:shadow-[#7ED321]/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
