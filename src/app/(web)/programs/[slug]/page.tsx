@@ -64,7 +64,7 @@ export default function ProgramDetail() {
   const id = parseInt(slug); // Convert slug to number ID
 
   // Get referral from URL param "reff", default to "saleswebsite" if empty
-  const referralCode = searchParams.get("reff") || "vFCbt8GF1768230668";
+  const referralCode = searchParams.get("reff") || "salesmen";
 
   const [showModal, setShowModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -489,7 +489,7 @@ export default function ProgramDetail() {
         email: formData.email,
         phone: formData.phone,
         parameter_value: parameterValueString as any,
-        referral: referralCode || "vFCbt8GF1768230668",
+        referral: referralCode || "salesmen",
       }).unwrap();
 
       Swal.fire({
