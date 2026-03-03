@@ -271,6 +271,17 @@ export const en = {
     // Timer
     offerEnded: "Offer Ended!",
     endsIn: "Ends in:",
+    // Learning
+    learningHub: "Learning Hub",
+    learningMaterials: "Learning Materials",
+    startLearning: "Start Learning",
+    learningDesc: "Access learning materials and quizzes",
+    materialsAvailable: "materials available",
+    completedCount: "completed",
+    quizCenter: "Quiz Center",
+    quizAvailable: "quiz available",
+    quizDesc: "Test your knowledge with quizzes for each materi",
+    startQuiz: "Take Quiz",
   },
   // About Us Page
   aboutUs: {
@@ -519,8 +530,8 @@ export const en = {
     // Tabs
     tabs: {
       dashboard: "Dashboard",
-      myPrograms: "My Programs",
-      affiliate: "Affiliate",
+      myPrograms: "My Purchased Programs",
+      affiliate: "My Programs",
       learning: "Learning",
       editProfile: "Edit Profile",
       security: "Security",
@@ -617,6 +628,7 @@ export const en = {
       inProgress: "In progress",
       submitQuiz: "Submit Quiz",
       back: "Back",
+      retakeQuiz: "Retake Quiz",
       close: "Close",
       quizResult: "Quiz Result",
       correctAnswers: "Correct answers",
@@ -639,6 +651,22 @@ export const en = {
       confirmSubmitUnanswered: "You still have {unanswered} unanswered questions. Submit anyway?",
       noTimeLimit: "No time limit",
       quizOverview: "Quiz Overview",
+      // Ranking
+      ranking: "Ranking",
+      quizRanking: "Quiz Ranking",
+      rank: "Rank",
+      name: "Name",
+      totalScore: "Total Score",
+      scorePercentage: "Score %",
+      quizzesCompleted: "Quizzes Done",
+      quizzesPassed: "Passed",
+      noRankingData: "No ranking data yet",
+      noRankingDataDesc: "Complete quizzes to appear in the ranking.",
+      selectProgramForRanking: "Select a program above to see quiz ranking.",
+      loadingRanking: "Loading ranking...",
+      yourRank: "Your Rank",
+      outOf: "out of",
+      participants: "participants",
     },
     // Messages
     messages: {

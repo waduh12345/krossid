@@ -110,7 +110,7 @@ export const id = {
     registrationFailed: "Registrasi Gagal",
     registrationFailedText: "Terjadi kesalahan saat mendaftar.",
   },
-  // Home Page
+  // Home PagemyPrograms
   home: {
     filter: "Filter",
     all: "Semua",
@@ -271,6 +271,17 @@ export const id = {
     // Timer
     offerEnded: "Penawaran Berakhir!",
     endsIn: "Berakhir:",
+    // Learning
+    learningHub: "Pusat Pembelajaran",
+    learningMaterials: "Materi Pembelajaran",
+    startLearning: "Mulai Belajar",
+    learningDesc: "Akses materi pembelajaran dan kuis",
+    materialsAvailable: "materi tersedia",
+    completedCount: "selesai",
+    quizCenter: "Pusat Kuis",
+    quizAvailable: "kuis tersedia",
+    quizDesc: "Uji pengetahuan Anda dengan kuis untuk setiap materi",
+    startQuiz: "Kerjakan Kuis",
   },
   // About Us Page
   aboutUs: {
@@ -519,8 +530,8 @@ export const id = {
     // Tabs
     tabs: {
       dashboard: "Dasbor",
-      myPrograms: "Program Saya",
-      affiliate: "Afiliasi",
+      myPrograms: "Program yang Saya Beli",
+      affiliate: "Program Saya",
       learning: "Learning",
       editProfile: "Edit Profil",
       security: "Keamanan",
@@ -617,6 +628,7 @@ export const id = {
       inProgress: "Sedang dikerjakan",
       submitQuiz: "Kirim Quiz",
       back: "Kembali",
+      retakeQuiz: "Kerjakan Ulang",
       close: "Tutup",
       quizResult: "Hasil Quiz",
       correctAnswers: "Jawaban benar",
@@ -639,6 +651,22 @@ export const id = {
       confirmSubmitUnanswered: "Masih ada {unanswered} soal belum dijawab. Kirim sekarang?",
       noTimeLimit: "Tanpa batas waktu",
       quizOverview: "Ringkasan Quiz",
+      // Ranking
+      ranking: "Peringkat",
+      quizRanking: "Peringkat Quiz",
+      rank: "Peringkat",
+      name: "Nama",
+      totalScore: "Total Skor",
+      scorePercentage: "Skor %",
+      quizzesCompleted: "Quiz Selesai",
+      quizzesPassed: "Lulus",
+      noRankingData: "Belum ada data peringkat",
+      noRankingDataDesc: "Selesaikan quiz untuk muncul di peringkat.",
+      selectProgramForRanking: "Pilih program di atas untuk melihat peringkat quiz.",
+      loadingRanking: "Memuat peringkat...",
+      yourRank: "Peringkat Anda",
+      outOf: "dari",
+      participants: "peserta",
     },
     // Messages
     messages: {

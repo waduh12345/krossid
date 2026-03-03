@@ -15,6 +15,13 @@ import {
   ClipboardList,
   Download,
   Loader2,
+  Heart,
+  BookOpen,
+  X,
+  MapPin,
+  User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link"; 
 import Swal from "sweetalert2";
@@ -22,9 +29,12 @@ import * as XLSX from "xlsx";
 import {
   useGetProgramsQuery,
   useDeleteProgramsMutation,
-} from "@/services/programs/programs.service"; // Adjusted service path
-import type { Programs } from "@/types/programs/programs"; // Adjusted type path
-import ProgramsForm from "@/components/form-modal/programs/programs-form"; // Adjusted form path
+  useGetLikesQuery,
+} from "@/services/programs/programs.service";
+import type { LikeItem } from "@/services/programs/programs.service";
+import type { Programs } from "@/types/programs/programs";
+import ProgramsForm from "@/components/form-modal/programs/programs-form";
+import MateriModal from "@/components/materi-modal";
 
 type RoleName = "superadmin" | "agent" | "owner" | "director" | "manager";
 
@@ -35,11 +45,163 @@ interface UserRole {
   name: string;
 }
 
+/* ================== LIKES MODAL ================== */
+function LikesModal({
+  programId,
+  programTitle,
+  onClose,
+}: {
+  programId: number;
+  programTitle: string;
+  onClose: () => void;
+}) {
+  const [likePage, setLikePage] = useState(1);
+  const [likeSearch, setLikeSearch] = useState("");
+  const { data: likesData, isFetching } = useGetLikesQuery({
+    page: likePage,
+    paginate: 10,
+    likeable_id: programId,
+    search: likeSearch || undefined,
+  });
+
+  const likes = likesData?.data ?? [];
+  const likeLastPage = likesData?.last_page ?? 1;
+  const likeTotal = likesData?.total ?? 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-pink-50 to-red-50">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-100">
+              <Heart className="h-5 w-5 text-red-500" fill="currentColor" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Likes — {programTitle}</h3>
+              <p className="text-xs text-gray-500">{likeTotal} total likes</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/80 transition-colors">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-6 py-3 border-b">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50" />
+            <input
+              type="text"
+              placeholder="Search by name, email, city..."
+              value={likeSearch}
+              onChange={(e) => { setLikeSearch(e.target.value); setLikePage(1); }}
+              className="w-full rounded-lg border pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="max-h-[400px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0">
+              <tr>
+                <th className="px-6 py-3">User</th>
+                <th className="px-6 py-3">Location</th>
+                <th className="px-6 py-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {isFetching && !likes.length ? (
+                <tr>
+                  <td colSpan={3} className="px-6 py-10 text-center text-gray-400">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    Loading...
+                  </td>
+                </tr>
+              ) : likes.length ? (
+                likes.map((like: LikeItem) => (
+                  <tr key={like.id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                          <User className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {like.user_name || "Guest"}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {like.user_email || like.ip || "-"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      {like.city || like.country ? (
+                        <div className="flex items-center gap-1.5 text-gray-500">
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                          <span>{[like.city, like.country].filter(Boolean).join(", ")}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-gray-500 text-xs">
+                      {new Date(like.created_at).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-6 py-10 text-center text-gray-400">
+                    No likes found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t px-6 py-3 text-xs text-gray-500">
+          <span>{likeTotal} results • Page {likePage} of {likeLastPage}</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setLikePage((p) => Math.max(1, p - 1))}
+              disabled={likePage === 1}
+              className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setLikePage((p) => Math.min(likeLastPage, p + 1))}
+              disabled={likePage === likeLastPage}
+              className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProgramsPage() {
   const [page, setPage] = useState<number>(1);
   const [paginate, setPaginate] = useState<number>(PER_PAGE);
   const [q, setQ] = useState<string>("");
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [likesModal, setLikesModal] = useState<{ id: number; title: string } | null>(null);
+  const [materiModal, setMateriModal] = useState<{ id: number; title: string } | null>(null);
 
   const { data: session } = useSession();
   
@@ -271,6 +433,7 @@ export default function ProgramsPage() {
                   <th className="px-4 py-4">Category</th>
                   <th className="px-4 py-4">Owner</th>
                   <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Likes</th>
                   <th className="px-4 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -305,6 +468,15 @@ export default function ProgramsPage() {
                           </span>
                         )}
                       </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setLikesModal({ id: u.id, title: u.title })}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-100 transition-colors cursor-pointer"
+                        >
+                          <Heart className="h-3.5 w-3.5" fill="currentColor" />
+                          {u.likes_count ?? 0} Like
+                        </button>
+                      </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center justify-end gap-2">
                           {/* View Actions - Available for all roles */}
@@ -329,6 +501,15 @@ export default function ProgramsPage() {
                             <Link href={`/cms/programs/register?program-id=${u.id}`}>
                               <ClipboardList className="h-4 w-4" />
                             </Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setMateriModal({ id: u.id, title: u.title })}
+                            className="h-9 w-9 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                            title="Materi"
+                          >
+                            <BookOpen className="h-4 w-4" />
                           </Button>
 
                           {/* Edit and Delete - Only for Superadmin and Owner */}
@@ -411,6 +592,24 @@ export default function ProgramsPage() {
               setOpenForm(null);
               void refetch();
             }}
+          />
+        )}
+
+        {/* Likes Modal */}
+        {likesModal && (
+          <LikesModal
+            programId={likesModal.id}
+            programTitle={likesModal.title}
+            onClose={() => setLikesModal(null)}
+          />
+        )}
+
+        {/* Materi Modal */}
+        {materiModal && (
+          <MateriModal
+            programId={materiModal.id}
+            programTitle={materiModal.title}
+            onClose={() => setMateriModal(null)}
           />
         )}
       </div>

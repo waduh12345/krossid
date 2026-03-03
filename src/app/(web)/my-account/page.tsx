@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, Lock, Briefcase, TrendingUp, 
   Wallet, Camera, Eye, EyeOff, Loader2, 
   Save, ShieldCheck, ExternalLink, ArrowRight, Users, Copy, Share2, Trophy, UserPlus,
-  BookOpen, ChevronDown, ChevronRight, ChevronLeft, Award, X, CheckCircle2, Clock, AlertTriangle
+  BookOpen, ChevronDown, ChevronRight, ChevronLeft, Award, X, CheckCircle2, Clock, AlertTriangle, Search
 } from "lucide-react";
 import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +35,7 @@ import { useGetProgramLearningQuizzesQuery } from "@/services/programs/learning-
 import {
   useGetProgramLearningQuizSalesQuery,
   useSubmitProgramLearningQuizMutation,
+  useGetQuizRankingQuery,
 } from "@/services/programs/learning-quiz-sales.service";
 import type { ProgramLearning } from "@/types/programs/learning";
 import type { ProgramLearningSale } from "@/types/programs/learning-sales";
@@ -553,6 +554,9 @@ const MyProgramsView = ({ myProgramsData, isLoadingPrograms }: any) => {
 const LearningByProgramView = ({ mySalesData, isLoadingSales, userId }: any) => {
   const { t } = useI18n();
   const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
+  const [programSearchQuery, setProgramSearchQuery] = useState("");
+  const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
+  const programDropdownRef = useRef<HTMLDivElement>(null);
   const [readModalLearningId, setReadModalLearningId] = useState<number | null>(null);
   const [quizModalLearningId, setQuizModalLearningId] = useState<number | null>(null);
   const [quizResult, setQuizResult] = useState<{ score: number; total: number; passed: boolean } | null>(null);
@@ -598,11 +602,42 @@ const LearningByProgramView = ({ mySalesData, isLoadingSales, userId }: any) => 
     return map;
   }, [quizSalesData]);
 
+  const { data: rankingData, isFetching: isFetchingRanking } = useGetQuizRankingQuery(
+    selectedProgramId ?? 0,
+    { skip: !selectedProgramId }
+  );
+
   const [createLearningSale, { isLoading: creatingLearningSale }] = useCreateProgramLearningSaleMutation();
   const [updateLearningSale, { isLoading: updatingLearningSale }] = useUpdateProgramLearningSaleMutation();
   const [submitQuiz, { isLoading: submittingQuiz }] = useSubmitProgramLearningQuizMutation();
 
   const programs = useMemo(() => mySalesData?.data ?? [], [mySalesData]);
+
+  const filteredPrograms = useMemo(() => {
+    if (!programSearchQuery.trim()) return programs;
+    const q = programSearchQuery.toLowerCase();
+    return programs.filter((p: any) =>
+      (p.program_name || `Program #${p.program_id}`).toLowerCase().includes(q)
+    );
+  }, [programs, programSearchQuery]);
+
+  const selectedProgramLabel = useMemo(() => {
+    if (!selectedProgramId) return null;
+    const found = programs.find((p: any) => p.program_id === selectedProgramId);
+    return found ? (found.program_name || `Program #${found.program_id}`) : null;
+  }, [programs, selectedProgramId]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!isProgramDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (programDropdownRef.current && !programDropdownRef.current.contains(e.target as Node)) {
+        setIsProgramDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isProgramDropdownOpen]);
 
   const handleMarkComplete = async (programLearningId: number) => {
     if (!selectedSalesId) return;
@@ -716,26 +751,68 @@ const LearningByProgramView = ({ mySalesData, isLoadingSales, userId }: any) => 
         </div>
       </div>
 
-      {/* Program selector */}
+      {/* Program selector - searchable dropdown */}
       <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4">
         <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">{t.myAccount.learning.byProgram}</p>
-        <div className="flex flex-wrap gap-2">
-          {programs.map((program: any) => (
-            <button
-              key={program.id}
-              onClick={() => {
-                setSelectedProgramId(program.program_id);
-                setQuizResult(null);
-              }}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                selectedProgramId === program.program_id
-                  ? "bg-[#367CC0] text-white"
-                  : "bg-white/10 text-white/80 hover:bg-white/20"
-              }`}
-            >
-              {program.program_name || `Program #${program.program_id}`}
-            </button>
-          ))}
+        <div className="relative" ref={programDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsProgramDropdownOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white hover:bg-white/10 transition-all"
+          >
+            <span className={selectedProgramLabel ? "text-white" : "text-white/40"}>
+              {selectedProgramLabel || t.myAccount.learning.byProgram}
+            </span>
+            <ChevronDown size={16} className={`text-white/40 transition-transform duration-200 ${isProgramDropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {isProgramDropdownOpen && (
+            <div className="absolute z-50 mt-2 w-full bg-[#1e293b] border border-white/20 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+              {/* Search input */}
+              <div className="p-2 border-b border-white/10">
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                  <Search size={14} className="text-white/30 shrink-0" />
+                  <input
+                    type="text"
+                    value={programSearchQuery}
+                    onChange={(e) => setProgramSearchQuery(e.target.value)}
+                    placeholder="Search program..."
+                    className="w-full bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              {/* Options */}
+              <div className="max-h-60 overflow-y-auto">
+                {filteredPrograms.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-white/40 text-sm">No programs found</div>
+                ) : (
+                  filteredPrograms.map((program: any) => (
+                    <button
+                      key={program.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProgramId(program.program_id);
+                        setQuizResult(null);
+                        setIsProgramDropdownOpen(false);
+                        setProgramSearchQuery("");
+                      }}
+                      className={`w-full text-left px-4 py-3 text-sm font-bold transition-all flex items-center justify-between ${
+                        selectedProgramId === program.program_id
+                          ? "bg-[#367CC0]/20 text-[#367CC0]"
+                          : "text-white/80 hover:bg-white/5"
+                      }`}
+                    >
+                      {program.program_name || `Program #${program.program_id}`}
+                      {selectedProgramId === program.program_id && (
+                        <CheckCircle2 size={14} className="text-[#367CC0]" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -813,6 +890,136 @@ const LearningByProgramView = ({ mySalesData, isLoadingSales, userId }: any) => 
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Quiz Ranking */}
+      {selectedProgramId && (
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Trophy className="text-[#DF9B35]" size={20} />
+            <h4 className="text-lg font-bold text-white">{t.myAccount.learning.quizRanking}</h4>
+          </div>
+
+          {isFetchingRanking ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-white/40" />
+              <span className="ml-2 text-white/40 text-sm">{t.myAccount.learning.loadingRanking}</span>
+            </div>
+          ) : !rankingData?.length ? (
+            <div className="py-8 text-center text-white/50">
+              <Trophy size={40} className="mx-auto mb-3 text-white/20" />
+              <p className="font-bold">{t.myAccount.learning.noRankingData}</p>
+              <p className="text-sm mt-1">{t.myAccount.learning.noRankingDataDesc}</p>
+            </div>
+          ) : (
+            <>
+              {/* Current user rank card */}
+              {(() => {
+                const myRank = rankingData.find((e) => e.sales_id === userId);
+                if (!myRank) return null;
+                const pct = Number(myRank.score_percentage);
+                return (
+                  <div className="mb-5 bg-gradient-to-r from-[#367CC0]/20 to-[#7ED321]/20 border border-[#367CC0]/30 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">{t.myAccount.learning.yourRank}</p>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      {/* Rank badge */}
+                      <div className={`flex items-center justify-center w-14 h-14 rounded-2xl text-xl font-black ${
+                        myRank.rank === 1 ? "bg-[#FFD700]/20 text-[#FFD700]" :
+                        myRank.rank === 2 ? "bg-[#C0C0C0]/20 text-[#C0C0C0]" :
+                        myRank.rank === 3 ? "bg-[#CD7F32]/20 text-[#CD7F32]" :
+                        "bg-white/10 text-white"
+                      }`}>
+                        #{myRank.rank}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-bold text-lg">{myRank.rank_label}</p>
+                        <p className="text-white/50 text-xs">{myRank.total_participants} {t.myAccount.learning.participants}</p>
+                      </div>
+                      {/* Stats */}
+                      <div className="flex gap-4">
+                        <div className="text-center">
+                          <p className={`text-xl font-black ${pct >= 80 ? "text-[#7ED321]" : pct >= 50 ? "text-[#DF9B35]" : "text-red-400"}`}>{myRank.score_percentage}%</p>
+                          <p className="text-[9px] text-white/40 uppercase font-bold">{t.myAccount.learning.scorePercentage}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xl font-black text-white">{myRank.total_score}/{myRank.total_questions}</p>
+                          <p className="text-[9px] text-white/40 uppercase font-bold">{t.myAccount.learning.totalScore}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Ranking table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">#</th>
+                      <th className="text-left py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.learning.name}</th>
+                      <th className="text-center py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.learning.totalScore}</th>
+                      <th className="text-center py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.learning.scorePercentage}</th>
+                      <th className="text-center py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.learning.quizzesCompleted}</th>
+                      <th className="text-center py-3 px-2 text-[10px] font-black text-white/40 uppercase tracking-widest">{t.myAccount.learning.quizzesPassed}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankingData.map((entry) => {
+                      const isCurrentUser = entry.sales_id === userId;
+                      const pct = Number(entry.score_percentage);
+                      return (
+                        <tr
+                          key={entry.sales_id}
+                          className={`border-b border-white/5 transition-all ${
+                            isCurrentUser ? "bg-[#367CC0]/10" : "hover:bg-white/5"
+                          }`}
+                        >
+                          <td className="py-3 px-2">
+                            {entry.rank <= 3 ? (
+                              <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-black ${
+                                entry.rank === 1 ? "bg-[#FFD700]/20 text-[#FFD700]" :
+                                entry.rank === 2 ? "bg-[#C0C0C0]/20 text-[#C0C0C0]" :
+                                "bg-[#CD7F32]/20 text-[#CD7F32]"
+                              }`}>
+                                {entry.rank}
+                              </span>
+                            ) : (
+                              <span className="text-white/50 font-bold pl-2">{entry.rank}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold ${isCurrentUser ? "text-[#367CC0]" : "text-white"}`}>
+                                {entry.sales?.name ?? `User #${entry.sales_id}`}
+                              </span>
+                              {isCurrentUser && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#367CC0]/20 text-[#367CC0] font-black uppercase">You</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-2 text-center text-white/80 font-bold">{entry.total_score}/{entry.total_questions}</td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`font-bold ${
+                              pct >= 80 ? "text-[#7ED321]" :
+                              pct >= 50 ? "text-[#DF9B35]" :
+                              "text-red-400"
+                            }`}>
+                              {entry.score_percentage}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center text-white/60">{entry.quizzes_completed}</td>
+                          <td className="py-3 px-2 text-center text-[#7ED321]">{entry.quizzes_passed}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1837,7 +2044,7 @@ const MyAccountLinkedInUI = () => {
                    {[
                      { id: "dashboard", label: t.myAccount.tabs.dashboard, icon: LayoutDashboard },
                      { id: "myPrograms", label: t.myAccount.tabs.myPrograms, icon: Briefcase },
-                     ...(isSalesRole ? [{ id: "affiliate", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
+                     ...(isSalesRole ? [{ id: "my-programs", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
                      ...(isSalesRole ? [{ id: "learning", label: t.myAccount.tabs.learning, icon: BookOpen }] : []),
                      { id: "profile", label: t.myAccount.tabs.editProfile, icon: User },
                      { id: "security", label: t.myAccount.tabs.security, icon: Lock },
@@ -1873,7 +2080,7 @@ const MyAccountLinkedInUI = () => {
              {[
                { id: "dashboard", label: t.myAccount.tabs.dashboard, icon: LayoutDashboard },
                { id: "myPrograms", label: t.myAccount.tabs.myPrograms, icon: Briefcase },
-               ...(isSalesRole ? [{ id: "affiliate", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
+               ...(isSalesRole ? [{ id: "my-programs", label: t.myAccount.tabs.affiliate, icon: Users }] : []),
                ...(isSalesRole ? [{ id: "learning", label: t.myAccount.tabs.learning, icon: BookOpen }] : []),
                { id: "profile", label: t.myAccount.tabs.editProfile, icon: User },
                { id: "security", label: t.myAccount.tabs.security, icon: Lock },
@@ -1920,7 +2127,7 @@ const MyAccountLinkedInUI = () => {
                   isLoadingPrograms={isLoadingPrograms}
                 />
               )}
-              {activeTab === "affiliate" && isSalesRole && (
+              {activeTab === "my-programs" && isSalesRole && (
                 <AffiliateView 
                   key="affiliate" 
                   mySalesData={mySalesData}

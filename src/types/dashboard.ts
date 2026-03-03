@@ -39,6 +39,7 @@ export interface TopProgram {
   promotion: string | null;
   benefit: string | null;
   visits_count: string | number;
+  likes_count: string | number;
   performance: ProgramPerformance[];
 }
 

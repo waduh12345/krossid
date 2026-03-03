@@ -33,7 +33,20 @@ export interface ProgramLearningQuizSaleListResponse {
 
 export interface SubmitQuizAnswer {
   quiz_id: number;
-  selected_option: "A" | "B" | "C" | "D";
+  selected_option: "A" | "B" | "C" | "D" | "E";
+}
+
+export interface QuizRankingEntry {
+  rank: number;
+  sales_id: number;
+  total_score: string | number;
+  total_questions: string | number;
+  score_percentage: string | number;
+  quizzes_completed: number;
+  quizzes_passed: string | number;
+  total_participants: number;
+  rank_label: string;
+  sales: { id: number; name: string; email: string } | null;
 }
 
 export interface SubmitQuizPayload {

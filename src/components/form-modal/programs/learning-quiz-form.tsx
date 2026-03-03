@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,28 @@ import {
   useCreateProgramLearningQuizMutation,
   useUpdateProgramLearningQuizMutation,
 } from "@/services/programs/learning-quiz.service";
+import type { ProgramLearningQuizPayload } from "@/services/programs/learning-quiz.service";
 import { useGetProgramLearningsQuery } from "@/services/programs/learning.service";
 import SunRichText from "@/components/ui/rich-text";
 import Swal from "sweetalert2";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Search, ChevronDown, Check, ImagePlus, Trash2 } from "lucide-react";
 import type { ProgramLearningQuiz } from "@/types/programs/learning-quiz";
+
+const STORAGE_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
+  /\/api\/v\d+$/,
+  ""
+);
+
+type ImageKey =
+  | "question_image"
+  | "option_a_image"
+  | "option_b_image"
+  | "option_c_image"
+  | "option_d_image"
+  | "option_e_image";
+
+type ImageFiles = Record<ImageKey, File | null>;
+type ImageRemoves = Record<ImageKey, boolean>;
 
 type Props = {
   open: boolean;
@@ -31,6 +48,7 @@ type FormState = {
   option_b: string;
   option_c: string;
   option_d: string;
+  option_e: string;
   correct_option: ProgramLearningQuiz["correct_option"];
   status: boolean;
 };
@@ -40,7 +58,57 @@ const CORRECT_OPTIONS: ProgramLearningQuiz["correct_option"][] = [
   "B",
   "C",
   "D",
+  "E",
 ];
+
+function ImageField({
+  imageKey,
+  previewUrl,
+  onSelect,
+  onRemove,
+}: {
+  imageKey: ImageKey;
+  previewUrl: string | null;
+  onSelect: (key: ImageKey, file: File | null) => void;
+  onRemove: (key: ImageKey) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {previewUrl ? (
+        <div className="relative inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="preview"
+            className="h-20 w-20 rounded-md border object-cover"
+          />
+          <button
+            type="button"
+            onClick={() => onRemove(imageKey)}
+            className="absolute -right-2 -top-2 rounded-full bg-red-500 p-0.5 text-white shadow hover:bg-red-600"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500 hover:border-sky-400 hover:text-sky-600">
+          <ImagePlus className="h-4 w-4" />
+          Upload Gambar
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              onSelect(imageKey, file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
 
 export default function LearningQuizForm({
   open,
@@ -76,20 +144,97 @@ export default function LearningQuizForm({
       option_b: detail?.option_b ?? "",
       option_c: detail?.option_c ?? "",
       option_d: detail?.option_d ?? "",
+      option_e: detail?.option_e ?? "",
       correct_option: detail?.correct_option ?? "A",
       status: detail?.status === 1 || detail?.status === true || !isEdit,
     }),
     [detail, isEdit]
   );
 
+  const emptyImages: ImageFiles = {
+    question_image: null,
+    option_a_image: null,
+    option_b_image: null,
+    option_c_image: null,
+    option_d_image: null,
+    option_e_image: null,
+  };
+  const emptyRemoves: ImageRemoves = {
+    question_image: false,
+    option_a_image: false,
+    option_b_image: false,
+    option_c_image: false,
+    option_d_image: false,
+    option_e_image: false,
+  };
+
   const [form, setForm] = useState<FormState>(initial);
+  const [imageFiles, setImageFiles] = useState<ImageFiles>(emptyImages);
+  const [imageRemoves, setImageRemoves] = useState<ImageRemoves>(emptyRemoves);
+  const [learningSearch, setLearningSearch] = useState("");
+  const [learningDropdownOpen, setLearningDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredLearnings = useMemo(() => {
+    if (!learningSearch.trim()) return learnings;
+    const q = learningSearch.toLowerCase();
+    return learnings.filter((l) => l.title.toLowerCase().includes(q));
+  }, [learnings, learningSearch]);
+
+  const selectedLearning = useMemo(
+    () => learnings.find((l) => l.id === form.program_learning_id),
+    [learnings, form.program_learning_id]
+  );
 
   useEffect(() => {
-    if (open) setForm(initial);
+    if (open) {
+      setForm(initial);
+      setImageFiles(emptyImages);
+      setImageRemoves(emptyRemoves);
+      setLearningSearch("");
+      setLearningDropdownOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, open]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setLearningDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function set<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((s) => ({ ...s, [k]: v }));
+  }
+
+  function existingImageUrl(key: ImageKey): string | null {
+    if (imageRemoves[key]) return null;
+    const filename = detail?.[key];
+    if (!filename) return null;
+    return `${STORAGE_BASE}/storage/quiz-images/${filename}`;
+  }
+
+  function previewUrl(key: ImageKey): string | null {
+    const file = imageFiles[key];
+    if (file) return URL.createObjectURL(file);
+    return existingImageUrl(key);
+  }
+
+  function handleImageSelect(key: ImageKey, file: File | null) {
+    setImageFiles((prev) => ({ ...prev, [key]: file }));
+    if (file) setImageRemoves((prev) => ({ ...prev, [key]: false }));
+  }
+
+  function handleImageRemove(key: ImageKey) {
+    setImageFiles((prev) => ({ ...prev, [key]: null }));
+    setImageRemoves((prev) => ({ ...prev, [key]: true }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,7 +253,7 @@ export default function LearningQuizForm({
       return;
     }
 
-    const payload = {
+    const payload: ProgramLearningQuizPayload = {
       program_learning_id: form.program_learning_id,
       nomor: Number(form.nomor) || 0,
       question: form.question.trim(),
@@ -116,8 +261,16 @@ export default function LearningQuizForm({
       option_b: form.option_b.trim() || null,
       option_c: form.option_c.trim() || null,
       option_d: form.option_d.trim() || null,
+      option_e: form.option_e.trim() || null,
       correct_option: form.correct_option,
       status: form.status ? 1 : 0,
+      ...imageFiles,
+      question_image_remove: imageRemoves.question_image,
+      option_a_image_remove: imageRemoves.option_a_image,
+      option_b_image_remove: imageRemoves.option_b_image,
+      option_c_image_remove: imageRemoves.option_c_image,
+      option_d_image_remove: imageRemoves.option_d_image,
+      option_e_image_remove: imageRemoves.option_e_image,
     };
 
     try {
@@ -192,25 +345,74 @@ export default function LearningQuizForm({
                   <Label className="font-semibold text-gray-700">
                     Learning <span className="text-red-500">*</span>
                   </Label>
-                  <select
-                    value={form.program_learning_id ?? ""}
-                    onChange={(e) =>
-                      set(
-                        "program_learning_id",
-                        e.target.value === ""
-                          ? null
-                          : Number(e.target.value)
-                      )
-                    }
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                  >
-                    <option value="">— Pilih Learning —</option>
-                    {learnings.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.title}
-                      </option>
-                    ))}
-                  </select>
+                  <div ref={dropdownRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLearningDropdownOpen((prev) => !prev)
+                      }
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                    >
+                      <span
+                        className={
+                          selectedLearning
+                            ? "truncate text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {selectedLearning?.title ?? "— Pilih Learning —"}
+                      </span>
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+
+                    {learningDropdownOpen && (
+                      <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+                        <div className="flex items-center border-b px-3 py-2">
+                          <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />
+                          <input
+                            type="text"
+                            value={learningSearch}
+                            onChange={(e) =>
+                              setLearningSearch(e.target.value)
+                            }
+                            placeholder="Cari learning..."
+                            className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+                            autoFocus
+                          />
+                        </div>
+                        <ul className="max-h-52 overflow-y-auto py-1">
+                          {filteredLearnings.length === 0 ? (
+                            <li className="px-3 py-2 text-center text-sm text-gray-400">
+                              Tidak ditemukan
+                            </li>
+                          ) : (
+                            filteredLearnings.map((l) => (
+                              <li key={l.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    set("program_learning_id", l.id);
+                                    setLearningSearch("");
+                                    setLearningDropdownOpen(false);
+                                  }}
+                                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sky-50 ${
+                                    form.program_learning_id === l.id
+                                      ? "bg-sky-50 font-medium text-sky-700"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {form.program_learning_id === l.id && (
+                                    <Check className="h-4 w-4 shrink-0 text-sky-600" />
+                                  )}
+                                  <span className="truncate">{l.title}</span>
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -240,53 +442,42 @@ export default function LearningQuizForm({
                   placeholder="Tulis pertanyaan (rich text)..."
                   minHeight={180}
                 />
+                <ImageField
+                  imageKey="question_image"
+                  previewUrl={previewUrl("question_image")}
+                  onSelect={handleImageSelect}
+                  onRemove={handleImageRemove}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="font-semibold text-gray-700">
-                    Option A
-                  </Label>
-                  <SunRichText
-                    value={form.option_a}
-                    onChange={(html) => set("option_a", html)}
-                    placeholder="Opsi A..."
-                    minHeight={100}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-semibold text-gray-700">
-                    Option B
-                  </Label>
-                  <SunRichText
-                    value={form.option_b}
-                    onChange={(html) => set("option_b", html)}
-                    placeholder="Opsi B..."
-                    minHeight={100}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-semibold text-gray-700">
-                    Option C
-                  </Label>
-                  <SunRichText
-                    value={form.option_c}
-                    onChange={(html) => set("option_c", html)}
-                    placeholder="Opsi C..."
-                    minHeight={100}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-semibold text-gray-700">
-                    Option D
-                  </Label>
-                  <SunRichText
-                    value={form.option_d}
-                    onChange={(html) => set("option_d", html)}
-                    placeholder="Opsi D..."
-                    minHeight={100}
-                  />
-                </div>
+                {(
+                  [
+                    { key: "option_a", label: "Option A", formKey: "option_a" as const, imageKey: "option_a_image" as ImageKey },
+                    { key: "option_b", label: "Option B", formKey: "option_b" as const, imageKey: "option_b_image" as ImageKey },
+                    { key: "option_c", label: "Option C", formKey: "option_c" as const, imageKey: "option_c_image" as ImageKey },
+                    { key: "option_d", label: "Option D", formKey: "option_d" as const, imageKey: "option_d_image" as ImageKey },
+                    { key: "option_e", label: "Option E", formKey: "option_e" as const, imageKey: "option_e_image" as ImageKey },
+                  ] as const
+                ).map((opt) => (
+                  <div key={opt.key} className="space-y-2">
+                    <Label className="font-semibold text-gray-700">
+                      {opt.label}
+                    </Label>
+                    <SunRichText
+                      value={form[opt.formKey]}
+                      onChange={(html) => set(opt.formKey, html)}
+                      placeholder={`Opsi ${opt.key.slice(-1).toUpperCase()}...`}
+                      minHeight={100}
+                    />
+                    <ImageField
+                      imageKey={opt.imageKey}
+                      previewUrl={previewUrl(opt.imageKey)}
+                      onSelect={handleImageSelect}
+                      onRemove={handleImageRemove}
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="flex flex-wrap items-center gap-6">

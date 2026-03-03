@@ -63,6 +63,31 @@ export const publicProgramApi = apiSlice.injectEndpoints({
       }) => response.data,
     }),
 
+    // ✅ GET liked program IDs
+    getLikedPrograms: builder.query<number[], void>({
+      query: () => ({
+        url: "/public/programs/liked",
+        method: "GET",
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: number[];
+      }) => response.data,
+    }),
+
+    // ✅ POST like/unlike a program
+    likePublicProgram: builder.mutation<{ message: string }, number>({
+      query: (id) => ({
+        url: `/public/programs/${id}/like`,
+        method: "POST",
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+      }) => ({ message: response.message }),
+    }),
+
     // ✅ GET program sales by ID from public endpoint
     getPublicProgramSales: builder.query<
       {
@@ -105,4 +130,6 @@ export const {
   useGetPublicProgramsQuery,
   useGetPublicProgramByIdQuery,
   useGetPublicProgramSalesQuery,
+  useGetLikedProgramsQuery,
+  useLikePublicProgramMutation,
 } = publicProgramApi;

@@ -31,7 +31,8 @@ import {
   MapPin,
   Mail,
   Phone,
-  ExternalLink
+  ExternalLink,
+  Heart
 } from "lucide-react";
 import { 
   XAxis, 
@@ -69,6 +70,8 @@ import {
   useGetTotalProgramRegistrationsQuery,
   useGetTotalSalesQuery,
 } from "@/services/dashboard-admin.service";
+import { useGetLikesQuery } from "@/services/programs/programs.service";
+import type { LikeItem } from "@/services/programs/programs.service";
 import type { 
   ProgramViewItem, 
   ProgramShareItem, 
@@ -100,8 +103,8 @@ export default function AffiliateDashboard() {
   const [compareEndDate, setCompareEndDate] = useState<Date | null>(null);
   const [showCompareDateRange, setShowCompareDateRange] = useState(false);
 
-  // Modal states for Views, Shares, Registrations
-  const [modalType, setModalType] = useState<"views" | "shares" | "registrations" | null>(null);
+  // Modal states for Views, Shares, Registrations, Likes
+  const [modalType, setModalType] = useState<"views" | "shares" | "registrations" | "likes" | null>(null);
   const [selectedProgramForModal, setSelectedProgramForModal] = useState<{
     id: number;
     name: string;
@@ -197,6 +200,16 @@ export default function AffiliateDashboard() {
     { skip: modalType !== "registrations" || !selectedProgramForModal }
   );
 
+  const { data: likesListData, isFetching: isFetchingLikes } = useGetLikesQuery(
+    {
+      likeable_id: selectedProgramForModal?.id,
+      search: modalSearch || undefined,
+      page: modalPage,
+      paginate: modalPaginate,
+    },
+    { skip: modalType !== "likes" || !selectedProgramForModal }
+  );
+
   // Transform monthly growth data for chart
   const MONTHLY_GROWTH_DATA = useMemo(() => {
     if (!monthlyGrowthData) return [];
@@ -236,6 +249,7 @@ export default function AffiliateDashboard() {
         sales: 0, // Not in API response
         views: viewsCount || totalViews,
         shares: totalShares,
+        likes: Number(program.likes_count || 0),
         registrations: totalRegistrations,
         avgConversion: parseFloat(avgConversionStr),
         trend: `${trendString.startsWith('-') ? '' : '+'}${trendString}%`,
@@ -359,7 +373,7 @@ export default function AffiliateDashboard() {
   };
 
   // Modal handlers
-  const openMetricModal = (type: "views" | "shares" | "registrations", programId: number, programName: string) => {
+  const openMetricModal = (type: "views" | "shares" | "registrations" | "likes", programId: number, programName: string) => {
     setModalType(type);
     setSelectedProgramForModal({ id: programId, name: programName });
     setModalSearch("");
@@ -1254,7 +1268,7 @@ export default function AffiliateDashboard() {
                       </div>
 
                       {/* Metrics */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 md:p-8 bg-gray-50/50 dark:bg-neutral-800/50">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-6 md:p-8 bg-gray-50/50 dark:bg-neutral-800/50">
                         <button
                           onClick={() => openMetricModal("views", program.id, program.name)}
                           className="bg-white dark:bg-neutral-900 rounded-2xl p-4 border border-gray-200 dark:border-neutral-700 text-left transition-all duration-200 hover:shadow-lg hover:border-[#4A90E2] hover:scale-[1.02] cursor-pointer group"
@@ -1267,6 +1281,22 @@ export default function AffiliateDashboard() {
                             Total Views
                           </p>
                           <p className="text-[9px] text-[#4A90E2] mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to view details
+                          </p>
+                        </button>
+
+                        <button
+                          onClick={() => openMetricModal("likes", program.id, program.name)}
+                          className="bg-white dark:bg-neutral-900 rounded-2xl p-4 border border-gray-200 dark:border-neutral-700 text-left transition-all duration-200 hover:shadow-lg hover:border-[#E74C6F] hover:scale-[1.02] cursor-pointer group"
+                        >
+                          <Heart className="h-5 w-5 text-[#E74C6F] mb-2 group-hover:scale-110 transition-transform" fill="currentColor" />
+                          <p className="text-2xl font-black text-neutral-900 dark:text-white">
+                            {nf.format(program.likes)}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400">
+                            Total Likes
+                          </p>
+                          <p className="text-[9px] text-[#E74C6F] mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             Click to view details
                           </p>
                         </button>
@@ -1766,6 +1796,137 @@ export default function AffiliateDashboard() {
               <button
                 onClick={() => setModalPage((p) => Math.min(registrationsListData.last_page, p + 1))}
                 disabled={modalPage === registrationsListData.last_page}
+                className="p-2 rounded-lg border border-gray-200 dark:border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-neutral-800"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+
+    {/* Likes Modal */}
+    <Dialog open={modalType === "likes"} onOpenChange={(open) => !open && closeModal()}>
+      <DialogContent className="!max-w-[95vw] sm:!max-w-[95vw] w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <div className="p-2 bg-[#E74C6F]/10 rounded-xl">
+              <Heart className="h-5 w-5 text-[#E74C6F]" fill="currentColor" />
+            </div>
+            <div>
+              <span className="text-xl font-black">Program Likes</span>
+              <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                {selectedProgramForModal?.name}
+              </p>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by name, email, city, country..."
+            value={modalSearch}
+            onChange={(e) => {
+              setModalSearch(e.target.value);
+              setModalPage(1);
+            }}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
+          {isFetchingLikes ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#E74C6F]" />
+            </div>
+          ) : (likesListData?.data?.length ?? 0) === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              No likes data found
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-neutral-800 sticky top-0">
+                <tr>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">No</th>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">User</th>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">Program</th>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">IP Address</th>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">Location</th>
+                  <th className="text-left p-3 font-bold text-gray-700 dark:text-gray-300">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-neutral-700">
+                {likesListData?.data?.map((item: LikeItem, idx: number) => (
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50">
+                    <td className="p-3 text-gray-600 dark:text-gray-400">
+                      {((modalPage - 1) * modalPaginate) + idx + 1}
+                    </td>
+                    <td className="p-3">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">{item.user_name || "Guest"}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {item.user_email || item.ip || "-"}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">{item.program_title}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.program_slug}</p>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className="font-mono text-xs bg-gray-100 dark:bg-neutral-800 px-2 py-1 rounded">
+                        {item.ip || "-"}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      {item.city || item.country ? (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-gray-700 dark:text-gray-300">
+                            {[item.city, item.country].filter(Boolean).join(", ")}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                      {formatDateTime(item.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {likesListData && likesListData.last_page > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-neutral-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {((modalPage - 1) * modalPaginate) + 1} to {Math.min(modalPage * modalPaginate, likesListData.total)} of {likesListData.total} entries
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setModalPage((p) => Math.max(1, p - 1))}
+                disabled={modalPage === 1}
+                className="p-2 rounded-lg border border-gray-200 dark:border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-neutral-800"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-medium px-3">
+                {modalPage} / {likesListData.last_page}
+              </span>
+              <button
+                onClick={() => setModalPage((p) => Math.min(likesListData.last_page, p + 1))}
+                disabled={modalPage === likesListData.last_page}
                 className="p-2 rounded-lg border border-gray-200 dark:border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-neutral-800"
               >
                 <ChevronRight className="h-4 w-4" />

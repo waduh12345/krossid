@@ -10,7 +10,14 @@ export interface ProgramLearningQuiz {
   option_b: string | null;
   option_c: string | null;
   option_d: string | null;
-  correct_option: "A" | "B" | "C" | "D";
+  option_e: string | null;
+  question_image: string | null;
+  option_a_image: string | null;
+  option_b_image: string | null;
+  option_c_image: string | null;
+  option_d_image: string | null;
+  option_e_image: string | null;
+  correct_option: "A" | "B" | "C" | "D" | "E";
   status: boolean | number;
   created_at?: string;
   updated_at?: string;

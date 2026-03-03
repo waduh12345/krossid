@@ -3,6 +3,7 @@ import type {
   ProgramLearningQuizSale,
   ProgramLearningQuizSaleListResponse,
   SubmitQuizPayload,
+  QuizRankingEntry,
 } from "@/types/programs/learning-quiz-sales";
 
 interface GetProgramLearningQuizSalesParams {
@@ -130,6 +131,19 @@ export const programLearningQuizSaleApi = apiSlice.injectEndpoints({
         data: unknown;
       }) => ({ code: response.code, message: response.message }),
     }),
+
+    getQuizRanking: builder.query<QuizRankingEntry[], number>({
+      query: (programId) => ({
+        url: "/program/learning-quiz-sales/ranking",
+        method: "GET",
+        params: { program_id: programId },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: QuizRankingEntry[];
+      }) => response.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -140,4 +154,5 @@ export const {
   useSubmitProgramLearningQuizMutation,
   useUpdateProgramLearningQuizSaleMutation,
   useDeleteProgramLearningQuizSaleMutation,
+  useGetQuizRankingQuery,
 } = programLearningQuizSaleApi;

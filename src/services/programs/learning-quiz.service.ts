@@ -12,6 +12,73 @@ interface GetProgramLearningQuizzesParams {
   program_learning_id?: number | null;
 }
 
+export interface ProgramLearningQuizPayload {
+  program_learning_id: number;
+  nomor: number;
+  question: string;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  option_e: string | null;
+  correct_option: string;
+  status: number;
+  question_image?: File | null;
+  option_a_image?: File | null;
+  option_b_image?: File | null;
+  option_c_image?: File | null;
+  option_d_image?: File | null;
+  option_e_image?: File | null;
+  question_image_remove?: boolean;
+  option_a_image_remove?: boolean;
+  option_b_image_remove?: boolean;
+  option_c_image_remove?: boolean;
+  option_d_image_remove?: boolean;
+  option_e_image_remove?: boolean;
+}
+
+function buildQuizFormData(payload: ProgramLearningQuizPayload): FormData {
+  const fd = new FormData();
+  fd.append("program_learning_id", String(payload.program_learning_id));
+  fd.append("nomor", String(payload.nomor));
+  fd.append("question", payload.question);
+  fd.append("correct_option", payload.correct_option);
+  fd.append("status", String(payload.status));
+
+  const textFields = ["option_a", "option_b", "option_c", "option_d", "option_e"] as const;
+  for (const key of textFields) {
+    if (payload[key] != null) fd.append(key, payload[key]);
+  }
+
+  const imageFields = [
+    "question_image",
+    "option_a_image",
+    "option_b_image",
+    "option_c_image",
+    "option_d_image",
+    "option_e_image",
+  ] as const;
+  for (const key of imageFields) {
+    if (payload[key] instanceof File) {
+      fd.append(key, payload[key]);
+    }
+  }
+
+  const removeFields = [
+    "question_image_remove",
+    "option_a_image_remove",
+    "option_b_image_remove",
+    "option_c_image_remove",
+    "option_d_image_remove",
+    "option_e_image_remove",
+  ] as const;
+  for (const key of removeFields) {
+    if (payload[key]) fd.append(key, "1");
+  }
+
+  return fd;
+}
+
 const transformListResponse = (response: {
   code: number;
   message: string;
@@ -70,12 +137,12 @@ export const programLearningQuizApi = apiSlice.injectEndpoints({
 
     createProgramLearningQuiz: builder.mutation<
       ProgramLearningQuiz,
-      Partial<ProgramLearningQuiz>
+      ProgramLearningQuizPayload
     >({
       query: (body) => ({
         url: "/program/learning-quizzes",
         method: "POST",
-        body,
+        body: buildQuizFormData(body),
       }),
       transformResponse: (response: {
         code: number;
@@ -86,13 +153,17 @@ export const programLearningQuizApi = apiSlice.injectEndpoints({
 
     updateProgramLearningQuiz: builder.mutation<
       ProgramLearningQuiz,
-      { id: number; payload: Partial<ProgramLearningQuiz> }
+      { id: number; payload: ProgramLearningQuizPayload }
     >({
-      query: ({ id, payload }) => ({
-        url: `/program/learning-quizzes/${id}`,
-        method: "PUT",
-        body: payload,
-      }),
+      query: ({ id, payload }) => {
+        const fd = buildQuizFormData(payload);
+        fd.append("_method", "PUT");
+        return {
+          url: `/program/learning-quizzes/${id}`,
+          method: "POST",
+          body: fd,
+        };
+      },
       transformResponse: (response: {
         code: number;
         message: string;

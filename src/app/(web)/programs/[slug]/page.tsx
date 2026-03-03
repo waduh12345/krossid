@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -32,7 +32,11 @@ import {
   TrendingUp,
   Gift,
   Sparkles,
-  Eye
+  Eye,
+  Heart,
+  BookOpen,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AffiliateRegisterModal from "@/components/affiliate-register-modal";
@@ -41,13 +45,23 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   useGetPublicProgramsQuery,
-  useGetPublicProgramByIdQuery
+  useGetPublicProgramByIdQuery,
+  useGetLikedProgramsQuery,
+  useLikePublicProgramMutation
 } from "@/services/public/program.service";
 
 import { usePublicRegisterMutation } from "@/services/public/register.service";
 import { useGetMeQuery } from "@/services/auth.service";
 import { useShareProgramMutation, usePublicShareProgramMutation } from "@/services/programs/programs.service";
 import { useI18n } from "@/contexts/i18n-context";
+import { stripHtml } from "@/lib/format-utils";
+import { useGetProgramLearningsQuery, useGetProgramLearningByIdQuery } from "@/services/programs/learning.service";
+import { useGetProgramLearningSalesQuery, useCreateProgramLearningSaleMutation, useUpdateProgramLearningSaleMutation } from "@/services/programs/learning-sales.service";
+import { useGetProgramLearningQuizSalesQuery } from "@/services/programs/learning-quiz-sales.service";
+import { useGetMaterisQuery } from "@/services/programs/materi.service";
+import type { ProgramLearning } from "@/types/programs/learning";
+import type { ProgramLearningSale } from "@/types/programs/learning-sales";
+import type { MateriListItem } from "@/types/programs/programs";
 
 type ParameterField = {
   name: string;
@@ -114,6 +128,44 @@ export default function ProgramDetail() {
   const shareProgram = session ? shareProgramAuth : shareProgramPublic;
   const isSharing = session ? isSharingAuth : isSharingPublic;
 
+  // Like functionality
+  const [likeProgram] = useLikePublicProgramMutation();
+  const { data: likedIds } = useGetLikedProgramsQuery();
+  const [isLiked, setIsLiked] = useState(false);
+  const [localLikesCount, setLocalLikesCount] = useState(0);
+
+  // Sync liked state from API
+  useEffect(() => {
+    if (likedIds && id) {
+      setIsLiked(likedIds.includes(id));
+    }
+  }, [likedIds, id]);
+
+  // Sync likes count from program data
+  useEffect(() => {
+    if (programData?.likes_count !== undefined) {
+      setLocalLikesCount(programData.likes_count);
+    }
+  }, [programData?.likes_count]);
+
+  const toggleLike = async () => {
+    if (!id) return;
+    const wasLiked = isLiked;
+    const delta = wasLiked ? -1 : 1;
+
+    // Optimistic update
+    setIsLiked(!wasLiked);
+    setLocalLikesCount((prev) => Math.max(0, prev + delta));
+
+    try {
+      await likeProgram(id).unwrap();
+    } catch {
+      // Revert on failure
+      setIsLiked(wasLiked);
+      setLocalLikesCount((prev) => Math.max(0, prev - delta));
+    }
+  };
+
   // Get user data including referral code
   const { data: userData } = useGetMeQuery(undefined, {
     skip: !session, // Skip if not logged in
@@ -124,6 +176,54 @@ export default function ProgramDetail() {
     (role) => role.name.toLowerCase() === 'sales' || role.name.toLowerCase() === 'affiliate'
   );
   const userReferralCode = userData?.referral || '';
+  const userId = userData?.id ?? null;
+
+  // Learning state
+  const [showLearningModal, setShowLearningModal] = useState(false);
+  const [readModalLearningId, setReadModalLearningId] = useState<number | null>(null);
+
+  // Learning data
+  const { data: learningsData } = useGetProgramLearningsQuery(
+    { page: 1, paginate: 50, program_id: id },
+    { skip: !id || !isSalesRole }
+  );
+  const learnings = useMemo(() => learningsData?.data ?? [], [learningsData]);
+
+  const { data: learningSalesData, refetch: refetchLearningSales } = useGetProgramLearningSalesQuery(
+    { page: 1, paginate: 100, sales_id: userId ?? undefined },
+    { skip: !userId || !isSalesRole }
+  );
+  const learningSalesMap = useMemo(() => {
+    const map: Record<number, ProgramLearningSale> = {};
+    (learningSalesData?.data ?? []).forEach((s: ProgramLearningSale) => {
+      map[s.program_learning_id] = s;
+    });
+    return map;
+  }, [learningSalesData]);
+
+  const { data: quizSalesData } = useGetProgramLearningQuizSalesQuery(
+    { page: 1, paginate: 100, sales_id: userId ?? undefined },
+    { skip: !userId || !isSalesRole }
+  );
+  const quizSalesMap = useMemo(() => {
+    const map: Record<number, { score: number; total_questions: number; passed: boolean }> = {};
+    (quizSalesData?.data ?? []).forEach((q: any) => {
+      map[q.program_learning_id] = { score: q.score, total_questions: q.total_questions, passed: q.passed };
+    });
+    return map;
+  }, [quizSalesData]);
+
+  const [createLearningSale, { isLoading: creatingLearningSale }] = useCreateProgramLearningSaleMutation();
+  const [updateLearningSale, { isLoading: updatingLearningSale }] = useUpdateProgramLearningSaleMutation();
+
+  // Materi data for quiz
+  const { data: materisData } = useGetMaterisQuery(id, { skip: !id || !isSalesRole });
+  const materis = useMemo(() => materisData ?? [], [materisData]);
+
+  const completedLearnings = useMemo(
+    () => learnings.filter((l: ProgramLearning) => learningSalesMap[l.id]?.completed_at).length,
+    [learnings, learningSalesMap]
+  );
 
   const parameterFields: ParameterField[] = programData?.parameter
   ? programData.parameter
@@ -516,6 +616,33 @@ export default function ProgramDetail() {
     }
   };
 
+  // Learning handlers
+  const handleMarkComplete = useCallback(async (programLearningId: number) => {
+    if (!userId) return;
+    const existing = learningSalesMap[programLearningId];
+    try {
+      if (existing) {
+        await updateLearningSale({
+          id: existing.id,
+          payload: { completed_at: new Date().toISOString(), status: 1 },
+        }).unwrap();
+      } else {
+        await createLearningSale({
+          program_learning_id: programLearningId,
+          sales_id: userId,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+        }).unwrap();
+      }
+      refetchLearningSales();
+      setReadModalLearningId(null);
+      Swal.fire({ icon: "success", title: t.myAccount.learning.completed, timer: 1500, showConfirmButton: false, toast: true, position: "top-end", background: "#0f172a", color: "#fff" });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Error", text: err?.data?.message || "Failed", background: "#1e293b", color: "#fff" });
+    }
+  }, [userId, learningSalesMap, updateLearningSale, createLearningSale, refetchLearningSales, t]);
+
+
   // Loading state
   if (isLoading) {
     return (
@@ -587,6 +714,7 @@ export default function ProgramDetail() {
     parameter: programData.parameter || "",
     visits_count: programData.visits_count || 0,
     shares_count: programData.shares_count || 0,
+    likes_count: localLikesCount,
     participants: programData.total_user_register || 0,
     price: formatCurrency(programData.nominal),
     commission: getCommissionDisplay() + " " + t.programDetail.perSale,
@@ -646,9 +774,19 @@ export default function ProgramDetail() {
                         </div>
                         {/* Total View */}
                         <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-white/50">
-                          <Eye className="w-4 h-4" /> {program.visits_count || 0} 
+                          <Eye className="w-4 h-4" /> {program.visits_count || 0}
                           <span className="text-white/30 font-medium">{t.programDetail.view}</span>
                         </div>
+                        {/* Total Like */}
+                        <button
+                          onClick={toggleLike}
+                          className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all hover:scale-105 ${
+                            isLiked ? "text-pink-400" : "text-white/50 hover:text-pink-400"
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? "fill-pink-400" : ""}`} /> {program.likes_count || 0}
+                          <span className={`font-medium ${isLiked ? "text-pink-400/60" : "text-white/30"}`}>Like</span>
+                        </button>
                       </div>
                       {/* Social Share Buttons & Register */}
 
@@ -672,6 +810,19 @@ export default function ProgramDetail() {
                               </svg>
                             )}
                             <span className="text-sm font-bold text-[#25D366] whitespace-nowrap">Update Status WA</span>
+                          </button>
+                          {/* Like - icon only */}
+                          <button
+                            type="button"
+                            aria-label="Like program"
+                            onClick={toggleLike}
+                            className={`shrink-0 w-12 h-12 flex items-center justify-center rounded-xl border transition-all hover:scale-105 ${
+                              isLiked
+                                ? "bg-pink-500/20 border-pink-500/40"
+                                : "bg-white/5 hover:bg-white/10 border-white/20"
+                            }`}
+                          >
+                            <Heart className={`w-5 h-5 ${isLiked ? "text-pink-400 fill-pink-400" : "text-white/70"}`} />
                           </button>
                           {/* Share - icon only */}
                           <div className="relative" ref={shareDropdownMobileRef}>
@@ -787,6 +938,21 @@ export default function ProgramDetail() {
                             </svg>
                           )}
                           <span className="text-xs font-bold text-[#25D366]">Update Status WA</span>
+                        </button>
+
+                        {/* Like button - desktop */}
+                        <button
+                          type="button"
+                          aria-label="Like program"
+                          onClick={toggleLike}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all hover:scale-105 ${
+                            isLiked
+                              ? "bg-pink-500/20 border-pink-500/40"
+                              : "bg-white/5 hover:bg-white/10 border-white/20"
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${isLiked ? "text-pink-400 fill-pink-400" : "text-white/70"}`} />
+                          <span className={`text-xs font-bold ${isLiked ? "text-pink-400" : "text-white/70"}`}>{program.likes_count}</span>
                         </button>
 
                         {/* Share dropdown - desktop */}
@@ -979,6 +1145,112 @@ export default function ProgramDetail() {
               </button>
               
             </motion.div>
+
+            {/* CARD MATERI QUIZ: Quiz Center - Only for sales/affiliate with materis */}
+            {isSalesRole && materis.length > 0 && (
+              <motion.div
+                whileHover={{ y: -5 }}
+                className="bg-[#0a0a0a] p-6 md:p-10 rounded-lg md:rounded-[48px] shadow-2xl relative overflow-hidden border border-[#7ED321]/20"
+                style={{ WebkitMaskImage: 'radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)' }}
+              >
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-[10px] font-black text-[#7ED321] uppercase tracking-[0.3em] flex items-center gap-3">
+                      <Award className="w-4 h-4" /> {t.programDetail.quizCenter}
+                    </h3>
+                    <div className="bg-[#7ED321]/10 text-[#7ED321] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[#7ED321]/20">
+                      {materis.length} {t.programDetail.quizAvailable}
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="text-xs text-white/40 leading-relaxed mb-4">{t.programDetail.quizDesc}</p>
+                    {/* Materi list preview */}
+                    <div className="space-y-2">
+                      {materis.slice(0, 3).map((materi) => (
+                        <div key={materi.id} className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/5">
+                          <div className="w-8 h-8 rounded-lg bg-[#7ED321]/10 flex items-center justify-center shrink-0">
+                            <BookOpen size={14} className="text-[#7ED321]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-bold truncate">{materi.file_pdf}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {materi.level?.map((lvl: number) => {
+                                const cfg = { 1: "bg-emerald-500/20 text-emerald-400", 2: "bg-amber-500/20 text-amber-400", 3: "bg-red-500/20 text-red-400" }[lvl] ?? "bg-white/10 text-white/50";
+                                const lbl = { 1: "Low", 2: "Med", 3: "Expert" }[lvl] ?? `L${lvl}`;
+                                return (
+                                  <span key={lvl} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg}`}>
+                                    {lbl}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {materis.length > 3 && (
+                        <p className="text-[10px] text-white/30 text-center font-bold">+{materis.length - 3} more</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowLearningModal(true)}
+                    className="w-full bg-[#7ED321] text-black py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-lg shadow-[#7ED321]/20 hover:brightness-110 transition-all flex items-center justify-center gap-3"
+                  >
+                    <Award className="w-5 h-5" />
+                    {t.programDetail.startQuiz}
+                  </button>
+                </div>
+                <Award className="absolute right-[-20px] bottom-[-20px] w-40 h-40 text-white/[0.02] -rotate-12 pointer-events-none" />
+              </motion.div>
+            )}
+
+            {/* CARD LEARNING: Learning Hub (Blue Glass) - Only for sales/affiliate */}
+            {isSalesRole && learnings.length > 0 && (
+              <motion.div
+                whileHover={{ y: -5 }}
+                className="bg-[#0a0a0a] p-6 md:p-10 rounded-lg md:rounded-[48px] shadow-2xl relative overflow-hidden border border-[#367CC0]/20"
+                style={{ WebkitMaskImage: 'radial-gradient(circle 55px at 100% 0%, transparent 100%, black 101%)' }}
+              >
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-[10px] font-black text-[#367CC0] uppercase tracking-[0.3em] flex items-center gap-3">
+                      <BookOpen className="w-4 h-4" /> {t.programDetail.learningHub}
+                    </h3>
+                    <div className="bg-[#367CC0]/10 text-[#367CC0] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[#367CC0]/20">
+                      {learnings.length} {t.programDetail.materialsAvailable}
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="text-xs text-white/40 leading-relaxed mb-4">{t.programDetail.learningDesc}</p>
+                    {/* Progress */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className="text-white/50">{t.programDetail.learningMaterials}</span>
+                        <span className="text-[#7ED321] font-bold">{completedLearnings}/{learnings.length} {t.programDetail.completedCount}</span>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#367CC0] to-[#7ED321] rounded-full transition-all duration-500"
+                          style={{ width: `${learnings.length > 0 ? (completedLearnings / learnings.length) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowLearningModal(true)}
+                    className="w-full bg-[#367CC0] text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-lg shadow-[#367CC0]/20 hover:brightness-110 transition-all flex items-center justify-center gap-3"
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    {t.programDetail.startLearning}
+                  </button>
+                </div>
+                <BookOpen className="absolute right-[-20px] bottom-[-20px] w-40 h-40 text-white/[0.02] -rotate-12 pointer-events-none" />
+              </motion.div>
+            )}
 
             {/* CARD 2: Affiliate Dashboard (Dark Glass Notch) */}
             {!isSalesRole ? (
@@ -1378,6 +1650,337 @@ export default function ProgramDetail() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Learning Modal */}
+      <AnimatePresence>
+        {showLearningModal && isSalesRole && (
+          <LearningListModal
+            learnings={learnings}
+            learningSalesMap={learningSalesMap}
+            quizSalesMap={quizSalesMap}
+            materis={materis}
+            onClose={() => { setShowLearningModal(false); setReadModalLearningId(null); }}
+            onRead={(id) => setReadModalLearningId(id)}
+            onQuiz={(materiId, level) => { router.push(`/programs/${slug}/quiz/${materiId}?level=${level}&program_id=${id}`); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Read Learning Modal */}
+      {readModalLearningId != null && (
+        <ReadLearningModal
+          learningId={readModalLearningId}
+          selectedSalesId={userId}
+          learningSale={learningSalesMap[readModalLearningId] ?? null}
+          onClose={() => setReadModalLearningId(null)}
+          onMarkComplete={() => handleMarkComplete(readModalLearningId)}
+          isUpdating={creatingLearningSale || updatingLearningSale}
+        />
+      )}
+
     </div>
   );
 }
+
+// ===== Learning List Modal =====
+const LEVEL_CONFIG: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: "Low", color: "text-emerald-400", bg: "bg-emerald-500/20" },
+  2: { label: "Medium", color: "text-amber-400", bg: "bg-amber-500/20" },
+  3: { label: "Expert", color: "text-red-400", bg: "bg-red-500/20" },
+};
+
+const LearningListModal = ({
+  learnings,
+  learningSalesMap,
+  quizSalesMap,
+  materis,
+  onClose,
+  onRead,
+  onQuiz,
+}: {
+  learnings: ProgramLearning[];
+  learningSalesMap: Record<number, ProgramLearningSale>;
+  quizSalesMap: Record<number, { score: number; total_questions: number; passed: boolean }>;
+  materis: MateriListItem[];
+  onClose: () => void;
+  onRead: (id: number) => void;
+  onQuiz: (materiId: number, level: number) => void;
+}) => {
+  const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState<"learning" | "quiz">(materis.length > 0 ? "quiz" : "learning");
+
+  return (
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="relative bg-[#1e293b] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#367CC0]/20">
+              <BookOpen size={18} className="text-[#367CC0]" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">{t.programDetail.learningMaterials}</h3>
+              <p className="text-xs text-white/40">
+                {learnings.length > 0 && `${learnings.length} materi`}
+                {learnings.length > 0 && materis.length > 0 && " · "}
+                {materis.length > 0 && `${materis.length} quiz`}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="p-2 text-white/60 hover:text-white rounded-lg">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        {learnings.length > 0 && materis.length > 0 && (
+          <div className="flex border-b border-white/10 px-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab("learning")}
+              className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 ${
+                activeTab === "learning"
+                  ? "text-[#367CC0] border-[#367CC0]"
+                  : "text-white/40 border-transparent hover:text-white/60"
+              }`}
+            >
+              <BookOpen size={14} className="inline mr-1.5" />
+              Materi Belajar
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("quiz")}
+              className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 ${
+                activeTab === "quiz"
+                  ? "text-[#7ED321] border-[#7ED321]"
+                  : "text-white/40 border-transparent hover:text-white/60"
+              }`}
+            >
+              <Award size={14} className="inline mr-1.5" />
+              Quiz
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-4 overflow-y-auto flex-1 space-y-3">
+          {/* Learning Tab */}
+          {activeTab === "learning" && learnings.map((learning: ProgramLearning) => {
+            const learningSale = learningSalesMap[learning.id];
+            const quizResultForLearning = quizSalesMap[learning.id];
+            const completedRead = !!(learningSale?.completed_at);
+
+            return (
+              <div
+                key={learning.id}
+                className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white/5 rounded-xl border border-white/10"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold truncate">{learning.title}</p>
+                  {learning.description && (
+                    <p className="text-white/50 text-xs mt-1 line-clamp-2">{stripHtml(learning.description)}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {!learningSale && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+                        {t.myAccount.learning.notStarted}
+                      </span>
+                    )}
+                    {learningSale && !completedRead && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                        {t.myAccount.learning.inProgress}
+                      </span>
+                    )}
+                    {completedRead && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 flex items-center gap-1">
+                        <CheckCircle2 size={12} /> {t.myAccount.learning.completed}
+                      </span>
+                    )}
+                    {quizResultForLearning && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 ${quizResultForLearning.passed ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                        <Award size={12} /> {t.myAccount.learning.yourScore}: {quizResultForLearning.score}/{quizResultForLearning.total_questions} ({quizResultForLearning.passed ? t.myAccount.learning.passed : t.myAccount.learning.failed})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onRead(learning.id)}
+                    className="px-3 py-1.5 rounded-lg bg-[#367CC0]/20 text-[#367CC0] text-xs font-bold hover:bg-[#367CC0]/30 transition-all flex items-center gap-1"
+                  >
+                    <BookOpen size={14} /> {t.myAccount.learning.read}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Quiz Tab - Materis with level selection */}
+          {activeTab === "quiz" && materis.map((materi, idx) => (
+            <div
+              key={materi.id}
+              className="p-4 bg-white/5 rounded-xl border border-white/10"
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#367CC0]/20 shrink-0">
+                  <BookOpen size={16} className="text-[#367CC0]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm truncate">
+                    Materi #{idx + 1}
+                  </p>
+                  <p className="text-white/40 text-[10px] truncate mt-0.5">{materi.file_pdf}</p>
+                  <p className="text-white/30 text-[10px] mt-1">
+                    {materi.soal_quiz} soal/level · {materi.quizzes_count} total quiz
+                  </p>
+                </div>
+              </div>
+
+              {/* Level buttons */}
+              <div className="flex flex-wrap gap-2 ml-12">
+                {materi.level.map((lvl) => {
+                  const cfg = LEVEL_CONFIG[lvl] ?? LEVEL_CONFIG[1];
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => onQuiz(materi.id, lvl)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg ${cfg.bg} ${cfg.color} text-xs font-bold hover:brightness-125 transition-all`}
+                    >
+                      <Award size={14} />
+                      Quiz {cfg.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Empty states */}
+          {activeTab === "learning" && learnings.length === 0 && (
+            <div className="text-center py-10 text-white/30 text-sm">Belum ada materi belajar</div>
+          )}
+          {activeTab === "quiz" && materis.length === 0 && (
+            <div className="text-center py-10 text-white/30 text-sm">Belum ada quiz tersedia</div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-white/10 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-white/80 hover:bg-white/10 text-sm font-bold"
+          >
+            {t.myAccount.learning.close}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ===== Read Learning Modal =====
+const ReadLearningModal = ({
+  learningId,
+  selectedSalesId,
+  learningSale,
+  onClose,
+  onMarkComplete,
+  isUpdating,
+}: {
+  learningId: number | null;
+  selectedSalesId: number | null;
+  learningSale: ProgramLearningSale | null;
+  onClose: () => void;
+  onMarkComplete: () => void;
+  isUpdating: boolean;
+}) => {
+  const { t } = useI18n();
+  const { data: learning, isFetching } = useGetProgramLearningByIdQuery(learningId ?? 0, {
+    skip: !learningId,
+  });
+
+  if (!learningId) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="relative bg-[#1e293b] border border-white/20 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <h3 className="text-lg font-bold text-white">{learning?.title ?? "—"}</h3>
+            <button type="button" onClick={onClose} className="p-2 text-white/60 hover:text-white rounded-lg">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto flex-1">
+            {isFetching ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="animate-spin text-white/60" />
+              </div>
+            ) : learning ? (
+              <div className="space-y-4 text-white/90 text-sm">
+                {learning.description && (
+                  <div className="whitespace-pre-wrap">{stripHtml(learning.description)}</div>
+                )}
+                {learning.file_pdf && (
+                  <a href={learning.file_pdf} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[#367CC0] hover:underline">
+                    <ExternalLink size={14} /> PDF
+                  </a>
+                )}
+                {learning.link_youtube && (
+                  <a href={learning.link_youtube} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[#367CC0] hover:underline">
+                    <ExternalLink size={14} /> YouTube
+                  </a>
+                )}
+              </div>
+            ) : null}
+          </div>
+          <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-white/80 hover:bg-white/10 text-sm font-bold">
+              {t.myAccount.learning.close}
+            </button>
+            {selectedSalesId && (
+              <button
+                type="button"
+                onClick={onMarkComplete}
+                disabled={isUpdating}
+                className="px-4 py-2 rounded-xl bg-[#367CC0] text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                {t.myAccount.learning.markComplete}
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};

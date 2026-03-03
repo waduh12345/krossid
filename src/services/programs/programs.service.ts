@@ -9,6 +9,31 @@ interface GetProgramsParams {
   program_category_id?: number;
 }
 
+interface GetLikesParams {
+  page: number;
+  paginate: number;
+  search?: string;
+  likeable_id?: number;
+  user_id?: number;
+}
+
+export interface LikeItem {
+  id: number;
+  user_id: number | null;
+  likeable_id: number;
+  likeable_type: string;
+  ip: string | null;
+  user_agent: string | null;
+  city: string | null;
+  country: string | null;
+  program_title: string;
+  program_slug: string;
+  user_name: string | null;
+  user_email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const lmsApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // ✅ GET all LMS (paginated)
@@ -165,6 +190,46 @@ export const lmsApi = apiSlice.injectEndpoints({
         message: response.message,
       }),
     }),
+    // ✅ GET likes (paginated)
+    getLikes: builder.query<
+      {
+        data: LikeItem[];
+        last_page: number;
+        current_page: number;
+        total: number;
+        per_page: number;
+      },
+      GetLikesParams
+    >({
+      query: ({ page, paginate, search, likeable_id, user_id }) => ({
+        url: "/like",
+        method: "GET",
+        params: {
+          page,
+          paginate,
+          ...(search && { search }),
+          ...(likeable_id && { likeable_id }),
+          ...(user_id && { user_id }),
+        },
+      }),
+      transformResponse: (response: {
+        code: number;
+        message: string;
+        data: {
+          current_page: number;
+          data: LikeItem[];
+          last_page: number;
+          total: number;
+          per_page: number;
+        };
+      }) => ({
+        data: response.data.data,
+        last_page: response.data.last_page,
+        current_page: response.data.current_page,
+        total: response.data.total,
+        per_page: response.data.per_page,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -177,4 +242,5 @@ export const {
   useDeleteProgramsMutation,
   useShareProgramMutation,
   usePublicShareProgramMutation,
+  useGetLikesQuery,
 } = lmsApi;

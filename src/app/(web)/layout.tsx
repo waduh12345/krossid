@@ -3,50 +3,15 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, User, LogOut, Mail, Send, Facebook, Twitter, Instagram, Linkedin, Youtube, Phone, MapPin, CheckCircle2, X, Menu } from "lucide-react";
+import { Search, User, LogOut, Mail, Facebook, Twitter, Instagram, Linkedin, Youtube, Phone, MapPin, X, Menu } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
-import Swal from "sweetalert2";
 import { useI18n } from "@/contexts/i18n-context";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
-// Footer Component with Subscribe
+// Footer Component
 function FooterComponent() {
   const { t } = useI18n();
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes("@")) {
-      Swal.fire({
-        icon: "error",
-        title: t.alerts.invalidEmail,
-        text: t.alerts.invalidEmailText,
-        background: "#1e293b",
-        color: "#fff",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setEmail("");
-      Swal.fire({
-        icon: "success",
-        title: t.alerts.subscribed,
-        text: t.alerts.subscribedText,
-        background: "#1e293b",
-        color: "#fff",
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    }, 1000);
-  };
 
   return (
     <footer className="bg-black/40 backdrop-blur-md border-t border-white/5 pt-16 pb-10 relative z-20">
@@ -153,76 +118,37 @@ function FooterComponent() {
             </ul>
           </div>
 
-          {/* Subscribe Section */}
+          {/* Contact Info */}
           <div>
-            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">{t.footer.subscribe}</h4>
-            <p className="text-sm text-white/60 mb-4">
-              {t.footer.subscribeDescription}
-            </p>
-            <form onSubmit={handleSubscribe} className="space-y-3">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t.footer.enterEmail}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#367CC0]/50 focus:border-[#367CC0]/50 transition-all"
-                  required
-                />
+            <h4 className="text-[10px] font-black text-[#DF9B35] uppercase tracking-[0.2em] mb-6">{t.footer.contactUs}</h4>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#367CC0]/20 flex items-center justify-center shrink-0">
+                  <Mail size={18} className="text-[#367CC0]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.email}</p>
+                  <p className="text-sm text-white/80">support@kross.id</p>
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-[#367CC0] to-[#DF9B35] hover:from-[#2d6699] hover:to-[#c7892a] text-white font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#367CC0]/20"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>{t.footer.subscribing}</span>
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    <span>{t.footer.subscribeButton}</span>
-                  </>
-                )}
-              </button>
-            </form>
-            <div className="mt-4 flex items-start gap-2 text-xs text-white/40">
-              <CheckCircle2 size={14} className="text-[#7ED321] mt-0.5 flex-shrink-0" />
-              <span>{t.footer.privacyNote}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 pt-8 border-t border-white/5">
-          <div className="flex items-center gap-3 text-sm text-white/60">
-            <div className="w-10 h-10 rounded-lg bg-[#367CC0]/20 flex items-center justify-center">
-              <Mail size={18} className="text-[#367CC0]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.email}</p>
-              <p className="text-white/80">support@kross.id</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-white/60">
-            <div className="w-10 h-10 rounded-lg bg-[#DF9B35]/20 flex items-center justify-center">
-              <Phone size={18} className="text-[#DF9B35]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.phone}</p>
-              <p className="text-white/80">+62 21 000 000</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-white/60">
-            <div className="w-10 h-10 rounded-lg bg-[#7ED321]/20 flex items-center justify-center">
-              <MapPin size={18} className="text-[#7ED321]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-1">{t.footer.location}</p>
-              <p className="text-white/80">Niaga Tower, Jakarta</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#DF9B35]/20 flex items-center justify-center shrink-0">
+                  <Phone size={18} className="text-[#DF9B35]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.phone}</p>
+                  <p className="text-sm text-white/80">+62 21 000 000</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#7ED321]/20 flex items-center justify-center shrink-0">
+                  <MapPin size={18} className="text-[#7ED321]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.location}</p>
+                  <p className="text-sm text-white/80">Niaga Tower, Jakarta</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

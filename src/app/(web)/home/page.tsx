@@ -36,15 +36,19 @@ import {
   Mail,
   RefreshCw,
   KeyRound,
+  Eye,
+  Share2,
+  ShoppingCart,
+  ThumbsUp,
 } from "lucide-react";
 
 /* ================== UI ================== */
 import { Input } from "@/components/ui/input";
 
 /* ================== API ================== */
-import { useRegisterMutation, useResendOtpMutation, useValidateEmailOtpMutation } from "@/services/auth.service";
+import { useRegisterMutation, useResendOtpMutation, useValidateEmailOtpMutation, useGetMeQuery } from "@/services/auth.service";
 import { useGetTopProgramsQuery } from "@/services/public/top.service";
-import { useGetPublicProgramsQuery } from "@/services/public/program.service";
+import { useGetPublicProgramsQuery, useGetLikedProgramsQuery, useLikePublicProgramMutation } from "@/services/public/program.service";
 import { useGetPublicCategoriesListQuery } from "@/services/programs/categories.service";
 import { useI18n } from "@/contexts/i18n-context";
 
@@ -53,19 +57,29 @@ type SidebarLeftProps = {
   categories: string[];
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
+  showFavoritesOnly: boolean;
+  onToggleFavorites: () => void;
+  favoritesCount: number;
 };
 
 const SidebarLeft = ({
   categories,
   activeCategory,
   setActiveCategory,
+  showFavoritesOnly,
+  onToggleFavorites,
+  favoritesCount,
 }: SidebarLeftProps) => {
   const { t } = useI18n();
   const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated" && !!session?.user;
+  const { data: userData } = useGetMeQuery(undefined, { skip: !isLoggedIn });
+  const isSalesRole = userData?.roles?.some(
+    (role: any) => role.name.toLowerCase() === 'sales' || role.name.toLowerCase() === 'affiliate'
+  );
 
   return (
-    <aside className="hidden lg:block lg:col-span-3 sticky top-24 h-fit">
+    <aside className="hidden lg:block lg:col-span-3 sticky top-24 h-fit space-y-4">
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6">
         <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 mb-6">
           <Filter size={14} /> {t.home.filter}
@@ -77,7 +91,7 @@ const SidebarLeft = ({
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition ${
-              activeCategory === cat
+              activeCategory === cat && !showFavoritesOnly
                 ? "bg-blue-600 text-white"
                 : "text-white/50 hover:bg-white/10"
             }`}
@@ -87,12 +101,41 @@ const SidebarLeft = ({
         ))}
       </div>
 
-      {isLoggedIn && (
+      {isLoggedIn && isSalesRole && (
         <div className="mt-6 space-y-2">
-          <Link href="/my-account?tab=affiliate" className="w-full bg-white text-blue-600 font-black py-3 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-105 transition">My Programs</Link>
+          <Link href="/my-account?tab=my-programs" className="w-full bg-white text-blue-600 font-black py-3 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-105 transition">My Programs</Link>
         </div>
       )}
     </div>
+
+      {/* My Favorites Card */}
+      {isLoggedIn && (
+        <button
+          onClick={onToggleFavorites}
+          className={`w-full backdrop-blur-xl border rounded-3xl p-5 flex items-center gap-3 transition-all ${
+            showFavoritesOnly
+              ? "bg-pink-500/20 border-pink-500/30 shadow-lg shadow-pink-500/10"
+              : "bg-white/5 border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            showFavoritesOnly ? "bg-pink-500" : "bg-pink-500/20"
+          }`}>
+            <Heart size={18} className={showFavoritesOnly ? "text-white fill-white" : "text-pink-400"} />
+          </div>
+          <div className="text-left flex-1">
+            <p className={`text-sm font-bold ${showFavoritesOnly ? "text-pink-300" : "text-white/80"}`}>
+              My Favorites
+            </p>
+            <p className="text-xs text-white/40">
+              {favoritesCount} {favoritesCount === 1 ? "program" : "programs"}
+            </p>
+          </div>
+          {showFavoritesOnly && (
+            <X size={14} className="text-pink-300/60" />
+          )}
+        </button>
+      )}
   </aside>
   );
 };
@@ -171,6 +214,10 @@ const DUMMY_PROGRAMS = [
     original: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800",
     commission: 30,
     status: true,
+    visits_count: 12400,
+    shares_count: 3200,
+    likes_count: 8700,
+    total_user_register: 1560,
   },
   {
     id: 2,
@@ -182,6 +229,10 @@ const DUMMY_PROGRAMS = [
     original: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800",
     commission: 25,
     status: true,
+    visits_count: 8900,
+    shares_count: 2100,
+    likes_count: 5400,
+    total_user_register: 980,
   },
   {
     id: 3,
@@ -193,6 +244,10 @@ const DUMMY_PROGRAMS = [
     original: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800",
     commission: 20,
     status: true,
+    visits_count: 15600,
+    shares_count: 4500,
+    likes_count: 11200,
+    total_user_register: 2340,
   },
   {
     id: 4,
@@ -204,6 +259,10 @@ const DUMMY_PROGRAMS = [
     original: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=800",
     commission: 40,
     status: true,
+    visits_count: 6700,
+    shares_count: 1800,
+    likes_count: 4100,
+    total_user_register: 720,
   },
   {
     id: 5,
@@ -215,8 +274,18 @@ const DUMMY_PROGRAMS = [
     original: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800",
     commission: 35,
     status: true,
+    visits_count: 9300,
+    shares_count: 2800,
+    likes_count: 6500,
+    total_user_register: 1120,
   },
 ];
+
+const formatStatCount = (num: number): string => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+  return num.toString();
+};
 
 const DUMMY_TOP_PROGRAMS = [
   {
@@ -269,11 +338,21 @@ export default function AffiliateHome() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [liked, setLiked] = useState<Set<number>>(new Set());
+  const [likeProgram] = useLikePublicProgramMutation();
+  const { data: likedIds } = useGetLikedProgramsQuery();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Get search from URL params
   const searchQuery = searchParams.get("search") || "";
+
+  // Sync liked state from API
+  useEffect(() => {
+    if (likedIds) {
+      setLiked(new Set(likedIds));
+    }
+  }, [likedIds]);
 
   // Open register modal when coming from pricing (e.g. /home?openRegister=1)
   useEffect(() => {
@@ -436,29 +515,63 @@ export default function AffiliateHome() {
 
   const filteredPrograms = useMemo(() => {
     // Use data.data as fallback when programs is empty but data is available
-    const sourceData = programs.length > 0 ? programs : (data?.data || []);
-    
+    let sourceData = programs.length > 0 ? programs : (data?.data || []);
+
+    // Filter by favorites if active
+    if (showFavoritesOnly) {
+      sourceData = sourceData.filter((p: any) => liked.has(p.id));
+    }
+
     if (activeCategory === t.home.all || activeCategory === "All" || activeCategory === "Semua") {
       return sourceData;
     }
     return sourceData.filter(
       (p: any) => p.program_category_name === activeCategory
     );
-  }, [programs, data?.data, activeCategory, t]);
+  }, [programs, data?.data, activeCategory, t, showFavoritesOnly, liked]);
 
-  const toggleLike = (id: number) => {
+  const toggleLike = async (id: number) => {
+    const wasLiked = liked.has(id);
+    const delta = wasLiked ? -1 : 1;
+
+    // Optimistic UI update
     setLiked((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      wasLiked ? next.delete(id) : next.add(id);
       return next;
     });
+    setPrograms((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) }
+          : p
+      )
+    );
+
+    try {
+      await likeProgram(id).unwrap();
+    } catch {
+      // Revert on failure
+      setLiked((prev) => {
+        const next = new Set(prev);
+        wasLiked ? next.add(id) : next.delete(id);
+        return next;
+      });
+      setPrograms((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) - delta) }
+            : p
+        )
+      );
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-900">
       <div className="container mx-auto px-4 py-8">
         {/* ===== MOBILE TOOLBAR ===== */}
-        <div className="lg:hidden flex items-center gap-3 mb-4">
+        <div className="lg:hidden flex items-center gap-2 mb-4">
           <button
             onClick={() => setShowMobileFilter((v) => !v)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -472,12 +585,24 @@ export default function AffiliateHome() {
           </button>
 
           {status === "authenticated" && !!session?.user && (
-            <Link
-              href="/my-account?tab=affiliate"
-              className="ml-auto flex items-center gap-2 bg-white text-blue-600 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest hover:scale-105 transition"
+            <button
+              onClick={() => setShowFavoritesOnly((v) => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                showFavoritesOnly
+                  ? "bg-pink-500 text-white"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
             >
-              My Programs
-            </Link>
+              <Heart size={16} className={showFavoritesOnly ? "fill-white" : ""} />
+              Favorites
+              {liked.size > 0 && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                  showFavoritesOnly ? "bg-white/20" : "bg-pink-500/20 text-pink-400"
+                }`}>
+                  {liked.size}
+                </span>
+              )}
+            </button>
           )}
         </div>
 
@@ -530,7 +655,10 @@ export default function AffiliateHome() {
                 : [t.home.all]
             }
             activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
+            setActiveCategory={(cat) => { setShowFavoritesOnly(false); setActiveCategory(cat); }}
+            showFavoritesOnly={showFavoritesOnly}
+            onToggleFavorites={() => setShowFavoritesOnly((v) => !v)}
+            favoritesCount={liked.size}
           />
 
           {/* MAIN */}
@@ -653,10 +781,10 @@ export default function AffiliateHome() {
                             size={18}
                           />
                         </button>
-                        {prog.commission && (
+                        {prog.owner_email && (
                           <div className="absolute bottom-4 left-4 bg-green-500/90 backdrop-blur-sm px-3 py-1 rounded-full">
                             <span className="text-white text-xs font-black">
-                              {prog.commission}% {t.home.commission}
+                              {prog.owner_email.replace(/^([^@]+)/, "*****")}
                             </span>
                           </div>
                         )}
@@ -676,11 +804,26 @@ export default function AffiliateHome() {
                         <p className="text-sm text-white/50 line-clamp-2 mt-2">
                           {prog.description || "No description available"}
                         </p>
-                        <div className="flex justify-between items-center mt-4">
-                          <span className="text-green-400 text-xs font-bold flex items-center gap-1">
-                            <ShieldCheck size={14} /> {t.home.verified}
-                          </span>
-                          <span className="text-blue-400 text-xs font-bold flex items-center gap-1 hover:text-blue-300 transition-colors">
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1 text-white/40 hover:text-blue-400 transition-colors">
+                              <Eye size={13} />
+                              <span className="text-[11px] font-semibold">{formatStatCount(prog.visits_count || 0)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-white/40 hover:text-pink-400 transition-colors">
+                              <ThumbsUp size={13} />
+                              <span className="text-[11px] font-semibold">{formatStatCount(prog.likes_count || 0)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-white/40 hover:text-green-400 transition-colors">
+                              <Share2 size={13} />
+                              <span className="text-[11px] font-semibold">{formatStatCount(prog.shares_count || 0)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-white/40 hover:text-amber-400 transition-colors">
+                              <ShoppingCart size={13} />
+                              <span className="text-[11px] font-semibold">{formatStatCount(prog.total_user_register || 0)}</span>
+                            </div>
+                          </div>
+                          <span className="text-blue-400 text-xs font-bold flex items-center gap-1 hover:text-blue-300 transition-colors shrink-0">
                             {t.home.join} <ArrowRight size={14} />
                           </span>
                         </div>

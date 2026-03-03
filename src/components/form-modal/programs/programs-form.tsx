@@ -21,7 +21,8 @@ import type { Sales } from "@/types/programs/sales";
 import { useGetCategoriesListQuery } from "@/services/programs/categories.service";
 import { useGetUsersListQuery } from "@/services/users-management.service";
 import Swal from "sweetalert2";
-import { X, Loader2, Image as ImageIcon, Mail, GripVertical, Type, Hash, DollarSign, Plus, Trash2 } from "lucide-react";
+import { X, Loader2, Image as ImageIcon, Mail, GripVertical, Type, Hash, DollarSign, Plus, Trash2, FileText, Upload } from "lucide-react";
+import type { ProgramMateri } from "@/types/programs/programs";
 
 type Props = {
   open: boolean;
@@ -437,6 +438,18 @@ export default function ProgramsForm({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Materi States
+  type MateriItem = {
+    id?: number; // existing materi id (for update)
+    file: File | null;
+    fileName: string; // display name
+    fileUrl?: string; // existing file URL from API
+    level: number[];
+    soal_quiz: number;
+  };
+  const [materis, setMateris] = useState<MateriItem[]>([]);
+  const [deletedMateriIds, setDeletedMateriIds] = useState<number[]>([]);
+
   useEffect(() => {
     if (open) {
       setForm(initial);
@@ -450,6 +463,23 @@ export default function ProgramsForm({
       // Reset email inputs
       setEmailRaw("");
       setEmailInput("");
+
+      // Initialize materis
+      if (isEdit && detail?.materis && detail.materis.length > 0) {
+        setMateris(
+          detail.materis.map((m) => ({
+            id: m.id,
+            file: null,
+            fileName: m.file_pdf ? m.file_pdf.split("/").pop() || "file.pdf" : "",
+            fileUrl: m.file_pdf,
+            level: Array.isArray(m.level) ? m.level.map(Number) : [Number(m.level)],
+            soal_quiz: Number(m.soal_quiz) || 50,
+          }))
+        );
+      } else {
+        setMateris([]);
+      }
+      setDeletedMateriIds([]);
     }
   }, [initial, open, isEdit, detail]);
 
@@ -475,6 +505,40 @@ export default function ProgramsForm({
     } else {
       setImageFile(null);
       setImagePreview(null);
+    }
+  };
+
+  // Materi handlers
+  const addMateri = () => {
+    setMateris((prev) => [
+      ...prev,
+      { file: null, fileName: "", level: [1], soal_quiz: 50 },
+    ]);
+  };
+
+  const removeMateri = (index: number) => {
+    const item = materis[index];
+    if (item.id) {
+      setDeletedMateriIds((prev) => [...prev, item.id as number]);
+    }
+    setMateris((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateMateri = (index: number, field: keyof MateriItem, value: MateriItem[keyof MateriItem]) => {
+    setMateris((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleMateriFileChange = (index: number, file: File | null) => {
+    if (file) {
+      setMateris((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], file, fileName: file.name };
+        return updated;
+      });
     }
   };
 
@@ -523,6 +587,24 @@ export default function ProgramsForm({
     formData.set("guide_description", guideDescriptionStr);
     
     if (imageFile) formData.append("image", imageFile);
+
+    // Append materis
+    materis.forEach((materi, index) => {
+      if (materi.file) {
+        formData.append(`materis[${index}][file_pdf]`, materi.file);
+      }
+      materi.level.forEach((lvl, lvlIdx) => {
+        formData.append(`materis[${index}][level][${lvlIdx}]`, String(lvl));
+      });
+      if (materi.soal_quiz) formData.append(`materis[${index}][soal_quiz]`, String(materi.soal_quiz));
+      if (materi.id) formData.append(`materis[${index}][id]`, String(materi.id));
+    });
+
+    // Append deleted materi ids (for update)
+    deletedMateriIds.forEach((deletedId, index) => {
+      formData.append(`deleted_materi_ids[${index}]`, String(deletedId));
+    });
+
     if (isEdit) formData.append("_method", "PUT");
 
     try {
@@ -1047,6 +1129,144 @@ export default function ProgramsForm({
               <p className="text-[10px] text-zinc-500 italic">
                 Tekan Enter atau klik + untuk menambah. Drag & drop untuk mengubah urutan.
               </p>
+            </div>
+
+            {/* Materi PDF Upload Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="font-semibold text-gray-700">Materi (PDF)</Label>
+                  <p className="text-[10px] text-zinc-500">Upload file PDF materi program (multiple)</p>
+                </div>
+                <span className="text-[10px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">
+                  {materis.length} Materi
+                </span>
+              </div>
+
+              {materis.length > 0 && (
+                <div className="space-y-3">
+                  {materis.map((materi, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border p-3 bg-zinc-50 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-red-500" />
+                          <span className="text-xs font-semibold text-gray-700">
+                            Materi #{index + 1}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeMateri(index)}
+                          className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      {/* File Upload */}
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium">File PDF *</Label>
+                        {materi.fileUrl && !materi.file && (
+                          <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                            <FileText className="h-3 w-3" />
+                            <span className="truncate">{materi.fileName}</span>
+                            <span className="text-[9px] text-emerald-500">(existing)</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept=".pdf"
+                            className="text-xs h-8 flex-1"
+                            onChange={(e) =>
+                              handleMateriFileChange(index, e.target.files?.[0] ?? null)
+                            }
+                          />
+                        </div>
+                        {materi.file && (
+                          <p className="text-[9px] text-sky-600 font-medium truncate">
+                            Selected: {materi.fileName}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {/* Level */}
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-medium">Level</Label>
+                          <div className="flex gap-2">
+                            {[
+                              { value: 1, label: "Low" },
+                              { value: 2, label: "Medium" },
+                              { value: 3, label: "Expert" },
+                            ].map((opt) => {
+                              const isSelected = materi.level.includes(opt.value);
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    const newLevel = isSelected
+                                      ? materi.level.filter((l) => l !== opt.value)
+                                      : [...materi.level, opt.value].sort();
+                                    if (newLevel.length > 0) {
+                                      updateMateri(index, "level", newLevel);
+                                    }
+                                  }}
+                                  className={`flex-1 h-8 rounded-md border text-xs font-medium transition-colors ${
+                                    isSelected
+                                      ? "bg-sky-600 text-white border-sky-600"
+                                      : "bg-background text-muted-foreground border-input hover:bg-zinc-100"
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {materi.level.length > 0 && (
+                            <p className="text-[9px] text-muted-foreground">
+                              Terpilih: {[...materi.level].sort().map((l) => l === 1 ? "Low" : l === 2 ? "Medium" : "Expert").join(", ")}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Soal Quiz */}
+                        <div className="space-y-1">
+                          <Label className="text-[11px] font-medium">Soal Quiz</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            placeholder="50"
+                            value={materi.soal_quiz}
+                            onChange={(e) =>
+                              updateMateri(index, "soal_quiz", Number(e.target.value) || 0)
+                            }
+                            className="text-xs h-8"
+                          />
+                          <p className="text-[9px] text-muted-foreground">Soal akan digenerate otomatis</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addMateri}
+                className="w-full text-xs"
+              >
+                <Upload className="h-3 w-3 mr-1" />
+                Tambah Materi PDF
+              </Button>
             </div>
 
             <div className="rounded-lg border bg-zinc-50 p-3 space-y-2">
