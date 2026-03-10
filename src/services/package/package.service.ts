@@ -11,6 +11,7 @@ interface GetPackagesParams {
   search?: string;
   orderBy?: string;
   order?: string;
+  type_package?: string;
 }
 
 const transformListResponse = (response: {
@@ -61,7 +62,7 @@ function buildPackageFormData(
 export const packageApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getPackages: builder.query<PackageListResponse, GetPackagesParams>({
-      query: ({ page, paginate, search = "", orderBy, order }) => {
+      query: ({ page, paginate, search = "", orderBy, order, type_package }) => {
         const params: Record<string, string | number | undefined> = {
           page,
           paginate,
@@ -69,6 +70,7 @@ export const packageApi = apiSlice.injectEndpoints({
         };
         if (orderBy != null) params.orderBy = orderBy;
         if (order != null) params.order = order;
+        if (type_package != null) params.type_package = type_package;
         return { url: "/package/packages", method: "GET", params };
       },
       transformResponse: transformListResponse,

@@ -31,6 +31,9 @@ export interface Programs {
   visits_count?: number;
   shares_count?: number;
   likes_count?: number;
+  owner_active_from?: string | null;
+  owner_active_until?: string | null;
+  owner_type_package?: "Learning Only" | "Learning + Affiliate" | null;
   materis?: ProgramMateri[];
 }
 

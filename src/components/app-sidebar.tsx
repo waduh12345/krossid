@@ -14,6 +14,7 @@ import {
   type Icon as TablerIcon,
   IconSettings,
   IconPackage,
+  IconMail,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -84,7 +85,8 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
           { title: "Registration Logs", url: "/cms/package/registration-log" },
         ],
       },
-      { 
+      { title: "Contact", url: "/cms/contact", icon: IconMail },
+      {
         title: "Settings",
         url: "/cms/settings",
         icon: IconSettings,
@@ -120,6 +122,7 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
           { title: "Categories", url: "/cms/programs/categories" },
         ],
       },
+      { title: "Contact", url: "/cms/contact", icon: IconMail },
     ],
     navSecondary: [], // ✅ FIX
   },
@@ -169,6 +172,7 @@ const NAV_BY_ROLE: Record<RoleName, MenuBundle> = {
           { title: "Categories", url: "/cms/programs/categories" },
         ],
       },
+      { title: "Contact", url: "/cms/contact", icon: IconMail },
     ],
     navSecondary: [],
   },

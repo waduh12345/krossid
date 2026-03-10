@@ -10,7 +10,7 @@ import {
   useGetPackageByIdQuery,
   useUpdatePackageMutation,
 } from "@/services/package/package.service";
-import type { PackageStorePayload } from "@/types/package/package";
+import type { PackageStorePayload, PackageType } from "@/types/package/package";
 import Swal from "sweetalert2";
 import { X, Loader2, ImageIcon } from "lucide-react";
 
@@ -37,6 +37,7 @@ type Props = {
 
 type FormState = {
   name: string;
+  type_package: PackageType | null;
   description: string;
   number: number;
   price_month: number;
@@ -73,6 +74,7 @@ export default function PackageForm({
   const initial: FormState = useMemo(
     () => ({
       name: detail?.name ?? "",
+      type_package: detail?.type_package ?? null,
       description: detail?.description ?? "",
       number: detail?.number ?? 0,
       price_month: detail?.price_month ?? 0,
@@ -135,6 +137,7 @@ export default function PackageForm({
 
     const payload: PackageStorePayload = {
       name: form.name.trim(),
+      type_package: form.type_package,
       description: form.description.trim() || null,
       number: Number(form.number) || 0,
       price_month: Number(form.price_month) || 0,
@@ -209,6 +212,19 @@ export default function PackageForm({
                   placeholder="Package name"
                   className="rounded-xl"
                 />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="type_package">Type Package</Label>
+                <select
+                  id="type_package"
+                  value={form.type_package ?? ""}
+                  onChange={(e) => set("type_package", e.target.value === "" ? null : e.target.value as PackageType)}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">-- Select Type --</option>
+                  <option value="Learning Only">Learning Only</option>
+                  <option value="Learning + Affiliate">Learning + Affiliate</option>
+                </select>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="description">Description</Label>

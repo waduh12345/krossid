@@ -1,8 +1,11 @@
 import type { PackageFeature } from "./feature";
 
+export type PackageType = "Learning Only" | "Learning + Affiliate";
+
 export interface Package {
   id: number;
   name: string;
+  type_package: PackageType | null;
   image: string | null;
   image_avif: string | null;
   image_url: string | null;

@@ -17,8 +17,13 @@ import {
 import { useI18n } from "@/contexts/i18n-context";
 import { useGetPackagesQuery } from "@/services/package/package.service";
 import { useGetPackageFeaturesQuery } from "@/services/package/feature.service";
-import type { Package } from "@/types/package/package";
+import type { Package, PackageType } from "@/types/package/package";
 import type { PackageFeature } from "@/types/package/feature";
+
+const PACKAGE_TYPES: { label: string; value: PackageType }[] = [
+  { label: "Learning Only", value: "Learning Only" },
+  { label: "Learning + Affiliate", value: "Learning + Affiliate" },
+];
 
 const PLAN_ICONS = [Zap, Building2, Sparkles, Gift];
 
@@ -158,10 +163,12 @@ export default function PricingPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
+  const [activeType, setActiveType] = useState<PackageType>("Learning Only");
   const { data: packagesData, isFetching: loadingPackages } = useGetPackagesQuery({
     page: 1,
     paginate: 20,
     search: "",
+    type_package: activeType,
   });
 
   const packages: Package[] = useMemo(() => {
@@ -239,6 +246,23 @@ export default function PricingPage() {
               >
                 Yearly
               </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 mt-6">
+              {PACKAGE_TYPES.map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setActiveType(type.value)}
+                  className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                    activeType === type.value
+                      ? "bg-gradient-to-r from-[#367CC0] to-[#DF9B35] text-white shadow-lg shadow-[#367CC0]/20"
+                      : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
             </div>
           </motion.div>
         </div>

@@ -59,6 +59,7 @@ import { useGetProgramLearningsQuery, useGetProgramLearningByIdQuery } from "@/s
 import { useGetProgramLearningSalesQuery, useCreateProgramLearningSaleMutation, useUpdateProgramLearningSaleMutation } from "@/services/programs/learning-sales.service";
 import { useGetProgramLearningQuizSalesQuery } from "@/services/programs/learning-quiz-sales.service";
 import { useGetMaterisQuery } from "@/services/programs/materi.service";
+import ChatPanel from "@/components/chat/chat-panel";
 import type { ProgramLearning } from "@/types/programs/learning";
 import type { ProgramLearningSale } from "@/types/programs/learning-sales";
 import type { MateriListItem } from "@/types/programs/programs";
@@ -367,8 +368,87 @@ export default function ProgramDetail() {
     }
   };
 
+  // Derive owner package access from programData (instead of /me)
+  const ownerPackageAccess = useMemo(() => {
+    const activeUntil = programData?.owner_active_until ?? null;
+    const typePackage = programData?.owner_type_package ?? null;
+
+    if (!activeUntil) {
+      return { isActive: false, isExpired: false, isExpiringSoon: false, daysRemaining: null as number | null, activeUntil: null as string | null, typePackage, canShare: false, canRegister: false };
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const until = new Date(activeUntil);
+    until.setHours(0, 0, 0, 0);
+    const diffMs = until.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const isExpired = daysRemaining < 0;
+    const isExpiringSoon = !isExpired && daysRemaining <= 3;
+    const isActive = !isExpired;
+    const isAffiliate = typePackage === "Learning + Affiliate";
+
+    return { isActive, isExpired, isExpiringSoon, daysRemaining, activeUntil, typePackage, canShare: isActive && isAffiliate, canRegister: isActive && isAffiliate };
+  }, [programData?.owner_active_from, programData?.owner_active_until, programData?.owner_type_package]);
+
+  // Guard: check owner's package access before performing an action
+  const guardPackageAction = (action: "whatsapp" | "register" | "quiz"): boolean => {
+    if (!session) return true; // Non-logged-in users can pass (public access)
+
+    if (ownerPackageAccess.isExpired) {
+      Swal.fire({
+        icon: "warning",
+        title: "Program Tidak Tersedia",
+        text: "Paket owner program ini sudah berakhir. Program sementara tidak dapat diakses.",
+        confirmButtonText: "OK",
+        background: "#0f172a",
+        color: "#fff",
+      });
+      return false;
+    }
+
+    if (action === "whatsapp" && !ownerPackageAccess.canShare) {
+      Swal.fire({
+        icon: "warning",
+        title: "Akses Terbatas",
+        text: "Fitur share WhatsApp hanya tersedia untuk program dengan paket Learning + Affiliate.",
+        confirmButtonText: "OK",
+        background: "#0f172a",
+        color: "#fff",
+      });
+      return false;
+    }
+
+    if (action === "register" && !ownerPackageAccess.canRegister) {
+      Swal.fire({
+        icon: "warning",
+        title: "Akses Terbatas",
+        text: "Fitur registrasi program hanya tersedia untuk program dengan paket Learning + Affiliate.",
+        confirmButtonText: "OK",
+        background: "#0f172a",
+        color: "#fff",
+      });
+      return false;
+    }
+
+    if (action === "quiz" && !ownerPackageAccess.isActive) {
+      Swal.fire({
+        icon: "warning",
+        title: "Program Tidak Tersedia",
+        text: "Paket owner program ini sudah berakhir.",
+        confirmButtonText: "OK",
+        background: "#0f172a",
+        color: "#fff",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   // Share to WhatsApp — konsep: update status dengan gambar + caption (judul)
   const shareToWhatsApp = async () => {
+    if (!guardPackageAction("whatsapp")) return;
     setIsSharingToWhatsApp(true);
 
     // Siapkan data (sinkron — sebelum await agar popup tidak diblokir)
@@ -724,6 +804,16 @@ export default function ProgramDetail() {
 
   return (
     <div className="relative min-h-screen text-white">
+      {/* Package expiring soon alert */}
+      {ownerPackageAccess.isExpiringSoon && (
+        <div className="bg-amber-500/20 border-b border-amber-500/30 px-6 py-3">
+          <div className="container mx-auto flex items-center justify-between gap-4">
+            <p className="text-sm text-amber-200 font-semibold">
+              Paket owner program ini akan berakhir dalam {ownerPackageAccess.daysRemaining} hari ({ownerPackageAccess.activeUntil}). Beberapa fitur mungkin tidak tersedia setelah masa berlaku habis.
+            </p>
+          </div>
+        </div>
+      )}
       <main className="container mx-auto px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
@@ -912,7 +1002,7 @@ export default function ProgramDetail() {
                         {/* Register Button - full width */}
                         <button
                           type="button"
-                          onClick={() => setShowRegisterModal(true)}
+                          onClick={() => { if (guardPackageAction("register")) setShowRegisterModal(true); }}
                           className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-[#367CC0] to-[#7ED321] hover:from-[#2d6ba8] hover:to-[#6bb81a] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all hover:scale-105 shadow-lg shadow-[#367CC0]/30"
                         >
                           <CreditCard className="w-4 h-4" />
@@ -1050,7 +1140,7 @@ export default function ProgramDetail() {
                         {/* Register Button */}
                         <button
                           type="button"
-                          onClick={() => setShowRegisterModal(true)}
+                          onClick={() => { if (guardPackageAction("register")) setShowRegisterModal(true); }}
                           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#367CC0] to-[#7ED321] hover:from-[#2d6ba8] hover:to-[#6bb81a] text-white font-bold text-xs uppercase tracking-wider rounded-full transition-all hover:scale-105 shadow-lg shadow-[#367CC0]/30"
                         >
                           <CreditCard className="w-4 h-4" />
@@ -1661,7 +1751,7 @@ export default function ProgramDetail() {
             materis={materis}
             onClose={() => { setShowLearningModal(false); setReadModalLearningId(null); }}
             onRead={(id) => setReadModalLearningId(id)}
-            onQuiz={(materiId, level) => { router.push(`/programs/${slug}/quiz/${materiId}?level=${level}&program_id=${id}`); }}
+            onQuiz={(materiId, level) => { if (guardPackageAction("quiz")) router.push(`/programs/${slug}/quiz/${materiId}?level=${level}&program_id=${id}`); }}
           />
         )}
       </AnimatePresence>
@@ -1677,6 +1767,9 @@ export default function ProgramDetail() {
           isUpdating={creatingLearningSale || updatingLearningSale}
         />
       )}
+
+      {/* Live Chat */}
+      {session && <ChatPanel programId={id} />}
 
     </div>
   );

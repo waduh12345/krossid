@@ -1201,8 +1201,8 @@ export default function ProgramsForm({
                           <Label className="text-[11px] font-medium">Level</Label>
                           <div className="flex gap-2">
                             {[
-                              { value: 1, label: "Low" },
-                              { value: 2, label: "Medium" },
+                              { value: 1, label: "Basic" },
+                              { value: 2, label: "Intermediate" },
                               { value: 3, label: "Expert" },
                             ].map((opt) => {
                               const isSelected = materi.level.includes(opt.value);
@@ -1231,7 +1231,7 @@ export default function ProgramsForm({
                           </div>
                           {materi.level.length > 0 && (
                             <p className="text-[9px] text-muted-foreground">
-                              Terpilih: {[...materi.level].sort().map((l) => l === 1 ? "Low" : l === 2 ? "Medium" : "Expert").join(", ")}
+                              Terpilih: {[...materi.level].sort().map((l) => l === 1 ? "Basic" : l === 2 ? "Intermediate" : "Expert").join(", ")}
                             </p>
                           )}
                         </div>

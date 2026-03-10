@@ -21,7 +21,12 @@ function FooterComponent() {
           <div className="space-y-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-[#367CC0] to-[#DF9B35] rounded-lg flex items-center justify-center">
-                <span className="font-black text-white text-sm">K</span>
+                <Image
+                  src="/kross-id.png"
+                  alt="Kross ID Logo"
+                  width={40}
+                  height={40}
+                />
               </div>
               <span className="font-black text-white tracking-tight text-xl">
                 KROSS<span className="text-[#DF9B35]">.ID</span>
@@ -77,8 +82,6 @@ function FooterComponent() {
             <ul className="space-y-3">
               {[
                 { label: t.nav.home, href: "/home" },
-                { label: t.nav.programs, href: "/programs" },
-                { label: t.nav.myAccount, href: "/my-account" },
                 { label: t.nav.aboutUs, href: "/about-us" },
                 { label: t.nav.pricing, href: "/pricing" },
               ].map((link) => (
@@ -129,24 +132,6 @@ function FooterComponent() {
                 <div>
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.email}</p>
                   <p className="text-sm text-white/80">support@kross.id</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#DF9B35]/20 flex items-center justify-center shrink-0">
-                  <Phone size={18} className="text-[#DF9B35]" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.phone}</p>
-                  <p className="text-sm text-white/80">+62 21 000 000</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#7ED321]/20 flex items-center justify-center shrink-0">
-                  <MapPin size={18} className="text-[#7ED321]" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-wider mb-0.5">{t.footer.location}</p>
-                  <p className="text-sm text-white/80">Niaga Tower, Jakarta</p>
                 </div>
               </div>
             </div>

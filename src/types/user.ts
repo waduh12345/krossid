@@ -42,6 +42,26 @@ export interface AuthTokenResponse {
   token_type: string;
 }
 
+/** Active package registration info returned from /me for owner role */
+export interface ActivePackageRegistration {
+  active_from: string;
+  active_until: string;
+  package: {
+    id: number;
+    name: string;
+    type_package: "Learning Only" | "Learning + Affiliate";
+  };
+}
+
+/** Owner package info returned from /me for sales role */
+export interface OwnerPackage {
+  package_name: string;
+  type_package: "Learning Only" | "Learning + Affiliate";
+  active_from: string;
+  active_until: string;
+  status: boolean;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -57,6 +77,8 @@ export interface User {
   status?: boolean | number;
   student: Student;
   image?: string | null;
+  active_package_registration?: ActivePackageRegistration | null;
+  owner_package?: OwnerPackage | null;
 }
 
 export type Users = User;
